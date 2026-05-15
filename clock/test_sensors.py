@@ -7,6 +7,18 @@ Test each sensor in isolation before running the full clock.
 
 import sys
 import time
+import yaml
+
+CONFIG_FILE = "/etc/hub75-clock/config.yaml"
+
+
+def load_pir_gpio():
+    try:
+        with open(CONFIG_FILE) as f:
+            cfg = yaml.safe_load(f)
+        return int(cfg["sensors"]["pir_gpio"])
+    except Exception:
+        return 16
 
 
 def test_veml7700():
@@ -33,7 +45,7 @@ def test_veml7700():
         print("  SDA=GPIO2 (pin 3), SCL=GPIO3 (pin 5), VIN=3.3V")
 
 
-def test_pir(gpio_pin=24):
+def test_pir(gpio_pin=16):
     print(f"\n=== PIR Sensor (BCM GPIO{gpio_pin}) ===")
     try:
         import RPi.GPIO as GPIO
@@ -151,9 +163,10 @@ def test_mqtt():
 
 
 def main():
+    pir_gpio = load_pir_gpio()
     tests = {
         "1": ("VEML7700 lux",     test_veml7700),
-        "2": ("PIR motion",       test_pir),
+        "2": (f"PIR motion       (GPIO{pir_gpio})", lambda: test_pir(pir_gpio)),
         "3": ("LD2410C mmWave",   test_ld2410),
         "4": ("MQTT connection",  test_mqtt),
     }

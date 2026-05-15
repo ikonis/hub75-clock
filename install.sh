@@ -59,11 +59,30 @@ sudo pip3 install pyserial --break-system-packages
 sudo pip3 install adafruit-circuitpython-veml7700 adafruit-blinka --break-system-packages
 sudo pip3 install watchdog --break-system-packages
 
+PI_MODEL=$(cat /proc/cpuinfo | grep "Model" | cut -d: -f2 | xargs)
+IS_ZERO_W=false
+if echo "$PI_MODEL" | grep -qi "Zero W"; then
+    IS_ZERO_W=true
+    echo "      Detected: Raspberry Pi Zero W — using legacy build method"
+fi
+
 echo "[4/11] Building rpi-rgb-led-matrix..."
-sudo pip3 install --break-system-packages \
-    "git+https://github.com/hzeller/rpi-rgb-led-matrix@86df760" \
-    || { echo "[error] rpi-rgb-led-matrix install failed"; exit 1; }
-python3 -c "from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics; print('      rgbmatrix OK')" \
+if [ ! -d "$HOME/rpi-rgb-led-matrix" ]; then
+    git clone https://github.com/hzeller/rpi-rgb-led-matrix "$HOME/rpi-rgb-led-matrix"
+fi
+if [ "$IS_ZERO_W" = true ]; then
+    # Pi Zero W: use legacy make targets with older compatible version
+    cd "$HOME/rpi-rgb-led-matrix"
+    make build-python PYTHON="$(which python3)" || { echo "[error] make build-python failed — see docs/pi-zero-w.md"; exit 1; }
+    sudo make install-python PYTHON="$(which python3)" || { echo "[error] make install-python failed"; exit 1; }
+else
+    # Pi 4 and others: use pip with pinned commit before Pi5 RP1 code
+    sudo pip3 install --break-system-packages \
+        "git+https://github.com/hzeller/rpi-rgb-led-matrix@86df760" \
+        || { echo "[error] rpi-rgb-led-matrix install failed"; exit 1; }
+fi
+cd "$REPO_DIR"
+python3 -c "from rgbmatrix import RGBMatrix, RGBMatrixOptions; print('      rgbmatrix OK')" \
     || { echo "[error] rgbmatrix import failed"; exit 1; }
 echo "      rpi-rgb-led-matrix installed."
 

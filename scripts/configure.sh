@@ -52,6 +52,17 @@ read -p "MQTT username (leave blank if none) []: " MQTT_USER
 read -p "MQTT password (leave blank if none) []: " MQTT_PASS
 
 # ── Pi model ─────────────────────────────────────────────────────────────────
+PI_MODEL=$(cat /proc/cpuinfo | grep "Model" | cut -d: -f2 | xargs 2>/dev/null || echo "")
+if echo "$PI_MODEL" | grep -qi "Zero W"; then
+    PI_DEFAULT=2
+elif echo "$PI_MODEL" | grep -qi "Pi 4"; then
+    PI_DEFAULT=1
+elif echo "$PI_MODEL" | grep -qi "Pi 3"; then
+    PI_DEFAULT=4
+else
+    PI_DEFAULT=1
+fi
+
 echo ""
 echo "--- Hardware ---"
 echo "Select your Raspberry Pi model:"
@@ -60,8 +71,8 @@ echo "  2) Pi Zero W"
 echo "  3) Pi Zero 2 W"
 echo "  4) Pi 3B / 3B+"
 echo "  5) Other (I'll set gpio_slowdown manually)"
-read -p "Choice [1]: " PI_MODEL
-PI_MODEL="${PI_MODEL:-1}"
+read -p "Choice [$PI_DEFAULT]: " PI_MODEL
+PI_MODEL="${PI_MODEL:-$PI_DEFAULT}"
 
 case $PI_MODEL in
     1) GPIO_SLOWDOWN=4 ;;
