@@ -95,7 +95,7 @@ After install + reboot: `ls -l /dev/ttyAMA0` must exist and `/dev/serial0` must 
 | PIR Pin | Pi BCM GPIO | Pi Physical Pin |
 |---------|-------------|-----------------|
 | VCC | 3.3V or 5V | Pin 1 or Pin 2 |
-| GND | GND | Pin 9 |
+| GND | GND | Pin 39 |
 | OUT | GPIO16 | Pin 36 |
 
 > GPIO16 is free in the regular hardware mapping. OE uses GPIO18, not GPIO16.
