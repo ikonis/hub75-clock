@@ -16,7 +16,6 @@ import time
 import math
 import json
 import signal
-import subprocess
 import threading
 import random
 import re
@@ -28,7 +27,6 @@ from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 import paho.mqtt.client as mqtt
 from theme_loader import ThemeLoader, Theme
 
-VERSION = "1.0.0"
 
 try:
     import board
@@ -101,9 +99,6 @@ DEFAULTS = {
             "gates":            "hub75_clock/gates",
             "engineering_mode": "hub75_clock/engineering_mode",
             "bucket":           "hub75_clock/bucket",
-            "version_state":    "hub75_clock/version",
-            "update":           "hub75_clock/update/install",
-            "update_latest":    "hub75_clock/update/latest",
             "theme":            "hub75_clock/theme/set",
             "theme_state":      "hub75_clock/theme/state",
             "themes_available": "hub75_clock/themes/available",
@@ -201,11 +196,6 @@ DEFAULTS = {
     "time_format": {
         "use_24h":     False,
         "blink_colon": False,
-    },
-    "update": {
-        "enabled":     True,
-        "repo_path":   "/home/pi/hub75-clock",
-        "github_repo": "YOUR_GITHUB/hub75-clock",  # replace with your GitHub username/repo
     },
     "themes": {
         "themes_dir":    "/etc/hub75-clock/themes",
@@ -1273,7 +1263,6 @@ class HUB75Clock:
         self.ld2410 = (LD2410Sensor(self.mqtt_client, topics["presence"], topics["motion"],
                                      sc["ld2410_port"], sc["ld2410_baud"])
                        if sc.get("ld2410_enabled", True) else None)
-        self._latest_version = None
         self._alert_cycle_timer = 0
         self._alert_show_message = False
 
@@ -1298,10 +1287,6 @@ class HUB75Clock:
         client.publish(self.topic_avail, "online", retain=True)
         client_id = self.cfg["mqtt"]["client_id"]
         topics = self.cfg["mqtt"]["topics"]
-        client.publish(topics["version_state"], VERSION, retain=True)
-        client.subscribe(topics["update"])
-        if self.cfg["update"]["enabled"]:
-            threading.Thread(target=self._check_latest_version, daemon=True).start()
         for t in (topics["weather"], topics["config"], topics["alert"],
                   topics.get("gates", f"{client_id}/gates"),
                   topics.get("engineering_mode", f"{client_id}/engineering_mode"),
@@ -1489,12 +1474,6 @@ class HUB75Clock:
             else:
                 print(f"[theme] unknown theme: {theme_name}")
 
-        elif msg.topic == topics.get("update"):
-            raw = msg.payload.decode().strip() if msg.payload else ""
-            action = raw if isinstance(payload, str) else payload.get("action", "")
-            if raw == "install" or action == "install":
-                threading.Thread(target=self._do_update, daemon=True).start()
-
     def _on_themes_changed(self, themes: dict):
         names = sorted(themes.keys())
         self.mqtt_client.publish(
@@ -1532,45 +1511,6 @@ class HUB75Clock:
         self.night_mode = bucket in ("Late Evening", "Night")
         self.animator.set_night_mode(self.night_mode)
         print(f"[config] bucket={bucket} night_mode={self.night_mode}")
-
-    def _check_latest_version(self):
-        try:
-            import urllib.request, json as _json
-            repo = self.cfg["update"]["github_repo"]
-            url = f"https://api.github.com/repos/{repo}/releases/latest"
-            with urllib.request.urlopen(url, timeout=10) as r:
-                data = _json.loads(r.read())
-            self._latest_version = data["tag_name"].lstrip("v")
-            topics = self.cfg["mqtt"]["topics"]
-            self.mqtt_client.publish(
-                topics["update_latest"],
-                self._latest_version, retain=True)
-            print(f"[update] latest version: {self._latest_version}")
-        except Exception as e:
-            print(f"[update] version check failed: {e}")
-
-    def _do_update(self):
-        try:
-            repo_path = self.cfg["update"]["repo_path"]
-            print("[update] fetching latest tags...")
-            subprocess.run(["git", "-C", repo_path, "fetch", "--tags"],
-                          capture_output=True, text=True, timeout=60)
-            result = subprocess.run(
-                ["git", "-C", repo_path, "describe", "--tags", "--abbrev=0"],
-                capture_output=True, text=True, timeout=10)
-            latest_tag = result.stdout.strip()
-            if not latest_tag:
-                print("[update] no tags found, falling back to git pull")
-                subprocess.run(["git", "-C", repo_path, "pull"],
-                              capture_output=True, text=True, timeout=60)
-            else:
-                subprocess.run(["git", "-C", repo_path, "checkout", latest_tag],
-                              capture_output=True, text=True, timeout=30)
-                print(f"[update] checked out {latest_tag}")
-            time.sleep(1)
-            os.execv(sys.executable, [sys.executable] + sys.argv)
-        except Exception as e:
-            print(f"[update] failed: {e}")
 
     def _publish_discovery(self):
         prefix    = self.cfg["ha_discovery"]["prefix"]
@@ -1708,22 +1648,6 @@ class HUB75Clock:
                     "state_off":     "off",
                     "entity_category": "config",
                 }), retain=True)
-
-        # --- Update entity ---
-        self.mqtt_client.publish(
-            f"{prefix}/update/{client_id}_firmware/config",
-            json.dumps({
-                "name":                  "Firmware",
-                "unique_id":             f"{client_id}_firmware",
-                "device":                device,
-                "availability":          avail,
-                "state_topic":           topics["version_state"],
-                "latest_version_topic":  topics["update_latest"],
-                "command_topic":         topics["update"],
-                "payload_install":       "install",
-                "entity_category":       "config",
-                "device_class":          "firmware",
-            }), retain=True)
 
         # --- Select: theme ---
         self.mqtt_client.publish(

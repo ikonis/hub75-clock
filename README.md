@@ -4,18 +4,20 @@
 I built this as a bedside clock and it got out of hand. It's a 64×32 HUB75 LED matrix running on a Raspberry Pi 4, showing the time and animated weather conditions pulled from Home Assistant. The LD2410C mmWave sensor handles presence detection, a VEML7700 reads ambient light, and a PIR catches motion. Everything talks to HA over MQTT and shows up as a native device with auto-discovered entities.
 Configuration is all YAML. Fonts, colors, brightness curves, which sensors are connected.
 
+Parts of this codebase were written with AI assistance. I have tested it on my own hardware but please audit the code before running it on yours.
+
 ---
 
 ## Hardware
 
 | Component | Notes |
 |---|---|
-| [Raspberry Pi 4 Model B](https://amzn.to/4nli8DE) | Debian Bookworm (Raspberry Pi OS Lite) — primary supported hardware |
-| [64×32 HUB75 LED panel](https://amzn.to/4tELsqA) | P2.5 used in this build — P2/P3/P4/P5 all work electrically, smaller pitch looks better up close |
+| [Raspberry Pi 4 Model B](https://amzn.to/4nli8DE) | Debian Bookworm (Raspberry Pi OS Lite), primary supported hardware |
+| [64×32 HUB75 LED panel](https://amzn.to/4tELsqA) | P2.5 used in this build. P2/P3/P4/P5 all work electrically; smaller pitch looks better up close |
 | [VEML7700](https://amzn.to/3R5NwKr) | Ambient lux, I²C |
 | [HLK-LD2410C](https://amzn.to/3Rz9upi) | mmWave presence + distance, UART |
-| [PIR sensor — Inland PIR Motion Sensor Module](https://www.microcenter.com/product/618776/inland-pir-motion-sensor-module) | Motion, GPIO — no adjustment pots, 3-pin VCC/GND/OUT |
-| [5V / 5A power supply](https://amzn.to/4drKXKq) | Barrel jack — powers panel + Pi + sensors |
+| [PIR sensor (Inland PIR Motion Sensor Module)](https://www.microcenter.com/product/618776/inland-pir-motion-sensor-module) | Motion, GPIO, no adjustment pots, 3-pin VCC/GND/OUT |
+| [5V / 5A power supply](https://amzn.to/4drKXKq) | Barrel jack, powers panel + Pi + sensors |
 
 ---
 
@@ -27,7 +29,7 @@ STL and STEP files are in the `case/` folder, designed for the hardware listed i
 
 **Front cover**
 - With cutouts for all three sensors (VEML7700 lux window, PIR dome, LD2410C lens)
-- Without VEML7700 cutout — for builds that omit the lux sensor
+- Without VEML7700 cutout, for builds that omit the lux sensor
 
 **Back cover**
 - Barrel jack only
@@ -63,7 +65,7 @@ STL and STEP files are in the `case/` folder, designed for the hardware listed i
 
 Internal to the enclosure: barrel jack in, split to panel and Pi. One cable in, everything powered.
 
-### VEML7700 — I²C — 3.3V
+### VEML7700, I2C, 3.3V
 
 ```
 VEML7700    Pi 4                Physical pin
@@ -73,9 +75,9 @@ SDA    -->  GPIO2 (SDA1)        3
 SCL    -->  GPIO3 (SCL1)        5
 ```
 
-Verify after boot: `sudo i2cdetect -y 1` — expect `0x10`.
+Verify after boot: `sudo i2cdetect -y 1`. Expect `0x10`.
 
-### HLK-LD2410C — UART — 5V power
+### HLK-LD2410C, UART, 5V power
 
 ```
 LD2410C     Pi 4                Physical pin
@@ -86,9 +88,9 @@ RX     -->  GPIO14 (TXD0)       8    ← CROSSED: sensor RX to Pi TX
 OUT         (leave unconnected)
 ```
 
-After install + reboot: `ls -l /dev/ttyAMA0` must exist and `/dev/serial0` must point to it, not `ttyS0`. If it shows `ttyS0` the Bluetooth disable didn't take — check `/boot/firmware/config.txt` for `dtoverlay=disable-bt`.
+After install + reboot: `ls -l /dev/ttyAMA0` must exist and `/dev/serial0` must point to it, not `ttyS0`. If it shows `ttyS0` the Bluetooth disable didn't take. Check `/boot/firmware/config.txt` for `dtoverlay=disable-bt`.
 
-### PIR — GPIO
+### PIR, GPIO
 
 | PIR Pin | Pi BCM GPIO | Pi Physical Pin |
 |---------|-------------|-----------------|
@@ -96,7 +98,7 @@ After install + reboot: `ls -l /dev/ttyAMA0` must exist and `/dev/serial0` must 
 | GND | GND | Pin 9 |
 | OUT | GPIO16 | Pin 36 |
 
-> GPIO16 is free in the regular hardware mapping — OE uses GPIO18, not GPIO16.
+> GPIO16 is free in the regular hardware mapping. OE uses GPIO18, not GPIO16.
 
 > The Inland PIR sensor works on 3.3V, freeing up the 5V pins for panel power. If powering the Pi from a barrel jack via GPIO rather than USB-C, connect PIR VCC to pin 1 (3.3V) instead.
 
@@ -104,7 +106,7 @@ Change GPIO pin in `config.yaml` under `sensors.pir_gpio` (BCM number, not physi
 
 ### HUB75 Panel
 
-Connect directly via GPIO — no HAT required. Panel power comes from the external supply directly, not through the Pi's 5V rail.
+Connect directly via GPIO, no HAT required. Panel power comes from the external supply directly, not through the Pi's 5V rail.
 
 | HUB75 Signal | HUB75 IDC Pin | Pi BCM GPIO | Pi Physical Pin |
 |--------------|---------------|-------------|-----------------|
@@ -125,7 +127,7 @@ Connect directly via GPIO — no HAT required. Panel power comes from the extern
 | OE | 15 | GPIO18 | 12 |
 | GND | 16 | GND | 25 |
 
-> **Note:** This is the `regular` hardware mapping from rpi-rgb-led-matrix. Your HUB75 panel connector pin numbering may differ — verify against your panel's datasheet. Pin 1 is usually marked on the connector.
+> **Note:** This is the `regular` hardware mapping from rpi-rgb-led-matrix. Your HUB75 panel connector pin numbering may differ. Verify against your panel's datasheet. Pin 1 is usually marked on the connector.
 
 > Pin 1 on the IDC connector is usually marked with a triangle or dot on the PCB silkscreen, or a red stripe on the ribbon cable.
 
@@ -271,28 +273,24 @@ make restart
 
 ## Updating
 
-The clock checks for a new release automatically each time it starts. When one is available it appears as a firmware update on the clock's device page in Home Assistant — tap **Install** and the clock pulls the latest release tag from GitHub and restarts itself.
-
-For manual updates from the command line:
+Pull the latest code from GitHub and restart the service:
 
 ```bash
 make update
 # or: ~/update-clock.sh
 ```
 
-Updates track **GitHub Releases**, not every commit to `main`. Running `make update` between releases will stay on the current release version — it only moves forward when a new release tag exists.
-
-The current running version is visible on the HA device page under the **Firmware** entity.
+This pulls from the `main` branch, copies the updated files to `/opt/hub75-clock/`, and restarts the service.
 
 ---
 
 ## Font Selection
 
-Two fonts configured separately — banner (small text row) and time (large digits).
+Two fonts configured separately: banner (small text row) and time (large digits).
 
 ### Banner font
 
-`4x6.bdf` (default) — "TSTORM" plus two temps fits in 64px.
+`4x6.bdf` (default): "TSTORM" plus two temps fits in 64px.
 
 ### Time font options
 
@@ -313,7 +311,7 @@ fonts:
   time_h: 24
 ```
 
-**Always update `time_w` and `time_h` — they are not auto-detected.**
+**Always update `time_w` and `time_h`. They are not auto-detected.**
 
 Browse available fonts:
 ```bash
@@ -370,10 +368,9 @@ With defaults (`client_id: hub75_clock`, `ha_discovery_name: "HUB75 Clock"`):
 | `sensor.hub75_clock_still_energy` | LD2410C still energy |
 | `sensor.hub75_clock_move_distance` | LD2410C move distance (cm) |
 | `sensor.hub75_clock_still_distance` | LD2410C still distance (cm) |
-| `binary_sensor.hub75_clock_pir` | PIR motion |
+| `binary_sensor.hub75_clock_pir` | PIR motion (shown as "Motion" in HA) |
 | `binary_sensor.hub75_clock_presence` | LD2410C occupancy |
 | `number.hub75_clock_brightness` | Brightness control (1–100) |
-| `update.hub75_clock_firmware` | OTA firmware update |
 
 Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registered.
 
@@ -398,8 +395,6 @@ Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registere
 | `hub75_clock/presence` | `{"presence": true, "target_state": 3, "move_distance": 85, "still_distance": 120}` |
 | `hub75_clock/motion` | `{"move_energy": 45, "still_energy": 30}` |
 | `hub75_clock/status` | `online` or `offline` |
-| `hub75_clock/version` | `1.0.0` |
-| `hub75_clock/update/latest` | `1.1.0` (fetched from GitHub releases) |
 
 ### Weather conditions
 
@@ -415,13 +410,13 @@ Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registere
 | `TSTORM` / `HURRICANE` / `TROPICAL_STORM` | Rain + lightning flash |
 | `ICE` / `FREEZING_RAIN` | Cyan corner accents |
 
-Condition is the **most severe expected in the next 12 hours** — not just the current moment.
+Condition is the **most severe expected in the next 12 hours**, not just the current moment.
 
-The condition and temperature windows are configurable at the top of `automations/02_push_weather.yaml` — change `condition_hours` (default 12) and `temp_hours` (default 24) to suit your preference.
+The condition and temperature windows are configurable at the top of `automations/02_push_weather.yaml`. Change `condition_hours` (default 12) and `temp_hours` (default 24) to suit your preference.
 
 ### Brightness
 
-Brightness is controlled by your HA automation — see `automations/01_set_theme.yaml` for the included example.
+Brightness is controlled by your HA automation; see `automations/01_set_theme.yaml` for the included example.
 
 ---
 
@@ -484,8 +479,8 @@ hub75-clock/
 ├── .gitignore
 ├── Makefile                    make update / logs / restart / test / config
 ├── README.md
-├── config.example.yaml         Reference — configure.sh writes the real config
-├── install.sh                  One-shot installer — run once on a fresh Pi
+├── config.example.yaml         Reference config; configure.sh writes the real config
+├── install.sh                  One-shot installer, run once on a fresh Pi
 ├── update.sh                   Installed to ~/update-clock.sh; called by make update
 ├── scripts/
 │   └── configure.sh            Interactive config wizard; run by install.sh
@@ -505,11 +500,11 @@ hub75-clock/
 
 The Pi 4 is the primary tested platform. Other hardware may work with adjustments:
 
-**Raspberry Pi Zero W** — requires additional build steps. See `docs/pi-zero-w.md` (coming soon).
+**Raspberry Pi Zero W**: requires additional build steps. See `docs/pi-zero-w.md`.
 
-**Raspberry Pi 3B / 3B+** — should work with `gpio_slowdown: 3` in `config.yaml`. Untested.
+**Raspberry Pi 3B / 3B+**: should work with `gpio_slowdown: 3` in `config.yaml`. Untested.
 
-**Raspberry Pi 5** — not currently supported.
+**Raspberry Pi 5**: not currently supported.
 
 ---
 
@@ -518,8 +513,8 @@ The Pi 4 is the primary tested platform. Other hardware may work with adjustment
 | Hardware | Status |
 |---|---|
 | Raspberry Pi 4 Model B | ✅ Primary / tested |
-| Raspberry Pi Zero W 1.1 | 🔧 Community-supported — see `docs/pi-zero-w.md` |
-| Raspberry Pi 3B / 3B+ | 🔧 Community-supported — untested, `gpio_slowdown: 3` |
+| Raspberry Pi Zero W 1.1 | 🔧 Community-supported; see `docs/pi-zero-w.md` |
+| Raspberry Pi 3B / 3B+ | 🔧 Community-supported, untested, `gpio_slowdown: 3` |
 | Raspberry Pi 5 | ❌ Not supported |
 
 ---

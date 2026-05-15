@@ -1,4 +1,4 @@
-# HUB75 Smart Clock — Raspberry Pi Zero W Build Notes
+# HUB75 Smart Clock: Raspberry Pi Zero W Build Notes
 
 > **Note:** The Raspberry Pi 4 is the primary supported platform. This document covers the additional steps required to build and run the clock on a Pi Zero W. These steps are community-supported and require more technical comfort.
 
@@ -24,7 +24,7 @@ The Pi Zero W uses an ARMv6 processor. The `rpi-rgb-led-matrix` library includes
 
 ## OS
 
-Use **Raspberry Pi OS Lite (32-bit, Bookworm)**. Do NOT use 64-bit on Pi Zero W — it is not supported on ARMv6.
+Use **Raspberry Pi OS Lite (32-bit, Bookworm)**. Do NOT use 64-bit on Pi Zero W. It is not supported on ARMv6.
 
 ---
 

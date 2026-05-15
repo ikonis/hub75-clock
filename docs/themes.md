@@ -1,6 +1,6 @@
 # Themes
 
-Themes control the background, text colors, and animation behavior of the clock face. Each theme is a JSON file. The clock loads all `.json` files from its themes directory at startup and watches for changes — drop a new file in and the clock picks it up within seconds, no restart required.
+Themes control the background, text colors, and animation behavior of the clock face. Each theme is a JSON file. The clock loads all `.json` files from its themes directory at startup and watches for changes. Drop a new file in and the clock picks it up within seconds, no restart required.
 
 ---
 
@@ -25,7 +25,7 @@ The repo ships the built-in themes under `themes/` and the installer copies them
 
 ## Activating a theme
 
-**From Home Assistant:** The clock registers a `select` entity (`Theme`) on the device page. Pick any loaded theme from the dropdown — the selection takes effect immediately.
+**From Home Assistant:** The clock registers a `select` entity (`Theme`) on the device page. Pick any loaded theme from the dropdown. The selection takes effect immediately.
 
 **Via MQTT:** Publish the theme name as a plain string or as a JSON object to the theme command topic:
 
@@ -113,7 +113,7 @@ TROPICAL_STORM  FREEZING_RAIN   FREEZING_DRIZZLE
 DUST            SMOKE
 ```
 
-Aliased conditions (BLIZZARD→SNOW, HURRICANE→TSTORM, FLOOD→RAIN, etc.) are normalized before the override lookup, so use the canonical name — not the alias — as the key.
+Aliased conditions (BLIZZARD→SNOW, HURRICANE→TSTORM, FLOOD→RAIN, etc.) are normalized before the override lookup, so use the canonical name, not the alias, as the key.
 
 ---
 
@@ -134,9 +134,9 @@ sunrise:                    sunset:
 └──────────────┘            └──────────────┘
 ```
 
-**Sunrise:** The top portion fades from `background_top` (at the very top) down to `background_bottom` (at the split). The bottom portion below the split is a solid fill of `background_bottom`. Good for dawn — dark purple sky above a warm horizon, flat dark ground below.
+**Sunrise:** The top portion fades from `background_top` (at the very top) down to `background_bottom` (at the split). The bottom portion below the split is a solid fill of `background_bottom`. Good for dawn: dark purple sky above a warm horizon, flat dark ground below.
 
-**Sunset:** The top portion above the split is a solid fill of `background_top`. The bottom portion fades from `background_top` (at the split) down to `background_bottom` (at the very bottom). Good for dusk — the sky holds its color and bleeds into a warm horizon at the bottom.
+**Sunset:** The top portion above the split is a solid fill of `background_top`. The bottom portion fades from `background_top` (at the split) down to `background_bottom` (at the very bottom). Good for dusk. The sky holds its color and bleeds into a warm horizon at the bottom.
 
 `background_split: 0.5` puts the transition at the vertical midpoint of the animation zone. Lower values (e.g. `0.25`) push it toward the top; higher values (e.g. `0.75`) push it toward the bottom.
 
@@ -158,12 +158,12 @@ No restart required.
 
 ## Complete example
 
-`stormy_night.json` — a dark, dramatic theme for thunderstorm nights.
+`stormy_night.json`: a dark, dramatic theme for thunderstorm nights.
 
 ```json
 {
   "name": "Stormy Night",
-  "description": "Deep stormy sky — used automatically by night bucket during TSTORM",
+  "description": "Deep stormy sky, used automatically by night bucket during TSTORM",
 
   "background_type": "solid",
   "background_color": "#020008",
@@ -206,12 +206,12 @@ No restart required.
 
 **Field-by-field notes:**
 
-- `background_color: "#020008"` — nearly black with a faint purple tint. Keeps the panel very dim.
-- `background_top/bottom` — unused here since `background_type` is `"solid"`, but provided so the file is a complete reference.
-- `colors.time: "#404040"` — dark grey instead of white. At night a bright clock face is intrusive.
-- `clouds_enabled: true` + `dense` + `fast` — thick fast clouds feel stormy even before rain starts.
-- `condition_overrides.TSTORM` — deepens the background further during active thunderstorms. The rain and lightning particles are drawn on top of this.
-- `stars_enabled: false` — no stars; this theme is for overcast/stormy sky.
+- `background_color: "#020008"`: nearly black with a faint purple tint. Keeps the panel very dim.
+- `background_top/bottom`: unused here since `background_type` is `"solid"`, but provided so the file is a complete reference.
+- `colors.time: "#404040"`: dark grey instead of white. At night a bright clock face is intrusive.
+- `clouds_enabled: true` + `dense` + `fast`: thick fast clouds feel stormy even before rain starts.
+- `condition_overrides.TSTORM`: deepens the background further during active thunderstorms. The rain and lightning particles are drawn on top of this.
+- `stars_enabled: false`: no stars; this theme is for overcast/stormy sky.
 
 ---
 
