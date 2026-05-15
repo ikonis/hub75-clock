@@ -30,6 +30,8 @@ if [ -z "$LATEST" ]; then
 else
     git -C "$REPO_DIR" checkout "$LATEST"
     echo "[update] checked out $LATEST"
+    # Return to main branch after tag checkout to avoid detached HEAD issues
+    git -C "$REPO_DIR" checkout main 2>/dev/null || true
 fi
 
 echo "[update] copying files to $CLOCK_DIR..."
