@@ -1,0 +1,535 @@
+# HUB75 Smart Clock
+
+
+I built this as a bedside clock and it got out of hand. It's a 64×32 HUB75 LED matrix running on a Raspberry Pi 4, showing the time and animated weather conditions pulled from Home Assistant. The LD2410C mmWave sensor handles presence detection, a VEML7700 reads ambient light, and a PIR catches motion. Everything talks to HA over MQTT and shows up as a native device with auto-discovered entities.
+Configuration is all YAML. Fonts, colors, brightness curves, which sensors are connected.
+
+---
+
+## Hardware
+
+| Component | Notes |
+|---|---|
+| [Raspberry Pi 4 Model B](https://amzn.to/4nli8DE) | Debian Bookworm (Raspberry Pi OS Lite) — primary supported hardware |
+| [64×32 HUB75 LED panel](https://amzn.to/4tELsqA) | P2.5 used in this build — P2/P3/P4/P5 all work electrically, smaller pitch looks better up close |
+| [VEML7700](https://amzn.to/3R5NwKr) | Ambient lux, I²C |
+| [HLK-LD2410C](https://amzn.to/3Rz9upi) | mmWave presence + distance, UART |
+| [PIR sensor — Inland PIR Motion Sensor Module](https://www.microcenter.com/product/618776/inland-pir-motion-sensor-module) | Motion, GPIO — no adjustment pots, 3-pin VCC/GND/OUT |
+| [5V / 5A power supply](https://amzn.to/4drKXKq) | Barrel jack — powers panel + Pi + sensors |
+
+---
+
+## Case / Enclosure
+
+STL and STEP files are in the `case/` folder, designed for the hardware listed in the BOM above. A Bambu Studio `.3mf` file with the print settings used on a P1S is included.
+
+### Variants
+
+**Front cover**
+- With cutouts for all three sensors (VEML7700 lux window, PIR dome, LD2410C lens)
+- Without VEML7700 cutout — for builds that omit the lux sensor
+
+**Back cover**
+- Barrel jack only
+- Pi 4 variant with USB-C and full port cutouts
+
+**Bottom cover**
+- Pi 4
+- Pi Zero W
+
+### Hardware required
+
+| Qty | Part | Notes |
+|-----|------|-------|
+| 10 | [M3×5×4 Heatset Inserts](https://amzn.to/3RABtF4) | Panel and cover mounting |
+| 6 | [M3×6 Countersunk Screws](https://amzn.to/4wqe6Or) | Front cover to frame |
+| 6 | [M3×6 Hex Screws](https://amzn.to/3R4CC7Q) | Back cover to frame |
+| 4 | [M2.5×3.5×4 Heatset Inserts](https://amzn.to/3RABtF4) | Pi mounting |
+| 4 | [M2.5×5 Hex Screws](https://amzn.to/4u9nSTS) | Pi to standoffs |
+
+---
+
+## Wiring
+
+### Power
+
+```
+5V/5A Supply (+) -----> Panel 5V
+5V/5A Supply (+) -----> Pi VBUS (physical pin 2)
+5V/5A Supply (+) -----> LD2410C VCC
+5V/5A Supply (+) -----> PIR VCC
+5V/5A Supply (-) -----> Shared GND (all devices)
+```
+
+Internal to the enclosure: barrel jack in, split to panel and Pi. One cable in, everything powered.
+
+### VEML7700 — I²C — 3.3V
+
+```
+VEML7700    Pi 4                Physical pin
+VIN    -->  3.3V                1
+GND    -->  GND                 9
+SDA    -->  GPIO2 (SDA1)        3
+SCL    -->  GPIO3 (SCL1)        5
+```
+
+Verify after boot: `sudo i2cdetect -y 1` — expect `0x10`.
+
+### HLK-LD2410C — UART — 5V power
+
+```
+LD2410C     Pi 4                Physical pin
+VCC    -->  5V                  2
+GND    -->  GND                 6
+TX     -->  GPIO15 (RXD0)       10   ← CROSSED: sensor TX to Pi RX
+RX     -->  GPIO14 (TXD0)       8    ← CROSSED: sensor RX to Pi TX
+OUT         (leave unconnected)
+```
+
+After install + reboot: `ls -l /dev/ttyAMA0` must exist and `/dev/serial0` must point to it, not `ttyS0`. If it shows `ttyS0` the Bluetooth disable didn't take — check `/boot/firmware/config.txt` for `dtoverlay=disable-bt`.
+
+### PIR — GPIO
+
+| PIR Pin | Pi BCM GPIO | Pi Physical Pin |
+|---------|-------------|-----------------|
+| VCC | 3.3V or 5V | Pin 1 or Pin 2 |
+| GND | GND | Pin 9 |
+| OUT | GPIO16 | Pin 36 |
+
+> GPIO16 is free in the regular hardware mapping — OE uses GPIO18, not GPIO16.
+
+> The Inland PIR sensor works on 3.3V, freeing up the 5V pins for panel power. If powering the Pi from a barrel jack via GPIO rather than USB-C, connect PIR VCC to pin 1 (3.3V) instead.
+
+Change GPIO pin in `config.yaml` under `sensors.pir_gpio` (BCM number, not physical pin). Allow 30–60 seconds warmup after power-on.
+
+### HUB75 Panel
+
+Connect directly via GPIO — no HAT required. Panel power comes from the external supply directly, not through the Pi's 5V rail.
+
+| HUB75 Signal | HUB75 IDC Pin | Pi BCM GPIO | Pi Physical Pin |
+|--------------|---------------|-------------|-----------------|
+| R1 | 1 | GPIO11 | 23 |
+| G1 | 2 | GPIO27 | 13 |
+| B1 | 3 | GPIO7 | 26 |
+| GND | 4 | GND | 6 |
+| R2 | 5 | GPIO8 | 24 |
+| G2 | 6 | GPIO9 | 21 |
+| B2 | 7 | GPIO10 | 19 |
+| GND | 8 | GND | 14 |
+| A | 9 | GPIO22 | 15 |
+| B | 10 | GPIO23 | 16 |
+| C | 11 | GPIO24 | 18 |
+| D | 12 | GPIO25 | 22 |
+| CLK | 13 | GPIO17 | 11 |
+| STB/LAT | 14 | GPIO4 | 7 |
+| OE | 15 | GPIO18 | 12 |
+| GND | 16 | GND | 25 |
+
+> **Note:** This is the `regular` hardware mapping from rpi-rgb-led-matrix. Your HUB75 panel connector pin numbering may differ — verify against your panel's datasheet. Pin 1 is usually marked on the connector.
+
+> Pin 1 on the IDC connector is usually marked with a triangle or dot on the PCB silkscreen, or a red stripe on the ribbon cable.
+
+**Note on 3.3V logic:** The Pi's GPIO is 3.3V. HUB75 panels expect 5V logic. Most panels tolerate 3.3V and work fine. If you get garbled output that `gpio_slowdown` tuning doesn't fix, a 74HCT245 buffer between Pi and panel will resolve it.
+
+Use `hardware_mapping: regular` for direct GPIO wiring. Only use `adafruit-hat` if you have an actual Adafruit RGB Matrix Bonnet.
+
+---
+
+## Installation
+
+> **Note:** Git may not be installed on a fresh Raspberry Pi OS image. Install it first:
+> ```bash
+> sudo apt install -y git
+> ```
+
+### 1. Clone the repo on the Pi
+
+```bash
+cd ~
+git clone https://github.com/ikonis/hub75-clock.git
+cd hub75-clock
+```
+
+### 2. Install
+
+```bash
+bash install.sh
+```
+
+`install.sh` handles everything in one step, then launches the interactive configuration wizard (`scripts/configure.sh`) and prompts to reboot. See [Scripts](#scripts) for the full list of what it does.
+
+### 3. Reboot
+
+Prompted automatically by `install.sh`. Required for UART, Bluetooth, and group changes to take effect.
+
+```bash
+sudo reboot
+```
+
+### 4. Test sensors
+
+```bash
+make test
+```
+
+Runs each enabled sensor in sequence with a timed window and prints a PASS/FAIL/SKIP summary. Takes ~25 seconds total. Wave your hand in front of the PIR during the last 15 seconds.
+
+```bash
+sudo i2cdetect -y 1        # VEML7700 at 0x10
+ls -l /dev/serial0         # must point to ttyAMA0
+```
+
+### 5. Test the clock
+
+```bash
+sudo python3 /opt/hub75-clock/hub75_clock.py
+```
+
+Root required for matrix DMA/PWM. Panel should light up with time. Banner shows `--/-- CLEAR` until HA pushes weather.
+
+### 6. Start the service
+
+The service is installed and enabled automatically by `install.sh`.
+
+```bash
+make start
+make status
+```
+
+---
+
+## Scripts
+
+### install.sh
+
+Run once on a fresh Pi. Does everything in sequence:
+
+1. Updates apt package lists
+2. Installs system packages (git, python3-pip, i2c-tools)
+3. Installs Python packages (paho-mqtt, PyYAML, pyserial, RPi.GPIO, adafruit-circuitpython-veml7700)
+4. Clones and builds `rpi-rgb-led-matrix` with Python bindings
+5. Downloads Spleen fonts (12×24, 16×32) into the fonts directory
+6. Enables I²C and UART hardware; disables serial console; disables Bluetooth; blacklists `snd_bcm2835`
+7. Adds user to `dialout`, `gpio`, `i2c` groups
+8. Installs clock files to `/opt/hub75-clock/`
+9. Installs and enables the `hub75-clock` systemd service
+10. Installs `update.sh` to `~/update-clock.sh`
+11. Launches `scripts/configure.sh` to write your `config.yaml`
+12. Prompts to reboot
+
+```bash
+bash install.sh
+```
+
+### update.sh
+
+Pulls the latest code from GitHub, copies updated files to `/opt/hub75-clock/`, and restarts the service. Installed to `~/update-clock.sh` by `install.sh` so it works from any directory.
+
+```bash
+make update
+# or: ~/update-clock.sh
+```
+
+### scripts/configure.sh
+
+Interactive configuration wizard. Prompts for your MQTT broker, device name, sensor hardware, GPIO pin, and `gpio_slowdown`, then writes `/etc/hub75-clock/config.yaml` automatically. Launched by `install.sh` on first install; can be re-run any time.
+
+```bash
+make config
+# or: bash scripts/configure.sh
+```
+
+### clock/test_sensors.py
+
+Tests each connected sensor independently without starting the full clock. Reads enabled flags from `config.yaml`, skips disabled sensors, and prints a PASS/FAIL/SKIP summary. Takes ~25 seconds total.
+
+```bash
+make test
+```
+
+---
+
+## Daily Workflow
+
+```bash
+make update     # git pull + copy files + restart service
+make logs       # tail live service logs
+make restart    # restart after config edit
+make status     # check service status
+make stop       # stop the service
+make start      # start the service
+make test       # run test_sensors.py
+make config     # open config wizard (reconfigure)
+```
+
+After editing `/etc/hub75-clock/config.yaml` directly:
+```bash
+make restart
+```
+
+---
+
+## Updating
+
+The clock checks for a new release automatically each time it starts. When one is available it appears as a firmware update on the clock's device page in Home Assistant — tap **Install** and the clock pulls the latest release tag from GitHub and restarts itself.
+
+For manual updates from the command line:
+
+```bash
+make update
+# or: ~/update-clock.sh
+```
+
+Updates track **GitHub Releases**, not every commit to `main`. Running `make update` between releases will stay on the current release version — it only moves forward when a new release tag exists.
+
+The current running version is visible on the HA device page under the **Firmware** entity.
+
+---
+
+## Font Selection
+
+Two fonts configured separately — banner (small text row) and time (large digits).
+
+### Banner font
+
+`4x6.bdf` (default) — "TSTORM" plus two temps fits in 64px.
+
+### Time font options
+
+| Font | W×H | "12:34" px wide | Source | Notes |
+|---|---|---|---|---|
+| `9x15B.bdf` | 9×15 | 45px | rpi-rgb-led-matrix | Smaller bold |
+| `9x18B.bdf` | 9×18 | 45px | rpi-rgb-led-matrix | Taller bold |
+| `10x20.bdf` | 10×20 | 50px | rpi-rgb-led-matrix | Good default |
+| `spleen-12x24.bdf` | 12×24 | 60px | install.sh | Chunky terminal. Recommended upgrade. |
+| `spleen-16x32.bdf` | 16×32 | 80px | install.sh | Extreme chonk. Single-digit hours only ("6:15"=48px ✓, "12:34"=80px ✗) |
+
+To change the time font, edit `/etc/hub75-clock/config.yaml`:
+
+```yaml
+fonts:
+  time_name: spleen-12x24.bdf
+  time_w: 12
+  time_h: 24
+```
+
+**Always update `time_w` and `time_h` — they are not auto-detected.**
+
+Browse available fonts:
+```bash
+ls ~/rpi-rgb-led-matrix/fonts/
+```
+
+Test a font on the real panel:
+```bash
+cd ~/rpi-rgb-led-matrix/examples-api-use
+sudo ./text-example -f ~/rpi-rgb-led-matrix/fonts/spleen-12x24.bdf
+```
+
+---
+
+## Home Assistant Setup
+
+### Automations
+
+Put the files from `automations/` into HA packages:
+
+```
+config/packages/hub75_clock/
+├── 01_helpers.yaml
+├── 02_weather.yaml
+├── 03_brightness.yaml
+└── 04_lifecycle_alerts.yaml
+```
+
+In `configuration.yaml`:
+```yaml
+homeassistant:
+  packages: !include_dir_named packages
+```
+
+Restart HA fully after adding.
+
+### Required HA entities
+
+| Entity | Source |
+|---|---|
+| A `weather.*` entity | NWS, OpenWeatherMap, or similar integration |
+| `sensor.outdoor_temperature` | Your outdoor sensor |
+
+### Auto-registered entities (MQTT Discovery)
+
+The clock registers its device and all entities automatically via MQTT Discovery on connect. The device name and entity prefix come from `mqtt.client_id` and `ha_discovery.ha_discovery_name` in `config.yaml`.
+
+With defaults (`client_id: hub75_clock`, `ha_discovery_name: "HUB75 Clock"`):
+
+| Entity | Description |
+|---|---|
+| `sensor.hub75_clock_illuminance` | VEML7700 lux |
+| `sensor.hub75_clock_move_energy` | LD2410C move energy |
+| `sensor.hub75_clock_still_energy` | LD2410C still energy |
+| `sensor.hub75_clock_move_distance` | LD2410C move distance (cm) |
+| `sensor.hub75_clock_still_distance` | LD2410C still distance (cm) |
+| `binary_sensor.hub75_clock_pir` | PIR motion |
+| `binary_sensor.hub75_clock_presence` | LD2410C occupancy |
+| `number.hub75_clock_brightness` | Brightness control (1–100) |
+| `update.hub75_clock_firmware` | OTA firmware update |
+
+Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registered.
+
+### MQTT Topics
+
+**HA → Clock:**
+
+| Topic | Payload |
+|---|---|
+| `clock/weather` | `{"low_temp": 68, "high_temp": 88, "condition": "TSTORM", "outdoor_temp": 64}` |
+| `clock/config` | `{"brightness": 40}` and/or `{"night_mode": true}` |
+| `clock/alert` | `{"message": "Tornado Warning - County - until 4:45 PM", "expires": "2026-04-25T16:45:00-05:00"}` |
+| `clock/alert` | `{"clear": true}` to dismiss |
+| `hub75_clock/update/install` | `install` to trigger OTA update |
+
+**Clock → HA:**
+
+| Topic | Payload |
+|---|---|
+| `hub75_clock/lux` | `{"lux": 125.5}` |
+| `hub75_clock/pir` | `{"motion": true}` |
+| `hub75_clock/presence` | `{"presence": true, "target_state": 3, "move_distance": 85, "still_distance": 120}` |
+| `hub75_clock/motion` | `{"move_energy": 45, "still_energy": 30}` |
+| `hub75_clock/status` | `online` or `offline` |
+| `hub75_clock/version` | `1.0.0` |
+| `hub75_clock/update/latest` | `1.1.0` (fetched from GitHub releases) |
+
+### Weather conditions
+
+| String | Animation |
+|---|---|
+| `CLEAR` | None (stars at night) |
+| `SUNNY` | Sun rays |
+| `PARTLYCLOUDY` | Drifting clouds |
+| `CLOUDY` / `FOG` / `SMOKE` / `DUST` / `WINDY` | Dense clouds |
+| `RAIN` / `FLOOD` | Falling blue streaks |
+| `SNOW` / `BLIZZARD` | Drifting white dots |
+| `SLEET` / `FREEZING_DRIZZLE` | Faster dots, cyan tint |
+| `TSTORM` / `HURRICANE` / `TROPICAL_STORM` | Rain + lightning flash |
+| `ICE` / `FREEZING_RAIN` | Cyan corner accents |
+
+Condition is the **most severe expected in the next 12 hours** — not just the current moment.
+
+The condition and temperature windows are configurable at the top of `automations/02_push_weather.yaml` — change `condition_hours` (default 12) and `temp_hours` (default 24) to suit your preference.
+
+### Brightness
+
+Brightness is controlled by your HA automation — see `automations/01_set_theme.yaml` for the included example.
+
+---
+
+## Tornado Warning Alert
+
+When a Tornado Warning is issued, the banner strip shows a red scrolling overlay. Time and animations stay below. Auto-clears on expiration.
+
+### NWS Alerts setup (HACS)
+
+1. HACS → Integrations → ⋮ → Custom Repositories
+2. Add: `https://github.com/finity69x2/nws_alerts` → Integration
+3. Install "NWS Alerts" → Restart HA
+4. Settings → Devices & Services → Add Integration → NWS Alerts
+5. Configure with your GPS coordinates or county code
+
+Only Tornado Warnings trigger the clock alert by default.
+
+To manually test the alert:
+```bash
+mosquitto_pub -h <broker> -u <user> -P <pass> \
+  -t clock/alert \
+  -m '{"message":"TEST - County - until 11:59 PM"}'
+```
+
+Clear it:
+```bash
+mosquitto_pub -h <broker> -u <user> -P <pass> \
+  -t clock/alert -r \
+  -m '{"clear": true}'
+```
+
+---
+
+## Troubleshooting
+
+**Blank panel:** Check 5V supply. Check ribbon cable orientation (input side of panel only).
+
+**Garbled colors:** Adjust `panel.gpio_slowdown` (Pi 4: start at 4, try 3–5). If still wrong, add a 74HCT245 buffer.
+
+**Flickering:** Increase `gpio_slowdown`. Confirm `lsmod | grep snd_bcm2835` returns nothing. Service must run as root.
+
+**Time wrong size/position:** `fonts.time_w` and `fonts.time_h` must match the font file exactly. Not auto-detected.
+
+**`/dev/serial0` is `ttyS0`:** Bluetooth still owns PL011. Check for `dtoverlay=disable-bt` in `/boot/firmware/config.txt`. Add it and reboot.
+
+**VEML7700 not found:** `sudo i2cdetect -y 1` should show `10`. Check wiring. Set `sensors.veml7700_enabled: false` to disable.
+
+**Weather stuck at `--/-- CLEAR`:** Manually trigger the weather push automation in HA Developer Tools → Automations. Check the automation trace.
+
+**Alert not clearing:** Publish `{"clear": true}` to `clock/alert` from HA Developer Tools → MQTT.
+
+**`mqtt.broker is not set` error on startup:** Add your broker IP to `/etc/hub75-clock/config.yaml` under `mqtt.broker`, or run `make config` to reconfigure.
+
+---
+
+## File Layout
+
+```
+hub75-clock/
+├── .gitignore
+├── Makefile                    make update / logs / restart / test / config
+├── README.md
+├── config.example.yaml         Reference — configure.sh writes the real config
+├── install.sh                  One-shot installer — run once on a fresh Pi
+├── update.sh                   Installed to ~/update-clock.sh; called by make update
+├── scripts/
+│   └── configure.sh            Interactive config wizard; run by install.sh
+├── clock/
+│   ├── hub75_clock.py          Main application
+│   └── test_sensors.py         Per-sensor test utility (make test)
+└── automations/
+    ├── 01_helpers.yaml         HA input helpers
+    ├── 02_weather.yaml         Weather push automation
+    ├── 03_brightness.yaml      Bucket brightness + night mode
+    └── 04_lifecycle_alerts.yaml  Online/offline + Tornado Warning
+```
+
+---
+
+## Other Hardware
+
+The Pi 4 is the primary tested platform. Other hardware may work with adjustments:
+
+**Raspberry Pi Zero W** — requires additional build steps. See `docs/pi-zero-w.md` (coming soon).
+
+**Raspberry Pi 3B / 3B+** — should work with `gpio_slowdown: 3` in `config.yaml`. Untested.
+
+**Raspberry Pi 5** — not currently supported.
+
+---
+
+## Compatibility
+
+| Hardware | Status |
+|---|---|
+| Raspberry Pi 4 Model B | ✅ Primary / tested |
+| Raspberry Pi Zero W 1.1 | 🔧 Community-supported — see `docs/pi-zero-w.md` |
+| Raspberry Pi 3B / 3B+ | 🔧 Community-supported — untested, `gpio_slowdown: 3` |
+| Raspberry Pi 5 | ❌ Not supported |
+
+---
+
+## Support
+
+[![Buy Me A Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=ikonis&button_colour=5F7FFF&font_colour=ffffff&font_family=Bree&outline_colour=000000&coffee_colour=FFDD00)](https://buymeacoffee.com/ikonis)
+
+---
+
+## License
+
+MIT.

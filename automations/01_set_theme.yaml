@@ -1,0 +1,67 @@
+# ============================================================================
+# HUB75 Clock - Set Theme by Time of Day
+# ============================================================================
+# Uses sun elevation to pick the right theme automatically.
+# No bucket system required — just the built-in sun integration.
+#
+# Customize:
+#   binary_sensor.YOUR_CLOCK_ONLINE — your clock's online binary sensor
+#
+# Built-in themes: Day, Sunrise, Sunset, Late Evening, Night, Away
+# ============================================================================
+
+alias: "HUB75 Clock - Set Theme"
+description: Sets clock theme based on sun position and time of day.
+mode: single
+triggers:
+  - trigger: sun
+    event: sunrise
+    offset: "-01:00:00"
+    id: early_morning
+  - trigger: sun
+    event: sunrise
+    id: day
+  - trigger: sun
+    event: sunset
+    offset: "-00:30:00"
+    id: evening
+  - trigger: time
+    at: "21:00:00"
+    id: late_evening
+  - trigger: time
+    at: "23:00:00"
+    id: night
+  - trigger: homeassistant
+    event: start
+  - trigger: state
+    entity_id: binary_sensor.YOUR_CLOCK_ONLINE
+    to: "on"
+actions:
+  - variables:
+      elevation: "{{ state_attr('sun.sun', 'elevation') | float }}"
+      after_sunset: "{{ is_state('sun.sun', 'below_horizon') }}"
+      theme: >
+        {% if trigger.id == 'early_morning' %}Sunrise
+        {% elif trigger.id == 'day' %}Day
+        {% elif trigger.id == 'evening' %}Sunset
+        {% elif trigger.id == 'late_evening' %}Late Evening
+        {% elif trigger.id == 'night' %}Night
+        {% elif after_sunset and elevation < -6 %}Late Evening
+        {% elif after_sunset %}Sunset
+        {% elif now().hour < 6 %}Night
+        {% else %}Day{% endif %}
+      brightness: >
+        {% if theme == 'Night' %}5
+        {% elif theme == 'Late Evening' %}15
+        {% elif theme == 'Sunset' %}30
+        {% elif theme == 'Sunrise' %}25
+        {% elif theme == 'Away' %}1
+        {% else %}60{% endif %}
+  - action: mqtt.publish
+    data:
+      topic: clock/config
+      payload: >
+        {
+          "theme": "{{ theme }}",
+          "brightness": {{ brightness }}
+        }

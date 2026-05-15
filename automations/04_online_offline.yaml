@@ -1,0 +1,27 @@
+# ============================================================================
+# HUB75 Clock - Online / Offline Notification
+# ============================================================================
+# Sends a mobile notification if the clock goes offline for more than 5 minutes.
+#
+# Customize:
+#   binary_sensor.YOUR_CLOCK_ONLINE  — your clock's online binary sensor
+#   notify.YOUR_PHONE                — your mobile app notify service
+#
+# The binary sensor is created automatically by the clock via MQTT discovery.
+# If you set a custom client_id, the entity will be:
+#   binary_sensor.{client_id}_online
+# ============================================================================
+
+alias: "HUB75 Clock - Offline Alert"
+mode: single
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.YOUR_CLOCK_ONLINE
+    to: "off"
+    for:
+      minutes: 5
+actions:
+  - action: notify.YOUR_PHONE
+    data:
+      title: "HUB75 Clock Offline"
+      message: "The clock has been unreachable for 5 minutes."

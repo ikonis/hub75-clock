@@ -1,0 +1,11 @@
+# Text files
+*.sh text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+Makefile text eol=lf
+
+# Binary files
+*.stl binary
+*.step binary

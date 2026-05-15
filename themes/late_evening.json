@@ -1,0 +1,21 @@
+{
+  "name": "Late Evening",
+  "description": "After dark, stars visible",
+  "background_type": "solid",
+  "background_color": "#05000F",
+  "colors": {
+    "time": "#808080",
+    "low_temp": "#004455",
+    "high_temp": "#552E00",
+    "condition": "#303030"
+  },
+  "stars_enabled": true,
+  "shooting_stars_enabled": true,
+  "clouds_enabled": true,
+  "cloud_density": "sparse",
+  "cloud_speed": "slow",
+  "condition_overrides": {
+    "RAIN": {"background_type": "solid", "background_color": "#080012"},
+    "TSTORM": {"background_type": "solid", "background_color": "#04000A"}
+  }
+}

@@ -1,0 +1,182 @@
+# ============================================================================
+# HUB75 Clock - NWS Weather Alerts
+# ============================================================================
+# Shows a scrolling red alert banner on the clock for severe weather warnings.
+# Requires the NWS Alerts custom integration from HACS:
+#   https://github.com/finity69x2/nws_alerts
+#
+# Customize:
+#   sensor.nws_alerts        — your NWS alerts sensor entity
+#   YOUR_COUNTY_NAME         — filter to your county (e.g. "Smith")
+#
+# Priority order (highest first):
+#   Tornado Warning > Hurricane Warning > Severe Thunderstorm Warning >
+#   Flash Flood Warning > Blizzard Warning > Ice Storm Warning >
+#   Winter Storm Warning > Excessive Heat Warning > clear
+# ============================================================================
+
+alias: "HUB75 Clock - Weather Alerts"
+mode: single
+triggers:
+  - trigger: state
+    entity_id: sensor.nws_alerts
+actions:
+  - variables:
+      alerts: "{{ state_attr('sensor.nws_alerts', 'alerts') | default([]) }}"
+      tornado: >
+        {{ alerts | selectattr('event', 'equalto', 'Tornado Warning')
+           | selectattr('area', 'search', 'YOUR_COUNTY_NAME') | list }}
+      hurricane: >
+        {{ alerts | selectattr('event', 'equalto', 'Hurricane Warning') | list }}
+      tstorm: >
+        {{ alerts | selectattr('event', 'equalto', 'Severe Thunderstorm Warning')
+           | selectattr('area', 'search', 'YOUR_COUNTY_NAME') | list }}
+      flood: >
+        {{ alerts | selectattr('event', 'equalto', 'Flash Flood Warning')
+           | selectattr('area', 'search', 'YOUR_COUNTY_NAME') | list }}
+      blizzard: >
+        {{ alerts | selectattr('event', 'equalto', 'Blizzard Warning')
+           | selectattr('area', 'search', 'YOUR_COUNTY_NAME') | list }}
+      ice_storm: >
+        {{ alerts | selectattr('event', 'equalto', 'Ice Storm Warning')
+           | selectattr('area', 'search', 'YOUR_COUNTY_NAME') | list }}
+      winter_storm: >
+        {{ alerts | selectattr('event', 'equalto', 'Winter Storm Warning')
+           | selectattr('area', 'search', 'YOUR_COUNTY_NAME') | list }}
+      heat: >
+        {{ alerts | selectattr('event', 'equalto', 'Excessive Heat Warning') | list }}
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ tornado | length > 0 }}"
+        sequence:
+          - variables:
+              alert: "{{ tornado[0] }}"
+              ends: "{{ alert.get('ends', alert.get('expires', '')) }}"
+              ends_fmt: >
+                {% if ends %}{{ as_datetime(ends) | as_local | strftime('%-I:%M %p') }}
+                {% else %}unknown{% endif %}
+          - action: mqtt.publish
+            data:
+              topic: clock/alert
+              retain: true
+              payload: >
+                {"message": "TORNADO WARNING - YOUR_COUNTY_NAME County - until {{ ends_fmt | trim }}", "expires": "{{ ends }}"}
+      - conditions:
+          - condition: template
+            value_template: "{{ hurricane | length > 0 }}"
+        sequence:
+          - variables:
+              alert: "{{ hurricane[0] }}"
+              ends: "{{ alert.get('ends', alert.get('expires', '')) }}"
+              ends_fmt: >
+                {% if ends %}{{ as_datetime(ends) | as_local | strftime('%-I:%M %p') }}
+                {% else %}unknown{% endif %}
+          - action: mqtt.publish
+            data:
+              topic: clock/alert
+              retain: true
+              payload: >
+                {"message": "HURRICANE WARNING - until {{ ends_fmt | trim }}", "expires": "{{ ends }}"}
+      - conditions:
+          - condition: template
+            value_template: "{{ tstorm | length > 0 }}"
+        sequence:
+          - variables:
+              alert: "{{ tstorm[0] }}"
+              ends: "{{ alert.get('ends', alert.get('expires', '')) }}"
+              ends_fmt: >
+                {% if ends %}{{ as_datetime(ends) | as_local | strftime('%-I:%M %p') }}
+                {% else %}unknown{% endif %}
+          - action: mqtt.publish
+            data:
+              topic: clock/alert
+              retain: true
+              payload: >
+                {"message": "SEV T-STORM WARNING - YOUR_COUNTY_NAME County - until {{ ends_fmt | trim }}", "expires": "{{ ends }}"}
+      - conditions:
+          - condition: template
+            value_template: "{{ flood | length > 0 }}"
+        sequence:
+          - variables:
+              alert: "{{ flood[0] }}"
+              ends: "{{ alert.get('ends', alert.get('expires', '')) }}"
+              ends_fmt: >
+                {% if ends %}{{ as_datetime(ends) | as_local | strftime('%-I:%M %p') }}
+                {% else %}unknown{% endif %}
+          - action: mqtt.publish
+            data:
+              topic: clock/alert
+              retain: true
+              payload: >
+                {"message": "FLASH FLOOD WARNING - YOUR_COUNTY_NAME County - until {{ ends_fmt | trim }}", "expires": "{{ ends }}"}
+      - conditions:
+          - condition: template
+            value_template: "{{ blizzard | length > 0 }}"
+        sequence:
+          - variables:
+              alert: "{{ blizzard[0] }}"
+              ends: "{{ alert.get('ends', alert.get('expires', '')) }}"
+              ends_fmt: >
+                {% if ends %}{{ as_datetime(ends) | as_local | strftime('%-I:%M %p') }}
+                {% else %}unknown{% endif %}
+          - action: mqtt.publish
+            data:
+              topic: clock/alert
+              retain: true
+              payload: >
+                {"message": "BLIZZARD WARNING - YOUR_COUNTY_NAME County - until {{ ends_fmt | trim }}", "expires": "{{ ends }}"}
+      - conditions:
+          - condition: template
+            value_template: "{{ ice_storm | length > 0 }}"
+        sequence:
+          - variables:
+              alert: "{{ ice_storm[0] }}"
+              ends: "{{ alert.get('ends', alert.get('expires', '')) }}"
+              ends_fmt: >
+                {% if ends %}{{ as_datetime(ends) | as_local | strftime('%-I:%M %p') }}
+                {% else %}unknown{% endif %}
+          - action: mqtt.publish
+            data:
+              topic: clock/alert
+              retain: true
+              payload: >
+                {"message": "ICE STORM WARNING - YOUR_COUNTY_NAME County - until {{ ends_fmt | trim }}", "expires": "{{ ends }}"}
+      - conditions:
+          - condition: template
+            value_template: "{{ winter_storm | length > 0 }}"
+        sequence:
+          - variables:
+              alert: "{{ winter_storm[0] }}"
+              ends: "{{ alert.get('ends', alert.get('expires', '')) }}"
+              ends_fmt: >
+                {% if ends %}{{ as_datetime(ends) | as_local | strftime('%-I:%M %p') }}
+                {% else %}unknown{% endif %}
+          - action: mqtt.publish
+            data:
+              topic: clock/alert
+              retain: true
+              payload: >
+                {"message": "WINTER STORM WARNING - YOUR_COUNTY_NAME County - until {{ ends_fmt | trim }}", "expires": "{{ ends }}"}
+      - conditions:
+          - condition: template
+            value_template: "{{ heat | length > 0 }}"
+        sequence:
+          - variables:
+              alert: "{{ heat[0] }}"
+              ends: "{{ alert.get('ends', alert.get('expires', '')) }}"
+              ends_fmt: >
+                {% if ends %}{{ as_datetime(ends) | as_local | strftime('%-I:%M %p') }}
+                {% else %}unknown{% endif %}
+          - action: mqtt.publish
+            data:
+              topic: clock/alert
+              retain: true
+              payload: >
+                {"message": "EXCESSIVE HEAT WARNING - until {{ ends_fmt | trim }}", "expires": "{{ ends }}"}
+    default:
+      - action: mqtt.publish
+        data:
+          topic: clock/alert
+          retain: true
+          payload: '{"clear": true}'

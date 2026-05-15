@@ -1,0 +1,169 @@
+# =============================================================================
+# HUB75 Clock - Configuration Example
+# =============================================================================
+# Copy this file to /etc/hub75-clock/config.yaml and edit to match your setup.
+# This file is intentionally NOT named config.yaml so git doesn't track
+# your live settings.
+#
+# The live config at /etc/hub75-clock/config.yaml is gitignored.
+# Update workflow: git pull && make restart
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# MQTT - broker connection and topic routing
+# -----------------------------------------------------------------------------
+mqtt:
+  broker: 192.168.x.x        # IP address of your MQTT broker
+  port: 1883
+  username: ""               # leave empty if your broker has no auth
+  password: ""
+  client_id: hub75_clock
+
+  # Topics this clock publishes sensor readings to and subscribes to for config.
+  # Shared topics (weather, config, alert) are intentionally not device-prefixed
+  # so multiple clocks can share the same Home Assistant automations.
+  topics:
+    weather:      clock/weather       # HA automation publishes weather state here
+    config:       clock/config        # HA automation publishes display config here
+    alert:        clock/alert         # publish a message here to show an alert overlay
+    lux:          hub75_clock/lux
+    presence:     hub75_clock/presence
+    motion:       hub75_clock/motion
+    pir:          hub75_clock/pir
+    availability: hub75_clock/status
+
+# -----------------------------------------------------------------------------
+# Home Assistant MQTT Discovery
+# Enables automatic device/entity creation in HA when the clock starts.
+# -----------------------------------------------------------------------------
+ha_discovery:
+  enabled: true
+  prefix: homeassistant            # must match HA's discovery prefix (default: homeassistant)
+  ha_discovery_name: "HUB75 Clock" # friendly name shown in Home Assistant
+  ha_discovery_area: ""            # optional, sets the HA device area (e.g. "Bedroom")
+
+# -----------------------------------------------------------------------------
+# Panel hardware - adjust to match your specific panel and Pi model
+# -----------------------------------------------------------------------------
+panel:
+  # 'regular' = passive/cheap AliExpress HAT with no level shifter
+  # 'adafruit-hat' = Adafruit RGB Matrix Bonnet only
+  hardware_mapping: regular
+
+  # Tune if the display looks garbled or flickery.
+  # Pi Zero W/Zero 2 W: 2, Pi 3: 3, Pi 4: 4
+  # Pi 5 is not currently supported.
+  gpio_slowdown: 2
+
+  pwm_bits: 11
+  pwm_lsb_nanoseconds: 130
+  brightness: 60      # 1-100, live-overridable via MQTT
+
+# -----------------------------------------------------------------------------
+# Fonts - path to BDF fonts bundled with rpi-rgb-led-matrix
+# See README for full font list and how to install extras (Spleen etc).
+# IMPORTANT: update *_w and *_h to match the font file you choose.
+# -----------------------------------------------------------------------------
+fonts:
+  banner_path: /home/YOUR_USERNAME/hub75-fonts/5x7.bdf
+  banner_w: 5
+  banner_h: 7
+
+  time_path: /home/YOUR_USERNAME/hub75-fonts/10x20.bdf
+  time_w: 10
+  time_h: 20
+
+  alert_path: /home/YOUR_USERNAME/hub75-fonts/5x7.bdf
+  alert_w: 5
+  alert_h: 7
+
+# -----------------------------------------------------------------------------
+# Colors (RGB tuples 0-255)
+# Day values are used when lux is above the night threshold; night values below.
+# -----------------------------------------------------------------------------
+colors:
+  banner_day:   [200, 200, 200]
+  banner_night: [60, 60, 60]
+  time_day:     [240, 240, 240]
+  time_night:   [80, 80, 80]
+  outline:      [0, 0, 0]
+  rain_day:     [22, 42, 115]
+  rain_night:   [10, 18, 50]
+  snow_day:     [180, 180, 200]
+  snow_night:   [50, 50, 70]
+  sleet_day:    [120, 160, 180]
+  sleet_night:  [40, 55, 70]
+  lightning:    [200, 200, 40]
+  cloud_day:    [70, 70, 70]
+  cloud_night:  [25, 25, 25]
+  sun_day:      [220, 160, 30]
+  sun_night:    [70, 50, 10]
+  ice_day:      [80, 140, 160]
+  ice_night:    [25, 45, 55]
+  alert_bg:     [180, 0, 0]
+  alert_text:   [255, 255, 255]
+
+# -----------------------------------------------------------------------------
+# Animation - frame rates and particle counts for weather effects
+# -----------------------------------------------------------------------------
+animation:
+  fps: 15
+  fps_night: 8
+  rain_count:         [5, 8]
+  snow_count:         [6, 10]
+  sleet_count:        [6, 10]
+  tstorm_rain_count:  [5, 8]
+  tstorm_lightning_chance:   0.015
+  tstorm_lightning_duration: 2
+
+# -----------------------------------------------------------------------------
+# Alert overlay - scrolling text that appears over the clock face
+# -----------------------------------------------------------------------------
+alert:
+  scroll_speed: 1
+  scroll_gap:   8
+  flash:        false
+  flash_period: 10
+  fill_region:  true
+
+# -----------------------------------------------------------------------------
+# Sensors
+# Set *_enabled: false for any sensor you have not installed.
+# -----------------------------------------------------------------------------
+sensors:
+  lux_interval:      10.0
+  pir_poll_interval:  0.1
+
+  veml7700_enabled: true   # set false if not installed (I2C ambient light sensor)
+
+  ld2410_enabled: true     # set false if not installed (mmWave presence sensor)
+  ld2410_port: /dev/serial0
+  ld2410_baud: 256000
+
+  pir_enabled: true        # set false if not installed (passive infrared motion sensor)
+  pir_gpio: 16             # BCM GPIO number, NOT physical pin
+
+# -----------------------------------------------------------------------------
+# Time format
+# -----------------------------------------------------------------------------
+time_format:
+  use_24h:     false
+  blink_colon: false
+
+# -----------------------------------------------------------------------------
+# OTA Updates - pull latest code from GitHub and restart
+# Trigger via MQTT or HA button entity created by ha_discovery.
+# -----------------------------------------------------------------------------
+update:
+  enabled: true
+  repo_path: /home/YOUR_USERNAME/hub75-clock  # path where you cloned the repo
+  github_repo: YOUR_GITHUB_USERNAME/hub75-clock
+
+# -----------------------------------------------------------------------------
+# Themes - background, color, and animation presets loaded from JSON files
+# Built-in themes live in themes_dir. Drop your own .json files there and
+# the clock picks them up live (no restart needed).
+# -----------------------------------------------------------------------------
+themes:
+  themes_dir: /etc/hub75-clock/themes
+  default_theme: Day

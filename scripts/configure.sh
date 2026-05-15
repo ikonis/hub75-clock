@@ -1,0 +1,281 @@
+#!/bin/bash
+# ============================================================================
+# HUB75 Smart Clock - Interactive Configuration Script
+# ============================================================================
+# Asks you questions about your setup and writes config.yaml automatically.
+# Run this after install.sh or any time you want to reconfigure.
+#
+# Usage:
+#   chmod +x scripts/configure.sh
+#   ./scripts/configure.sh
+# ============================================================================
+
+CONFIG_DIR="/etc/hub75-clock"
+CONFIG_FILE="$CONFIG_DIR/config.yaml"
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+USERNAME=$(whoami)
+FONTS_DIR="$HOME/hub75-fonts"
+
+echo ""
+echo "============================================"
+echo "  HUB75 Smart Clock - Configuration Wizard"
+echo "============================================"
+echo ""
+echo "Answer the questions below to generate your config.yaml."
+echo "Press Enter to accept the default value shown in [brackets]."
+echo ""
+
+# ── Device name ──────────────────────────────────────────────────────────────
+read -p "Device name (shown in Home Assistant) [HUB75 Clock]: " HA_NAME
+HA_NAME="${HA_NAME:-HUB75 Clock}"
+
+read -p "MQTT client ID (unique, no spaces) [hub75_clock]: " CLIENT_ID
+CLIENT_ID="${CLIENT_ID:-hub75_clock}"
+
+read -p "Home Assistant area (optional, leave blank to skip) []: " HA_AREA
+
+# ── MQTT ─────────────────────────────────────────────────────────────────────
+echo ""
+echo "--- MQTT Broker ---"
+while true; do
+    read -p "MQTT broker IP address: " MQTT_BROKER
+    if [[ -n "$MQTT_BROKER" ]]; then
+        break
+    fi
+    echo "  Broker IP is required."
+done
+
+read -p "MQTT broker port [1883]: " MQTT_PORT
+MQTT_PORT="${MQTT_PORT:-1883}"
+
+read -p "MQTT username (leave blank if none) []: " MQTT_USER
+read -p "MQTT password (leave blank if none) []: " MQTT_PASS
+
+# ── Pi model ─────────────────────────────────────────────────────────────────
+echo ""
+echo "--- Hardware ---"
+echo "Select your Raspberry Pi model:"
+echo "  1) Pi 4 (recommended)"
+echo "  2) Pi Zero W"
+echo "  3) Pi Zero 2 W"
+echo "  4) Pi 3B / 3B+"
+echo "  5) Other (I'll set gpio_slowdown manually)"
+read -p "Choice [1]: " PI_MODEL
+PI_MODEL="${PI_MODEL:-1}"
+
+case $PI_MODEL in
+    1) GPIO_SLOWDOWN=4 ;;
+    2) GPIO_SLOWDOWN=2; UART_PORT="/dev/serial0" ;;
+    3) GPIO_SLOWDOWN=2 ;;
+    4) GPIO_SLOWDOWN=3 ;;
+    5)
+        read -p "Enter gpio_slowdown value: " GPIO_SLOWDOWN
+        ;;
+esac
+
+UART_PORT="${UART_PORT:-/dev/ttyAMA0}"
+
+# ── Hardware mapping ──────────────────────────────────────────────────────────
+echo ""
+echo "Select panel connection method:"
+echo "  1) Direct GPIO wiring (no HAT)"
+echo "  2) Adafruit RGB Matrix HAT"
+echo "  3) Adafruit RGB Matrix HAT with PWM mod"
+read -p "Choice [1]: " HW_MAP_CHOICE
+HW_MAP_CHOICE="${HW_MAP_CHOICE:-1}"
+
+case $HW_MAP_CHOICE in
+    1) HW_MAP="regular" ;;
+    2) HW_MAP="adafruit-hat" ;;
+    3) HW_MAP="adafruit-hat-pwm" ;;
+    *) HW_MAP="regular" ;;
+esac
+
+# ── Sensors ───────────────────────────────────────────────────────────────────
+echo ""
+echo "--- Sensors ---"
+read -p "Do you have a VEML7700 lux sensor? [y/N]: " HAS_VEML
+HAS_VEML="${HAS_VEML:-n}"
+[[ "$HAS_VEML" =~ ^[Yy]$ ]] && VEML_ENABLED="true" || VEML_ENABLED="false"
+
+read -p "Do you have an LD2410C mmWave sensor? [y/N]: " HAS_LD2410
+HAS_LD2410="${HAS_LD2410:-n}"
+[[ "$HAS_LD2410" =~ ^[Yy]$ ]] && LD2410_ENABLED="true" || LD2410_ENABLED="false"
+
+if [[ "$LD2410_ENABLED" == "true" ]]; then
+    read -p "LD2410C UART port [$UART_PORT]: " LD2410_PORT
+    LD2410_PORT="${LD2410_PORT:-$UART_PORT}"
+fi
+
+read -p "Do you have a PIR sensor? [y/N]: " HAS_PIR
+HAS_PIR="${HAS_PIR:-n}"
+[[ "$HAS_PIR" =~ ^[Yy]$ ]] && PIR_ENABLED="true" || PIR_ENABLED="false"
+
+if [[ "$PIR_ENABLED" == "true" ]]; then
+    read -p "PIR GPIO pin (BCM number) [16]: " PIR_GPIO
+    PIR_GPIO="${PIR_GPIO:-16}"
+fi
+
+# ── Summary ───────────────────────────────────────────────────────────────────
+echo ""
+echo "============================================"
+echo "  Configuration Summary"
+echo "============================================"
+echo "  Device name:      $HA_NAME"
+echo "  Client ID:        $CLIENT_ID"
+echo "  HA area:          ${HA_AREA:-not set}"
+echo "  MQTT broker:      $MQTT_BROKER:$MQTT_PORT"
+echo "  Pi model:         gpio_slowdown=$GPIO_SLOWDOWN"
+echo "  Panel mapping:    $HW_MAP"
+echo "  VEML7700:         $VEML_ENABLED"
+echo "  LD2410C:          $LD2410_ENABLED"
+echo "  PIR:              $PIR_ENABLED"
+echo ""
+read -p "Write config.yaml with these settings? [Y/n]: " CONFIRM
+CONFIRM="${CONFIRM:-y}"
+if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+    echo "Cancelled."
+    exit 0
+fi
+
+# ── Write config ──────────────────────────────────────────────────────────────
+sudo tee "$CONFIG_FILE" > /dev/null << EOF
+# ============================================================================
+# HUB75 Smart Clock - Configuration
+# Generated by configure.sh on $(date)
+# ============================================================================
+
+mqtt:
+  broker: "$MQTT_BROKER"
+  port: $MQTT_PORT
+  username: ${MQTT_USER:-null}
+  password: ${MQTT_PASS:-null}
+  client_id: "$CLIENT_ID"
+  topics:
+    weather:          clock/weather
+    config:           clock/config
+    alert:            clock/alert
+    lux:              ${CLIENT_ID}/lux
+    presence:         ${CLIENT_ID}/presence
+    motion:           ${CLIENT_ID}/motion
+    pir:              ${CLIENT_ID}/pir
+    availability:     ${CLIENT_ID}/status
+    fonts_available:  ${CLIENT_ID}/fonts_available
+    gates:            ${CLIENT_ID}/gates
+    engineering_mode: ${CLIENT_ID}/engineering_mode
+    bucket:           ${CLIENT_ID}/bucket
+    version_state:    ${CLIENT_ID}/version
+    update:           ${CLIENT_ID}/update/install
+    update_latest:    ${CLIENT_ID}/update/latest
+
+ha_discovery:
+  enabled: true
+  prefix: homeassistant
+  ha_discovery_name: "$HA_NAME"
+  ha_discovery_area: "$HA_AREA"
+
+panel:
+  hardware_mapping: $HW_MAP
+  gpio_slowdown: $GPIO_SLOWDOWN
+  led_rgb_sequence: RBG
+  pwm_bits: 11
+  pwm_lsb_nanoseconds: 130
+  brightness: 60
+
+fonts:
+  fonts_dir: $FONTS_DIR
+  banner_name: 4x6.bdf
+  banner_w: 4
+  banner_h: 6
+  time_name: spleen-12x24.bdf
+  time_w: 12
+  time_h: 24
+  alert_name: 4x6.bdf
+  alert_w: 4
+  alert_h: 6
+
+colors:
+  time_day: "#F0F0F0"
+  time_night: "#505050"
+  low_temp_day: "#00CCFF"
+  low_temp_night: "#004455"
+  high_temp_day: "#FF8C00"
+  high_temp_night: "#552E00"
+  condition_day: "#909090"
+  condition_night: "#303030"
+  alert_text: "#FFFFFF"
+  alert_bg: "#CC0000"
+  cloud_day: [70, 70, 70]
+  cloud_night: [25, 25, 25]
+  rain_day: [22, 42, 115]
+  rain_night: [10, 18, 50]
+  snow_day: [180, 180, 200]
+  snow_night: [50, 50, 70]
+  sleet_day: [120, 160, 180]
+  sleet_night: [40, 55, 70]
+  lightning: [200, 200, 40]
+  sun_day: [220, 160, 30]
+  sun_night: [70, 50, 10]
+  ice_day: [80, 140, 160]
+  ice_night: [25, 45, 55]
+  outline: [0, 0, 0]
+  sky_day: "#000820"
+  separator: "#1A1A1A"
+  evening_top: "#0F0019"
+  evening_bottom: "#3C1400"
+  night_bg: "#020005"
+  late_evening_bg: "#05000F"
+  ice_bg: "#001830"
+
+animation:
+  fps: 15
+  fps_night: 8
+  rain_count: [5, 8]
+  snow_count: [6, 10]
+  sleet_count: [6, 10]
+  tstorm_rain_count: [5, 8]
+  tstorm_lightning_chance: 0.015
+  tstorm_lightning_duration: 2
+
+alert:
+  scroll_speed: 1
+  scroll_gap: 8
+  flash: false
+  flash_period: 10
+  fill_region: true
+
+sensors:
+  veml7700_enabled: $VEML_ENABLED
+  ld2410_enabled: $LD2410_ENABLED
+  pir_enabled: $PIR_ENABLED
+  lux_interval: 60.0
+  pir_poll_interval: 0.1
+  pir_gpio: ${PIR_GPIO:-16}
+  pir_invert: false
+  ld2410_port: "${LD2410_PORT:-/dev/ttyAMA0}"
+  ld2410_baud: 256000
+
+time_format:
+  blink_colon: false
+  use_24h: false
+
+update:
+  enabled: true
+  repo_path: "$REPO_DIR"
+  github_repo: "YOUR_GITHUB/hub75-clock"
+EOF
+sudo chmod 666 "$CONFIG_FILE"
+
+echo ""
+echo "Config written to $CONFIG_FILE"
+echo ""
+echo "Next step: sudo systemctl start hub75-clock"
+echo "Check logs: sudo journalctl -u hub75-clock -f --no-pager"
+echo ""
+read -p "Would you like to test the display and find the correct color order? [Y/n]: " TEST_DISPLAY
+TEST_DISPLAY="${TEST_DISPLAY:-y}"
+if [[ "$TEST_DISPLAY" =~ ^[Yy]$ ]]; then
+    sudo python3 "$(dirname "$0")/test_display.py"
+else
+    echo "You can run the display test any time with: make rgb"
+fi

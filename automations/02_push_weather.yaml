@@ -1,0 +1,157 @@
+# ============================================================================
+# HUB75 Clock - Push Weather Data
+# ============================================================================
+# Pushes hourly forecast data to the clock every 15 minutes.
+# Requires a weather integration — NWS, OpenWeatherMap, PirateWeather etc.
+#
+# Customize:
+#   weather.YOUR_WEATHER_ENTITY — your weather integration entity
+#   sensor.YOUR_OUTDOOR_TEMP   — your outdoor temperature sensor (or remove)
+#
+# Condition logic:
+#   - Uses weighted precipitation probability over the next 12 hours
+#   - Most likely condition wins, severity as tiebreaker
+#   - High/low temps are the min/max over the next 24 hours
+# ============================================================================
+
+alias: "HUB75 Clock - Push Weather"
+description: Pushes weather forecast to the clock every 15 minutes.
+# ── Customization ─────────────────────────────────────────────────────────────
+# Change condition_hours to adjust how far ahead the clock looks for weather
+# conditions (default 12 — shows the worst condition expected in the next 12h).
+# Change temp_hours to adjust the window for high/low temperature calculation
+# (default 24 — shows the warmest high and coldest low over the next 24h).
+# These are the only values you need to change for most customizations.
+# ──────────────────────────────────────────────────────────────────────────────
+mode: single
+triggers:
+  - trigger: time_pattern
+    minutes: /15
+  - trigger: homeassistant
+    event: start
+  - trigger: state
+    entity_id: binary_sensor.YOUR_CLOCK_ONLINE
+    to: "on"
+actions:
+  - action: weather.get_forecasts
+    target:
+      entity_id: weather.YOUR_WEATHER_ENTITY
+    data:
+      type: hourly
+    response_variable: fc
+    continue_on_error: true
+  - variables:
+      condition_hours: 12   # How many hours ahead to check for condition (1-48)
+      temp_hours: 24        # How many hours ahead for high/low temps (1-72)
+      periods: >
+        {{ (fc['weather.YOUR_WEATHER_ENTITY'].forecast | default([]))
+           if fc is defined else [] }}
+      high_temp: >
+        {% set ns = namespace(best=none) %}
+        {% for p in periods %}
+          {% if as_datetime(p.datetime) <= now() + timedelta(hours=temp_hours) %}
+            {% if ns.best is none or p.temperature > ns.best %}
+              {% set ns.best = p.temperature %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.best | default(0) | int }}
+      low_temp: >
+        {% set ns = namespace(best=none) %}
+        {% for p in periods %}
+          {% if as_datetime(p.datetime) <= now() + timedelta(hours=temp_hours) %}
+            {% if ns.best is none or p.temperature < ns.best %}
+              {% set ns.best = p.temperature %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.best | default(0) | int }}
+      nws_condition: >
+        {% set severity = {
+          'lightning': 7, 'lightning-rainy': 7,
+          'hail': 6, 'snowy-rainy': 6,
+          'snowy': 5,
+          'pouring': 4, 'rainy': 4,
+          'cloudy': 3, 'partlycloudy': 3, 'fog': 3, 'windy': 3,
+          'clear-night': 1, 'sunny': 1, 'exceptional': 1
+        } %}
+        {% set ns = namespace(
+          lightning_rainy=0.0, lightning=0.0,
+          rainy=0.0, pouring=0.0,
+          snowy=0.0, snowy_rainy=0.0, hail=0.0,
+          cloudy=0.0, partlycloudy=0.0, fog=0.0, windy=0.0,
+          sunny=0.0, clear_night=0.0, exceptional=0.0
+        ) %}
+        {% for p in periods %}
+          {% if as_datetime(p.datetime) <= now() + timedelta(hours=condition_hours) %}
+            {% set c = p.condition | lower %}
+            {% set w = (p.precipitation_probability | float(0)) / 100.0 %}
+            {% if c == 'lightning-rainy' %}{% set ns.lightning_rainy = ns.lightning_rainy + w %}
+            {% elif c == 'lightning' %}{% set ns.lightning = ns.lightning + w %}
+            {% elif c == 'rainy' %}{% set ns.rainy = ns.rainy + w %}
+            {% elif c == 'pouring' %}{% set ns.pouring = ns.pouring + w %}
+            {% elif c == 'snowy' %}{% set ns.snowy = ns.snowy + w %}
+            {% elif c == 'snowy-rainy' %}{% set ns.snowy_rainy = ns.snowy_rainy + w %}
+            {% elif c == 'hail' %}{% set ns.hail = ns.hail + w %}
+            {% elif c == 'cloudy' %}{% set ns.cloudy = ns.cloudy + (1.0 - w) %}
+            {% elif c == 'partlycloudy' %}{% set ns.partlycloudy = ns.partlycloudy + (1.0 - w) %}
+            {% elif c == 'fog' %}{% set ns.fog = ns.fog + (1.0 - w) %}
+            {% elif c == 'windy' %}{% set ns.windy = ns.windy + (1.0 - w) %}
+            {% elif c == 'sunny' %}{% set ns.sunny = ns.sunny + (1.0 - w) %}
+            {% elif c == 'clear-night' %}{% set ns.clear_night = ns.clear_night + (1.0 - w) %}
+            {% elif c == 'exceptional' %}{% set ns.exceptional = ns.exceptional + 1.0 %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {% set candidates = [
+          ('lightning-rainy', ns.lightning_rainy, 7),
+          ('lightning', ns.lightning, 7),
+          ('hail', ns.hail, 6),
+          ('snowy-rainy', ns.snowy_rainy, 6),
+          ('snowy', ns.snowy, 5),
+          ('pouring', ns.pouring, 4),
+          ('rainy', ns.rainy, 4),
+          ('cloudy', ns.cloudy, 3),
+          ('partlycloudy', ns.partlycloudy, 3),
+          ('fog', ns.fog, 3),
+          ('windy', ns.windy, 3),
+          ('sunny', ns.sunny, 1),
+          ('clear-night', ns.clear_night, 1),
+          ('exceptional', ns.exceptional, 1)
+        ] %}
+        {% set best = namespace(score=0.0, sev=0, condition='sunny') %}
+        {% for name, score, sev in candidates %}
+          {% if score > best.score or (score == best.score and sev > best.sev) %}
+            {% set best.score = score %}
+            {% set best.sev = sev %}
+            {% set best.condition = name %}
+          {% endif %}
+        {% endfor %}
+        {{ best.condition }}
+      mapped_condition: >
+        {% set c = nws_condition | lower %}
+        {% if c == 'sunny' %}SUNNY
+        {% elif c == 'clear-night' %}CLEAR
+        {% elif c == 'partlycloudy' %}PARTLYCLOUDY
+        {% elif c in ['cloudy','fog','windy','windy-variant','exceptional'] %}CLOUDY
+        {% elif c in ['rainy','pouring'] %}RAIN
+        {% elif c == 'snowy' %}SNOW
+        {% elif c in ['snowy-rainy','hail'] %}SLEET
+        {% elif c in ['lightning','lightning-rainy'] %}TSTORM
+        {% else %}CLEAR{% endif %}
+      outdoor_temp: >
+        {% set r = states('sensor.YOUR_OUTDOOR_TEMP') %}
+        {% if r not in ['unknown','unavailable','none',None] %}
+          {{ r | float(0) | round(0) | int }}
+        {% else %}null{% endif %}
+  - action: mqtt.publish
+    data:
+      topic: clock/weather
+      retain: true
+      payload: >
+        {
+          "low_temp":     {{ low_temp }},
+          "high_temp":    {{ high_temp }},
+          "condition":    "{{ mapped_condition | trim }}",
+          "outdoor_temp": {{ outdoor_temp | trim }}
+        }
