@@ -82,7 +82,7 @@ Verify after boot: `sudo i2cdetect -y 1`. Expect `0x10`.
 ```
 LD2410C     Pi 4                Physical pin
 VCC    -->  5V                  2
-GND    -->  GND                 6
+GND    -->  GND                 20
 TX     -->  GPIO15 (RXD0)       10   ← CROSSED: sensor TX to Pi RX
 RX     -->  GPIO14 (TXD0)       8    ← CROSSED: sensor RX to Pi TX
 OUT         (leave unconnected)
