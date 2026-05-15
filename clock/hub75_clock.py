@@ -1594,21 +1594,21 @@ class HUB75Clock:
         sensor_configs = []
         if self.veml is not None:
             sensor_configs.append(
-                {"name": f"{dev_name} Illuminance", "unique_id": f"{client_id}_lux",
+                {"name": "Illuminance", "unique_id": f"{client_id}_lux",
                  "state_topic": topics["lux"], "value_template": "{{ value_json.lux }}",
                  "unit_of_measurement": "lx", "device_class": "illuminance", "state_class": "measurement"})
         if self.ld2410 is not None:
             sensor_configs += [
-                {"name": f"{dev_name} Move Energy", "unique_id": f"{client_id}_move_energy",
+                {"name": "Move Energy", "unique_id": f"{client_id}_move_energy",
                  "state_topic": topics["motion"], "value_template": "{{ value_json.move_energy }}",
                  "state_class": "measurement"},
-                {"name": f"{dev_name} Still Energy", "unique_id": f"{client_id}_still_energy",
+                {"name": "Still Energy", "unique_id": f"{client_id}_still_energy",
                  "state_topic": topics["motion"], "value_template": "{{ value_json.still_energy }}",
                  "state_class": "measurement"},
-                {"name": f"{dev_name} Move Distance", "unique_id": f"{client_id}_move_distance",
+                {"name": "Move Distance", "unique_id": f"{client_id}_move_distance",
                  "state_topic": topics["presence"], "value_template": "{{ value_json.move_distance }}",
                  "unit_of_measurement": "cm", "device_class": "distance", "state_class": "measurement"},
-                {"name": f"{dev_name} Still Distance", "unique_id": f"{client_id}_still_distance",
+                {"name": "Still Distance", "unique_id": f"{client_id}_still_distance",
                  "state_topic": topics["presence"], "value_template": "{{ value_json.still_distance }}",
                  "unit_of_measurement": "cm", "device_class": "distance", "state_class": "measurement"},
             ]
@@ -1629,7 +1629,7 @@ class HUB75Clock:
                     self.mqtt_client.publish(
                         f"{prefix}/sensor/{uid}/config",
                         json.dumps({
-                            "name":           f"{dev_name} Gate {gate} {label} Energy",
+                            "name":           f"Gate {gate} {label} Energy",
                             "unique_id":      uid,
                             "device":         device,
                             "availability":   gate_avail,
@@ -1644,12 +1644,12 @@ class HUB75Clock:
         binary_configs = []
         if self.pir is not None:
             binary_configs.append(
-                {"name": f"{dev_name} PIR", "unique_id": f"{client_id}_pir",
+                {"name": "Motion", "unique_id": f"{client_id}_pir",
                  "state_topic": topics["pir"], "value_template": "{{ value_json.motion }}",
                  "payload_on": "True", "payload_off": "False", "device_class": "motion"})
         if self.ld2410 is not None:
             binary_configs.append(
-                {"name": f"{dev_name} Presence", "unique_id": f"{client_id}_presence",
+                {"name": "Presence", "unique_id": f"{client_id}_presence",
                  "state_topic": topics["presence"], "value_template": "{{ value_json.presence }}",
                  "payload_on": "True", "payload_off": "False", "device_class": "occupancy"})
         for s in binary_configs:
@@ -1661,7 +1661,7 @@ class HUB75Clock:
         self.mqtt_client.publish(
             f"{prefix}/number/{client_id}_brightness/config",
             json.dumps({
-                "name":             f"{dev_name} Brightness",
+                "name":             "Brightness",
                 "unique_id":        f"{client_id}_brightness",
                 "device":           device,
                 "availability":     avail,
@@ -1681,7 +1681,7 @@ class HUB75Clock:
                     self.mqtt_client.publish(
                         f"{prefix}/number/{uid}/config",
                         json.dumps({
-                            "name":            f"{dev_name} Gate {gate} {label} Threshold",
+                            "name":            f"Gate {gate} {label} Threshold",
                             "unique_id":       uid,
                             "device":          device,
                             "availability":    avail,
@@ -1696,7 +1696,7 @@ class HUB75Clock:
             self.mqtt_client.publish(
                 f"{prefix}/switch/{client_id}_engineering_mode/config",
                 json.dumps({
-                    "name":          f"{dev_name} Engineering Mode",
+                    "name":          "Engineering Mode",
                     "unique_id":     f"{client_id}_engineering_mode",
                     "device":        device,
                     "availability":  avail,
