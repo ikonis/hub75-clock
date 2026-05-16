@@ -1438,6 +1438,7 @@ class HUB75Clock:
             if restart_needed:
                 print("[config] restarting for font change...")
                 time.sleep(0.5)
+                print("[config] restarting via os.execv")
                 os.execv(sys.executable, [sys.executable] + sys.argv)
 
         elif msg.topic == topics["alert"]:
