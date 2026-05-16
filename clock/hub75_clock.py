@@ -1422,6 +1422,16 @@ class HUB75Clock:
                     restart_needed = True
                     print(f"[config] font_banner={fname} - will restart")
 
+            if "theme" in payload:
+                theme_name = payload["theme"]
+                theme = self.theme_loader.get_theme(theme_name)
+                if theme:
+                    self.animator.set_theme(theme)
+                    self.mqtt_client.publish(topics["theme_state"], theme.name, retain=True)
+                    print(f"[theme] set to {theme.name}")
+                else:
+                    print(f"[theme] unknown theme: {theme_name}")
+
             if needs_save:
                 save_config(self.config_path, self.cfg)
 
