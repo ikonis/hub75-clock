@@ -73,7 +73,7 @@ fi
 if [ "$IS_ZERO_W" = true ]; then
     # Pi Zero W: use legacy make targets with older compatible version
     cd "$HOME/rpi-rgb-led-matrix"
-    git checkout 86df760
+    git checkout 076c54b
     make build-python PYTHON="$(which python3)" || { echo "[error] make build-python failed — see docs/pi-zero-w.md"; exit 1; }
     sudo make install-python PYTHON="$(which python3)" || { echo "[error] make install-python failed"; exit 1; }
 else
