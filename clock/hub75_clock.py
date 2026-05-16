@@ -1516,6 +1516,7 @@ class HUB75Clock:
                 "options":       self.theme_loader.available_themes(),
                 "entity_category": "config",
                 "icon":          "mdi:palette",
+                "has_entity_name": True,
             }), retain=True)
 
     def _apply_bucket(self, bucket: str):
@@ -1567,7 +1568,7 @@ class HUB75Clock:
         for s in sensor_configs:
             self.mqtt_client.publish(
                 f"{prefix}/sensor/{s['unique_id']}/config",
-                json.dumps({**s, "device": device, "availability": avail}), retain=True)
+                json.dumps({**s, "device": device, "availability": avail, "has_entity_name": True}), retain=True)
 
         # --- Gate energy diagnostic sensors (only available when engineering mode is on) ---
         if self.ld2410 is not None:
@@ -1590,6 +1591,7 @@ class HUB75Clock:
                             "value_template": f"{{{{ value_json.{energy_type}_gates[{gate}] }}}}",
                             "state_class":    "measurement",
                             "entity_category": "diagnostic",
+                            "has_entity_name": True,
                         }), retain=True)
 
         # --- Binary sensors ---
@@ -1607,7 +1609,7 @@ class HUB75Clock:
         for s in binary_configs:
             self.mqtt_client.publish(
                 f"{prefix}/binary_sensor/{s['unique_id']}/config",
-                json.dumps({**s, "device": device, "availability": avail}), retain=True)
+                json.dumps({**s, "device": device, "availability": avail, "has_entity_name": True}), retain=True)
 
         # --- Number: brightness ---
         self.mqtt_client.publish(
@@ -1622,6 +1624,7 @@ class HUB75Clock:
                 "state_topic":      f"{client_id}/brightness/state",
                 "min": 1, "max": 100, "step": 1,
                 "entity_category":  "config",
+                "has_entity_name":  True,
             }), retain=True)
 
         # --- Number: gate thresholds (18 entities) ---
@@ -1641,6 +1644,7 @@ class HUB75Clock:
                             "state_topic":     cmd_topic,
                             "min": 0, "max": 100, "step": 5,
                             "entity_category": "config",
+                            "has_entity_name": True,
                         }), retain=True)
 
         # --- Switch: engineering mode ---
@@ -1659,6 +1663,7 @@ class HUB75Clock:
                     "state_on":      "on",
                     "state_off":     "off",
                     "entity_category": "config",
+                    "has_entity_name": True,
                 }), retain=True)
 
         # --- Select: theme ---
@@ -1674,6 +1679,7 @@ class HUB75Clock:
                 "options":       self.theme_loader.available_themes(),
                 "entity_category": "config",
                 "icon":          "mdi:palette",
+                "has_entity_name": True,
             }), retain=True)
 
         print("[mqtt] HA discovery published")

@@ -194,7 +194,7 @@ panel:
   brightness: 60
 
 fonts:
-  fonts_dir: $FONTS_DIR
+  fonts_dir: /home/$USER/hub75-fonts
   banner_name: 4x6.bdf
   banner_w: 4
   banner_h: 6

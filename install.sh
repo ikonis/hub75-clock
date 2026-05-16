@@ -76,6 +76,22 @@ if [ "$IS_ZERO_W" = true ]; then
     git checkout 076c54b
     make build-python PYTHON="$(which python3)" || { echo "[error] make build-python failed — see docs/pi-zero-w.md"; exit 1; }
     sudo make install-python PYTHON="$(which python3)" || { echo "[error] make install-python failed"; exit 1; }
+    # Copy fonts from the cloned repo into hub75-fonts (same location as Pi 4)
+    mkdir -p "$HOME/hub75-fonts"
+    for font in spleen-12x24.bdf spleen-16x32.bdf; do
+        if [ ! -f "$HOME/hub75-fonts/$font" ]; then
+            cp "$HOME/rpi-rgb-led-matrix/fonts/$font" "$HOME/hub75-fonts/$font" 2>/dev/null || \
+            wget -q "https://github.com/fcambus/spleen/raw/master/$font" \
+                 -O "$HOME/hub75-fonts/$font"
+            echo "      + $font"
+        fi
+    done
+    for font in 4x6.bdf 5x7.bdf 5x8.bdf 6x10.bdf 7x13.bdf 9x15.bdf 9x18.bdf 10x20.bdf; do
+        if [ ! -f "$HOME/hub75-fonts/$font" ] && [ -f "$HOME/rpi-rgb-led-matrix/fonts/$font" ]; then
+            cp "$HOME/rpi-rgb-led-matrix/fonts/$font" "$HOME/hub75-fonts/$font"
+        fi
+    done
+    echo "      fonts copied to ~/hub75-fonts"
 else
     # Pi 4 and others: use pip with pinned commit before Pi5 RP1 code
     sudo pip3 install --break-system-packages \
