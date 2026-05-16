@@ -203,7 +203,6 @@ echo "      Service installed and enabled."
 echo "[10/11] Installing update script..."
 cp "$REPO_DIR/update.sh" "$HOME/update-clock.sh"
 chmod +x "$HOME/update-clock.sh"
-chmod +x "$REPO_DIR/scripts/configure.sh"
 
 echo "[11/11] Writing initial configuration..."
 bash "$REPO_DIR/scripts/configure.sh"
