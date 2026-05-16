@@ -779,7 +779,8 @@ class WeatherAnimator:
 
         # Sun: drawn before clouds so clouds pass in front of it
         if self.condition == "SUNNY" and not self.night_mode:
-            self._draw_sun(canvas)
+            if self.current_theme is None or getattr(self.current_theme, 'sun_enabled', True):
+                self._draw_sun(canvas)
 
         # Clouds
         for c in self.clouds:

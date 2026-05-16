@@ -14,6 +14,7 @@
   "clouds_enabled": true,
   "cloud_density": "sparse",
   "cloud_speed": "slow",
+  "sun_enabled": false,
   "condition_overrides": {
     "RAIN": {"background_type": "solid", "background_color": "#080012"},
     "TSTORM": {"background_type": "solid", "background_color": "#04000A"}

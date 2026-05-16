@@ -95,6 +95,12 @@ All values are hex color strings (`"#RRGGBB"`). When a key is present in the the
 | `cloud_density` | string | `"medium"` | How many clouds to spawn. `"sparse"` = 2, `"medium"` = 3–4, `"dense"` = 5–6. |
 | `cloud_speed` | string | `"medium"` | How fast clouds drift. `"slow"` = 0.04–0.10 px/frame, `"medium"` = 0.08–0.18, `"fast"` = 0.14–0.28. |
 
+### Sun
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `sun_enabled` | bool | `true` | Draw the sun quarter-circle glow in the top-right corner when the condition is SUNNY and night mode is off. Set to `false` for themes where the background already represents the sun (e.g. sunrise gradient, sunset gradient), so the glow doesn't stack on top of the coloured sky. |
+
 ### Condition overrides
 
 | Field | Type | Default | Description |
