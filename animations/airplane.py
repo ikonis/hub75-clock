@@ -46,7 +46,7 @@ class Animation:
         ox = int(round(self.x))
         oy = int(round(self.y))
         for dx, dy, r, g, b in self._SPRITE_R:
-            if not self._right:
+            if self._right:
                 dx = 8 - dx   # mirror horizontally
             px, py = ox + dx, oy + dy
             if 0 <= px < self._w and self._at - 2 <= py <= self._ab:

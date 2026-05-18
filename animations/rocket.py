@@ -28,7 +28,7 @@ class Animation:
         self._w = width
         self._at = animator.anim_top
         self._ab = animator.anim_bottom
-        self.x = float(width // 2 - 1)
+        self.x = float(random.randint(4, width - 5))
         self.y = float(self._ab - 2)
         self._vy = -(0.5 + random.random() * 0.3)
         self._frame = 0

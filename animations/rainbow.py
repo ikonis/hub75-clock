@@ -62,6 +62,11 @@ class Animation:
                         px, py,
                         int(br * alpha), int(bg2 * alpha), int(bb * alpha)
                     )
+                if self._at <= py + 1 <= self._ab:
+                    canvas.SetPixel(
+                        px, py + 1,
+                        int(br * alpha), int(bg2 * alpha), int(bb * alpha)
+                    )
 
     def is_done(self) -> bool:
         return self._frame >= self._total

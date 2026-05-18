@@ -11,7 +11,7 @@ class Animation:
         self._w = width
         self._at = animator.anim_top
         self._ab = animator.anim_bottom
-        count = random.randint(3, 5)
+        count = random.randint(6, 8)
         self._flies = []
         for _ in range(count):
             fx = random.uniform(4, width - 4)
@@ -45,6 +45,8 @@ class Animation:
                 px, py = int(round(fx)), int(round(fy))
                 if 0 <= px < self._w and self._at <= py <= self._ab:
                     canvas.SetPixel(px, py, b, b, int(b * 0.6))
+                    if self._at <= py + 1 <= self._ab:
+                        canvas.SetPixel(px, py + 1, b // 2, b // 2, int(b * 0.3))
 
     def is_done(self) -> bool:
         return self._frame >= self._total

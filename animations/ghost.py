@@ -7,65 +7,73 @@ class Animation:
     conditions = []
     themes = ["Night", "Late Evening"]
 
-    # Ghost: dome top + wavy bottom skirt, ~7 wide x 9 tall
-    # (dx, dy, r, g, b)
-    _DOME = [
-        # Top dome
-        (2, 0, 160, 160, 180), (3, 0, 180, 180, 200), (4, 0, 160, 160, 180),
-        (1, 1, 150, 150, 170), (2, 1, 190, 190, 210), (3, 1, 200, 200, 220),
-        (4, 1, 190, 190, 210), (5, 1, 150, 150, 170),
-        (0, 2, 140, 140, 160), (1, 2, 180, 180, 200), (2, 2, 200, 200, 220),
-        (3, 2, 210, 210, 230), (4, 2, 200, 200, 220), (5, 2, 180, 180, 200),
-        (6, 2, 140, 140, 160),
-        # Body
-        (0, 3, 140, 140, 160), (1, 3, 180, 180, 200), (2, 3, 200, 200, 220),
-        (3, 3, 210, 210, 230), (4, 3, 200, 200, 220), (5, 3, 180, 180, 200),
-        (6, 3, 140, 140, 160),
-        (0, 4, 140, 140, 160), (1, 4, 170, 170, 190), (2, 4, 190, 190, 210),
-        (3, 4, 200, 200, 220), (4, 4, 190, 190, 210), (5, 4, 170, 170, 190),
-        (6, 4, 140, 140, 160),
-        # Eyes
-        (2, 2, 40, 40, 80), (3, 2, 40, 40, 80), (4, 2, 40, 40, 80),
-        (2, 3, 40, 40, 80), (4, 3, 40, 40, 80),
+    # Pac-Man style ghost: 7 wide x 8 tall
+    # Body pixels (excluding eye area), drawn in ghost color
+    _BODY = [
+        # Dome top
+        (1, 0), (2, 0), (3, 0), (4, 0), (5, 0),
+        # Full rows
+        (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1),
+        # Eye row sides only (1-2 and 4-5 are white eyes)
+        (0, 2), (3, 2), (6, 2),
+        (0, 3), (3, 3), (6, 3),
+        # Lower body
+        (0, 4), (1, 4), (2, 4), (3, 4), (4, 4), (5, 4), (6, 4),
+        (0, 5), (1, 5), (2, 5), (3, 5), (4, 5), (5, 5), (6, 5),
+        # Scalloped bottom: 4 bumps at columns 0, 2, 4, 6
+        (0, 6), (2, 6), (4, 6), (6, 6),
     ]
-    # Wavy skirt bottom — redrawn each frame based on wave phase
-    _SKIRT_BASE = [0, 1, 2, 1, 0, 1, 2, 1]  # y offsets for each x column 0-6
+    # White eye ovals
+    _EYES_WHITE = [
+        (1, 2), (2, 2), (4, 2), (5, 2),
+        (1, 3), (2, 3), (4, 3), (5, 3),
+    ]
+    # Colored pupils (blue, always)
+    _PUPILS = [(2, 3), (5, 3)]
+
+    _COLORS = [
+        (220, 20,  20),   # red (Blinky)
+        (255, 180, 200),  # pink (Pinky)
+        (20,  210, 220),  # cyan (Inky)
+        (255, 140, 0),    # orange (Clyde)
+    ]
 
     def __init__(self, width, height, cfg, animator):
         self._w = width
         self._at = animator.anim_top
         self._ab = animator.anim_bottom
-        self.x = float(width + 2)
+        self._color = random.choice(self._COLORS)
+        self._right = random.choice([True, False])
+        if self._right:
+            self.x = float(-8)
+            self._vx = 0.28 + random.random() * 0.12
+        else:
+            self.x = float(width + 2)
+            self._vx = -(0.28 + random.random() * 0.12)
         mid = (self._at + self._ab) // 2
-        self._base_y = float(mid - 5 + random.randint(0, 3))
-        self._vx = -(0.3 + random.random() * 0.15)
-        self._wave = random.random() * math.pi * 2
+        self._base_y = float(mid - 4 + random.randint(0, 4))
         self._bob = random.random() * math.pi * 2
 
     def update(self):
         self.x += self._vx
-        self._wave += 0.08
-        self._bob += 0.05
+        self._bob += 0.06
 
     def draw(self, canvas):
         ox = int(round(self.x))
         oy = int(round(self._base_y + math.sin(self._bob) * 2.0))
-        # Draw dome body
-        for dx, dy, r, g, b in self._DOME:
+        r, g, b = self._color
+        for dx, dy in self._BODY:
             px, py = ox + dx, oy + dy
             if 0 <= px < self._w and self._at <= py <= self._ab:
                 canvas.SetPixel(px, py, r, g, b)
-        # Draw wavy skirt at bottom of body (dy=5..7)
-        for col in range(7):
-            skirt_dy = 5 + int(1.0 + math.sin(self._wave + col * 0.8))
-            px = ox + col
-            py = oy + skirt_dy
+        for dx, dy in self._EYES_WHITE:
+            px, py = ox + dx, oy + dy
             if 0 <= px < self._w and self._at <= py <= self._ab:
-                canvas.SetPixel(px, py, 130, 130, 150)
-            # Second skirt row
-            py2 = py + 1
-            if 0 <= px < self._w and self._at <= py2 <= self._ab:
-                canvas.SetPixel(px, py2, 110, 110, 130)
+                canvas.SetPixel(px, py, 240, 240, 240)
+        for dx, dy in self._PUPILS:
+            px, py = ox + dx, oy + dy
+            if 0 <= px < self._w and self._at <= py <= self._ab:
+                canvas.SetPixel(px, py, 30, 30, 200)
 
     def is_done(self) -> bool:
-        return self.x < -10
+        return self.x > self._w + 10 or self.x < -12
