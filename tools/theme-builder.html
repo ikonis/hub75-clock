@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUB75 Clock Theme Builder</title>
+<style>
+:root {
+  --bg: #09090e;
+  --bg2: #11111a;
+  --bg3: #181826;
+  --bg4: #0d0d18;
+  --border: #252538;
+  --border2: #32324e;
+  --text: #c0c0d4;
+  --dim: #60607a;
+  --accent: #4a80ff;
+  --accent2: #1e3a80;
+  --danger: #ff4466;
+  --r: 3px;
+  --fs: 12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',system-ui,sans-serif;display:flex;flex-direction:column}
+/* Header */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;gap:8px}
+.hdr-title{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.5px;white-space:nowrap}
+.hdr-btns{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+/* Layout */
+.body{display:grid;grid-template-columns:320px 1fr;flex:1;min-height:0;overflow:hidden}
+/* Controls panel */
+.ctrl{overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border)}
+.sec{border-bottom:1px solid var(--border)}
+.sec-hdr{padding:7px 10px;background:var(--bg3);font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--dim);font-weight:600;user-select:none}
+.sec-body{padding:10px;display:flex;flex-direction:column;gap:7px}
+/* Fields */
+.f{display:flex;align-items:center;gap:6px}
+.f label{font-size:11px;color:var(--dim);flex:0 0 106px;white-space:nowrap}
+.f input[type=text],.f input[type=number],.f select{flex:1;background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:var(--r);font:11px/1 monospace;outline:none;min-width:0}
+.f input:focus,.f select:focus{border-color:var(--accent)}
+.f input[type=color]{width:38px;height:24px;border:1px solid var(--border);border-radius:var(--r);background:none;padding:2px;cursor:pointer;flex-shrink:0}
+.f input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--accent);flex-shrink:0}
+.f input[type=range]{flex:1;accent-color:var(--accent)}
+.f .rv{min-width:34px;text-align:right;font:11px monospace;color:var(--dim)}
+.f .chx{width:76px;font:11px monospace;background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:var(--r);outline:none;flex-shrink:0}
+.f .chx:focus{border-color:var(--accent)}
+/* Buttons */
+.btn{padding:5px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg3);color:var(--text);font:var(--fs) 'Segoe UI',system-ui,sans-serif;cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s}
+.btn:hover{background:var(--border);border-color:var(--border2)}
+.btn-p{background:var(--accent2);border-color:var(--accent);color:#ddf}
+.btn-p:hover{background:var(--accent)}
+.btn-d{padding:2px 7px;font-size:11px;background:transparent;border-color:var(--danger);color:var(--danger)}
+.btn-d:hover{background:var(--danger);color:#fff}
+.btn-sm{padding:3px 8px;font-size:11px}
+/* List items (cameos / overrides) */
+.li{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:7px 8px;display:flex;flex-direction:column;gap:5px}
+.li-row{display:flex;align-items:center;gap:5px}
+.li-row label{font-size:11px;color:var(--dim);flex-shrink:0}
+.li-row input,.li-row select{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:var(--r);font:11px monospace;outline:none}
+.li-row input:focus,.li-row select:focus{border-color:var(--accent)}
+.li-row input[type=number]{width:60px}
+.li-row .spacer{flex:1}
+.add-row{display:flex;gap:5px;align-items:center;margin-top:2px}
+.add-row select{background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:var(--r);font:11px monospace;outline:none}
+.ov-fields{margin-top:5px;padding:6px 0 0 8px;border-left:2px solid var(--border);display:flex;flex-direction:column;gap:4px}
+/* Preview panel */
+.pv{display:flex;flex-direction:column;overflow:hidden;padding:12px;gap:10px;background:var(--bg)}
+.matrix-wrap{display:flex;justify-content:center;flex-shrink:0}
+#matrix{display:block;border:1px solid var(--border2);border-radius:3px;image-rendering:pixelated;image-rendering:crisp-edges}
+.pv-ctrl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);flex-shrink:0}
+.pv-ctrl .f{flex-shrink:0}
+.pv-ctrl .f label{min-width:unset;flex:none}
+.pv-ctrl .f input[type=text],.pv-ctrl .f input[type=number]{width:56px}
+.json-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--border);border-radius:var(--r);min-height:80px}
+.json-hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 9px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:11px;color:var(--dim);flex-shrink:0}
+#json-out{flex:1;background:var(--bg4);color:#7ab0ff;border:none;padding:9px;font:11px/1.5 monospace;resize:none;outline:none;overflow:auto}
+/* Scrollbar */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <span class="hdr-title">HUB75 Theme Builder</span>
+  <div class="hdr-btns">
+    <label class="btn">
+      <input type="file" id="file-load" accept=".json" style="display:none"> Load JSON
+    </label>
+    <button class="btn btn-p" id="btn-export">Export JSON</button>
+    <button class="btn" id="btn-copy">Copy JSON</button>
+  </div>
+</div>
+<div class="body">
+<!-- ===== LEFT CONTROLS ===== -->
+<div class="ctrl">
+  <!-- Identity -->
+  <div class="sec">
+    <div class="sec-hdr">Identity</div>
+    <div class="sec-body">
+      <div class="f"><label>Name</label><input type="text" id="i-name" value="My Theme"></div>
+      <div class="f"><label>Description</label><input type="text" id="i-desc" placeholder="optional"></div>
+    </div>
+  </div>
+  <!-- Background -->
+  <div class="sec">
+    <div class="sec-hdr">Background</div>
+    <div class="sec-body">
+      <div class="f"><label>Type</label>
+        <select id="i-bgtype">
+          <option value="solid">solid</option>
+          <option value="gradient">gradient</option>
+        </select>
+      </div>
+      <div id="g-solid">
+        <div class="f"><label>Color</label>
+          <input type="color" id="i-bgcol" value="#000820">
+          <input type="text" class="chx" id="i-bgcol-h" value="#000820">
+        </div>
+      </div>
+      <div id="g-grad" class="hidden">
+        <div class="f"><label>Top</label>
+          <input type="color" id="i-bgtop" value="#0F0019">
+          <input type="text" class="chx" id="i-bgtop-h" value="#0F0019">
+        </div>
+        <div class="f"><label>Bottom</label>
+          <input type="color" id="i-bgbot" value="#3C1400">
+          <input type="text" class="chx" id="i-bgbot-h" value="#3C1400">
+        </div>
+        <div class="f"><label>Split</label>
+          <input type="range" id="i-bgsplit" min="0" max="1" step="0.01" value="0.5">
+          <span class="rv" id="i-bgsplit-v">0.50</span>
+        </div>
+        <div class="f"><label>Direction</label>
+          <select id="i-bgdir">
+            <option value="sunset">sunset</option>
+            <option value="sunrise">sunrise</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Animations -->
+  <div class="sec">
+    <div class="sec-hdr">Animations</div>
+    <div class="sec-body">
+      <div class="f"><label>Stars</label><input type="checkbox" id="i-stars"></div>
+      <div class="f"><label>Sun</label><input type="checkbox" id="i-sun" checked></div>
+      <div class="f"><label>Clouds</label><input type="checkbox" id="i-clouds"></div>
+      <div id="g-clouds" class="hidden">
+        <div class="f"><label>Density</label>
+          <select id="i-cdensity">
+            <option value="sparse">sparse (2)</option>
+            <option value="medium" selected>medium (3-4)</option>
+            <option value="dense">dense (5-6)</option>
+          </select>
+        </div>
+        <div class="f"><label>Speed</label>
+          <select id="i-cspeed">
+            <option value="slow">slow</option>
+            <option value="medium" selected>medium</option>
+            <option value="fast">fast</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Colors -->
+  <div class="sec">
+    <div class="sec-hdr">Colors</div>
+    <div class="sec-body">
+      <div class="f"><label>Time</label>
+        <input type="color" id="c-time" value="#F0F0F0">
+        <input type="text" class="chx" id="c-time-h" value="#F0F0F0">
+      </div>
+      <div class="f"><label>Low Temp</label>
+        <input type="color" id="c-low" value="#00CCFF">
+        <input type="text" class="chx" id="c-low-h" value="#00CCFF">
+      </div>
+      <div class="f"><label>High Temp</label>
+        <input type="color" id="c-high" value="#FF8C00">
+        <input type="text" class="chx" id="c-high-h" value="#FF8C00">
+      </div>
+      <div class="f"><label>Condition</label>
+        <input type="color" id="c-cond" value="#909090">
+        <input type="text" class="chx" id="c-cond-h" value="#909090">
+      </div>
+    </div>
+  </div>
+  <!-- Cameos -->
+  <div class="sec">
+    <div class="sec-hdr">Cameos</div>
+    <div class="sec-body">
+      <div id="cameo-list"></div>
+      <div class="add-row">
+        <select id="cameo-add-sel"><option value="shooting_star">shooting_star</option></select>
+        <button class="btn btn-sm" id="cameo-add-btn">+ Add Cameo</button>
+      </div>
+    </div>
+  </div>
+  <!-- Condition Overrides -->
+  <div class="sec">
+    <div class="sec-hdr">Condition Overrides</div>
+    <div class="sec-body">
+      <div id="override-list"></div>
+      <div class="add-row">
+        <select id="override-add-sel">
+          <option value="CLEAR">CLEAR</option>
+          <option value="PARTLYCLOUDY">PARTLYCLOUDY</option>
+          <option value="CLOUDY">CLOUDY</option>
+          <option value="RAIN">RAIN</option>
+          <option value="SNOW">SNOW</option>
+          <option value="TSTORM">TSTORM</option>
+          <option value="SLEET">SLEET</option>
+          <option value="ICE">ICE</option>
+        </select>
+        <button class="btn btn-sm" id="override-add-btn">+ Add Override</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ===== RIGHT PREVIEW ===== -->
+<div class="pv">
+  <div class="matrix-wrap">
+    <canvas id="matrix" width="512" height="256"></canvas>
+  </div>
+  <div class="pv-ctrl">
+    <div class="f">
+      <label>Condition</label>
+      <select id="p-cond">
+        <option value="CLEAR">CLEAR</option>
+        <option value="PARTLYCLOUDY">PARTLYCLOUDY</option>
+        <option value="CLOUDY">CLOUDY</option>
+        <option value="SUNNY">SUNNY</option>
+        <option value="RAIN">RAIN</option>
+        <option value="SNOW">SNOW</option>
+        <option value="TSTORM">TSTORM</option>
+        <option value="SLEET">SLEET</option>
+        <option value="ICE">ICE</option>
+      </select>
+    </div>
+    <div class="f"><label>Night</label><input type="checkbox" id="p-night"></div>
+    <div class="f"><label>Low</label><input type="number" id="p-low" value="68"></div>
+    <div class="f"><label>High</label><input type="number" id="p-high" value="88"></div>
+    <div class="f"><label>Condition text</label><input type="text" id="p-condtext" value="CLEAR" style="width:100px"></div>
+    <div class="f"><label>Animate</label><input type="checkbox" id="p-animate"></div>
+  </div>
+  <div class="json-wrap">
+    <div class="json-hdr">
+      <span>JSON Output</span>
+      <button class="btn btn-sm" id="btn-copy2">Copy</button>
+    </div>
+    <textarea id="json-out" readonly spellcheck="false"></textarea>
+  </div>
+</div>
+</div>
+<script>
+'use strict';
+
+// =====================================================================
+// CONSTANTS
+// =====================================================================
+const W = 64, H = 32, S = 8;   // matrix dimensions, pixel scale
+const BANNER_H = 7;             // rows 0-6 = banner
+const ANIM_TOP = 7;             // rows 7-31 = animation zone
+const ANIM_BOT = 31;
+const ALL_CONDITIONS = ['CLEAR','PARTLYCLOUDY','CLOUDY','SUNNY','RAIN','SNOW','TSTORM','SLEET','ICE'];
+
+// =====================================================================
+// THEME STATE
+// =====================================================================
+const theme = {
+  name: 'My Theme', description: '',
+  background_type: 'solid', background_color: '#000820',
+  background_top: '#0F0019', background_bottom: '#3C1400',
+  background_split: 0.5, background_gradient_direction: 'sunset',
+  colors: { time: '#F0F0F0', low_temp: '#00CCFF', high_temp: '#FF8C00', condition: '#909090' },
+  stars_enabled: false, sun_enabled: true, clouds_enabled: false,
+  cloud_density: 'medium', cloud_speed: 'medium',
+  cameos: [], condition_overrides: {}
+};
+
+const preview = { condition: 'CLEAR', nightMode: false, lowTemp: 68, highTemp: 88, condText: 'CLEAR', animate: false };
+
+// =====================================================================
+// PIXEL BUFFER
+// =====================================================================
+const pixbuf = new Uint8ClampedArray(W * H * 3);
+
+function px(x, y, r, g, b) {
+  if (x < 0 || x >= W || y < 0 || y >= H) return;
+  const i = (y * W + x) * 3;
+  pixbuf[i] = r; pixbuf[i+1] = g; pixbuf[i+2] = b;
+}
+
+function addpx(x, y, r, g, b) {
+  if (x < 0 || x >= W || y < 0 || y >= H) return;
+  const i = (y * W + x) * 3;
+  pixbuf[i]   = Math.min(255, pixbuf[i]   + r);
+  pixbuf[i+1] = Math.min(255, pixbuf[i+1] + g);
+  pixbuf[i+2] = Math.min(255, pixbuf[i+2] + b);
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+function hex2rgb(h) {
+  if (!h || h.length < 7) return [0,0,0];
+  h = h.replace('#','');
+  return [parseInt(h.slice(0,2),16)||0, parseInt(h.slice(2,4),16)||0, parseInt(h.slice(4,6),16)||0];
+}
+
+function lerp(a, b, t) { return a + (b - a) * Math.max(0, Math.min(1, t)); }
+
+// =====================================================================
+// TEXT RENDERING (via offscreen canvas → pixel buffer)
+// =====================================================================
+const TC = document.createElement('canvas');
+TC.width = W; TC.height = H;
+const TX = TC.getContext('2d', { willReadFrequently: true });
+TX.imageSmoothingEnabled = false;
+
+function drawText(text, x, y, r, g, b, font) {
+  TX.clearRect(0, 0, W, H);
+  TX.fillStyle = '#000';
+  TX.fillRect(0, 0, W, H);
+  TX.fillStyle = '#fff';
+  TX.font = font;
+  TX.textBaseline = 'top';
+  TX.fillText(text, x, y);
+  const d = TX.getImageData(0, 0, W, H).data;
+  for (let row = 0; row < H; row++) {
+    for (let col = 0; col < W; col++) {
+      if (d[(row * W + col) * 4] > 60) px(col, row, r, g, b);
+    }
+  }
+}
+
+function textW(text, font) {
+  TX.font = font;
+  return TX.measureText(text).width;
+}
+
+// =====================================================================
+// BACKGROUND RENDERING
+// =====================================================================
+function drawBackground() {
+  const cond = preview.condition;
+  const ov = (theme.condition_overrides[cond]) || {};
+  const bgtype = ov.background_type || theme.background_type;
+  const bgcol  = ov.background_color || theme.background_color;
+  const bgtop  = ov.background_top || theme.background_top;
+  const bgbot  = ov.background_bottom || theme.background_bottom;
+  const bgspl  = ov.background_split !== undefined ? ov.background_split : theme.background_split;
+  const bgdir  = ov.background_gradient_direction || theme.background_gradient_direction;
+
+  if (bgtype === 'solid') {
+    const [r,g,b] = hex2rgb(bgcol);
+    for (let y = ANIM_TOP; y <= ANIM_BOT; y++)
+      for (let x = 0; x < W; x++) px(x, y, r, g, b);
+  } else {
+    const zoneH = ANIM_BOT - ANIM_TOP;
+    const splitY = ANIM_TOP + Math.round(bgspl * zoneH);
+    const [tr,tg,tb] = hex2rgb(bgtop);
+    const [br,bg2,bb] = hex2rgb(bgbot);
+    for (let y = ANIM_TOP; y <= ANIM_BOT; y++) {
+      let r,g,b;
+      if (bgdir === 'sunrise') {
+        if (y <= splitY) {
+          const t2 = splitY === ANIM_TOP ? 1 : (y - ANIM_TOP) / (splitY - ANIM_TOP);
+          r = lerp(tr, br, t2); g = lerp(tg, bg2, t2); b = lerp(tb, bb, t2);
+        } else { r = br; g = bg2; b = bb; }
+      } else { // sunset
+        if (y <= splitY) { r = tr; g = tg; b = tb; }
+        else {
+          const t2 = ANIM_BOT === splitY ? 1 : (y - splitY) / (ANIM_BOT - splitY);
+          r = lerp(tr, br, t2); g = lerp(tg, bg2, t2); b = lerp(tb, bb, t2);
+        }
+      }
+      for (let x = 0; x < W; x++) px(x, y, r|0, g|0, b|0);
+    }
+  }
+}
+
+// =====================================================================
+// BANNER
+// =====================================================================
+function drawBanner() {
+  // Dark banner row background
+  for (let y = 0; y < BANNER_H; y++)
+    for (let x = 0; x < W; x++) px(x, y, 4, 4, 9);
+
+  const bannerFont = 'bold 6px monospace';
+  const [lr, lg, lb] = hex2rgb(theme.colors.low_temp || '#00CCFF');
+  const [hr, hg, hb] = hex2rgb(theme.colors.high_temp || '#FF8C00');
+  const [cr, cg, cb] = hex2rgb(theme.colors.condition || '#909090');
+
+  const lo  = preview.lowTemp + '°';
+  const hi  = preview.highTemp + '°';
+  const con = preview.condText;
+
+  const hiW = textW(hi, bannerFont);
+  const conW = textW(con, bannerFont);
+
+  // Low temp left, high temp right, condition centered
+  drawText(lo, 1, 0, lr, lg, lb, bannerFont);
+  drawText(hi, W - hiW - 1, 0, hr, hg, hb, bannerFont);
+  drawText(con, Math.round((W - conW) / 2), 0, cr, cg, cb, bannerFont);
+}
+
+// =====================================================================
+// TIME DISPLAY
+// =====================================================================
+function drawTime() {
+  const now = new Date();
+  const h = now.getHours() % 12 || 12;
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const timeStr = h + ':' + m;
+  const [r, g, b] = hex2rgb(theme.colors.time || '#F0F0F0');
+
+  const timeFont = 'bold 11px monospace';
+  const tw = textW(timeStr, timeFont);
+  const tx = Math.round((W - tw) / 2);
+  const zoneH = ANIM_BOT - ANIM_TOP + 1; // 25
+  const ty = ANIM_TOP + Math.round((zoneH - 11) / 2);
+
+  drawText(timeStr, tx, ty, r, g, b, timeFont);
+}
+
+// =====================================================================
+// STARS (static positions, twinkle via sin if animated)
+// =====================================================================
+let stars = [];
+let animT = 0;
+
+function initStars() {
+  stars = [];
+  if (!theme.stars_enabled) return;
+  const rng = mulberry32(12345);
+  for (let i = 0; i < 35; i++) {
+    stars.push({
+      x: Math.floor(rng() * W),
+      y: ANIM_TOP + Math.floor(rng() * (ANIM_BOT - ANIM_TOP + 1)),
+      phase: rng() * Math.PI * 2,
+      speed: 0.03 + rng() * 0.04,
+      maxB: 80 + Math.floor(rng() * 120)
+    });
+  }
+}
+
+function drawStars() {
+  if (!theme.stars_enabled) return;
+  for (const s of stars) {
+    const level = (Math.sin(s.phase + animT * s.speed) + 1) / 2;
+    const b = Math.round(s.maxB * level);
+    if (b > 5) px(s.x, s.y, b, b, b);
+  }
+}
+
+// Deterministic seeded PRNG (mulberry32)
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let z = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    z = z + Math.imul(z ^ z >>> 7, 61 | z) ^ z;
+    return ((z ^ z >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// =====================================================================
+// CLOUDS
+// =====================================================================
+let clouds = [];
+
+function initClouds() {
+  clouds = [];
+  if (!theme.clouds_enabled) return;
+  const counts = { sparse: 2, medium: 3, dense: 5 };
+  const count = counts[theme.cloud_density] || 3;
+  const rng = mulberry32(99887);
+  for (let i = 0; i < count; i++) {
+    clouds.push({
+      x: rng() * W,
+      y: ANIM_TOP + 2 + rng() * 10,
+      w: 9 + rng() * 10,
+      h: 3 + rng() * 3,
+      b: 50 + Math.floor(rng() * 60)
+    });
+  }
+}
+
+function drawClouds() {
+  if (!theme.clouds_enabled) return;
+  for (const c of clouds) {
+    const hw = c.w / 2, hh = c.h / 2;
+    for (let dy = 0; dy <= c.h; dy++) {
+      for (let dx = 0; dx <= c.w; dx++) {
+        const nx = (dx / c.w - 0.5) * 2;
+        const ny = (dy / c.h - 0.5) * 2;
+        const d = nx*nx + ny*ny;
+        if (d < 1) {
+          const cx = Math.round(c.x + dx - hw);
+          const cy = Math.round(c.y + dy - hh);
+          const bright = Math.round(c.b * (1 - d * 0.4));
+          addpx(cx, cy, bright, bright, bright);
+        }
+      }
+    }
+  }
+}
+
+function updateClouds() {
+  if (!theme.clouds_enabled || !preview.animate) return;
+  const speeds = { slow: 0.06, medium: 0.13, fast: 0.22 };
+  const spd = speeds[theme.cloud_speed] || 0.13;
+  for (const c of clouds) {
+    c.x += spd;
+    if (c.x > W + 10) c.x = -10 - c.w;
+  }
+}
+
+// =====================================================================
+// SUN GLOW
+// =====================================================================
+function drawSun() {
+  const cond = preview.condition;
+  if (!theme.sun_enabled || preview.nightMode) return;
+  if (cond !== 'SUNNY' && cond !== 'CLEAR') return;
+  const radius = 10;
+  const cx = W;     // right edge
+  const cy = ANIM_TOP; // top of animation zone
+  for (let y = ANIM_TOP; y < ANIM_TOP + radius; y++) {
+    for (let x = W - radius; x < W; x++) {
+      const dx = x - cx, dy = y - cy;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < radius) {
+        const t = 1 - dist / radius;
+        const r2 = Math.round(255 * t);
+        const g2 = Math.round(200 * t);
+        const b2 = Math.round(60 * t);
+        addpx(x, y, r2, g2, b2);
+      }
+    }
+  }
+}
+
+// =====================================================================
+// SHOOTING STARS
+// =====================================================================
+let shootingStars = [];
+
+function updateShootingStars() {
+  const ss = theme.cameos.find(c => c.name === 'shooting_star');
+  if (!ss) { shootingStars = []; return; }
+  const cond = preview.condition;
+  if (cond !== 'CLEAR' && cond !== 'PARTLYCLOUDY') { shootingStars = []; return; }
+  const prob = (ss.chance_per_minute || 8) / 60 / 15;
+  if (shootingStars.length === 0 && Math.random() < prob) {
+    const speed = (0.8 + Math.random() * 1.5) * (Math.random() < 0.5 ? 1 : -1);
+    const life = 10 + Math.floor(Math.random() * 8);
+    shootingStars.push({
+      x: Math.random() * W, y: ANIM_TOP + Math.random() * 6,
+      vx: speed, vy: 0.6 + Math.random() * 0.8,
+      life, maxLife: life
+    });
+  }
+  for (const s of shootingStars) { s.x += s.vx; s.y += s.vy; s.life--; }
+  shootingStars = shootingStars.filter(s => s.life > 0);
+}
+
+function drawShootingStars() {
+  for (const s of shootingStars) {
+    const bright = Math.round(220 * s.life / s.maxLife);
+    px(s.x|0, s.y|0, bright, bright, bright);
+    for (let i = 1; i < 6; i++) {
+      const tb = Math.round(bright * (1 - i / 5));
+      if (tb > 5) px((s.x - s.vx*i)|0, (s.y - s.vy*i)|0, tb, tb, tb);
+    }
+  }
+}
+
+// =====================================================================
+// FLUSH PIXEL BUFFER TO CANVAS
+// =====================================================================
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+
+function flushCanvas() {
+  ctx.fillStyle = '#070710';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 3;
+      const r = pixbuf[i], g = pixbuf[i+1], b = pixbuf[i+2];
+      const bright = Math.max(r, g, b);
+      const px2 = x * S, py = y * S;
+
+      if (bright < 6) {
+        ctx.fillStyle = 'rgb(9,9,13)';
+        ctx.fillRect(px2+1, py+1, S-2, S-2);
+      } else {
+        ctx.shadowBlur = 7;
+        ctx.shadowColor = `rgba(${r},${g},${b},.65)`;
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.fillRect(px2+1, py+1, S-2, S-2);
+        ctx.shadowBlur = 0;
+      }
+    }
+  }
+
+  // Banner/animation separator line
+  ctx.fillStyle = 'rgba(60,60,100,.4)';
+  ctx.fillRect(0, BANNER_H * S, W * S, 1);
+}
+
+// =====================================================================
+// MAIN RENDER
+// =====================================================================
+function render() {
+  pixbuf.fill(0);
+  drawBackground();
+  drawStars();
+  drawSun();
+  drawClouds();
+  drawShootingStars();
+  drawBanner();
+  drawTime();
+  flushCanvas();
+}
+
+// =====================================================================
+// ANIMATION LOOP
+// =====================================================================
+let animRAF = null;
+let lastFrame = 0;
+
+function animLoop(ts) {
+  if (!preview.animate) return;
+  animRAF = requestAnimationFrame(animLoop);
+  if (ts - lastFrame < 66) return; // ~15 fps
+  lastFrame = ts;
+  animT++;
+  updateClouds();
+  if (theme.cameos.some(c => c.name === 'shooting_star')) updateShootingStars();
+  render();
+}
+
+function startAnim() {
+  if (animRAF) return;
+  lastFrame = 0;
+  animRAF = requestAnimationFrame(animLoop);
+}
+
+function stopAnim() {
+  if (animRAF) { cancelAnimationFrame(animRAF); animRAF = null; }
+}
+
+// =====================================================================
+// JSON OUTPUT
+// =====================================================================
+function buildJSON() {
+  const out = {
+    name: theme.name,
+    description: theme.description,
+    background_type: theme.background_type,
+    background_color: theme.background_color,
+    background_top: theme.background_top,
+    background_bottom: theme.background_bottom,
+    background_split: theme.background_split,
+    background_gradient_direction: theme.background_gradient_direction,
+    colors: { ...theme.colors },
+    stars_enabled: theme.stars_enabled,
+    sun_enabled: theme.sun_enabled,
+    clouds_enabled: theme.clouds_enabled,
+    cloud_density: theme.cloud_density,
+    cloud_speed: theme.cloud_speed,
+    cameos: theme.cameos.map(c => ({ name: c.name, chance_per_minute: c.chance_per_minute })),
+    condition_overrides: {}
+  };
+  for (const [cond, ov] of Object.entries(theme.condition_overrides)) {
+    out.condition_overrides[cond] = { ...ov };
+  }
+  return JSON.stringify(out, null, 2);
+}
+
+function updateJSON() {
+  document.getElementById('json-out').value = buildJSON();
+}
+
+// =====================================================================
+// EXPORT / IMPORT
+// =====================================================================
+function exportJSON() {
+  const json = buildJSON();
+  const fname = (theme.name || 'theme').toLowerCase().replace(/[^a-z0-9]+/g, '_') + '.json';
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function copyJSON() {
+  const text = buildJSON();
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => flashBtn('btn-copy', 'Copied!'));
+  } else {
+    const t = document.getElementById('json-out');
+    t.select(); document.execCommand('copy');
+    flashBtn('btn-copy', 'Copied!');
+  }
+}
+
+function flashBtn(id, msg) {
+  const btn = document.getElementById(id);
+  const orig = btn.textContent;
+  btn.textContent = msg;
+  setTimeout(() => { btn.textContent = orig; }, 1200);
+}
+
+function loadFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      applyThemeData(data);
+    } catch(err) { alert('Invalid JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+function applyThemeData(data) {
+  const defaults = {
+    name: 'Imported', description: '',
+    background_type: 'solid', background_color: '#000820',
+    background_top: '#0F0019', background_bottom: '#3C1400',
+    background_split: 0.5, background_gradient_direction: 'sunset',
+    colors: {}, stars_enabled: false, sun_enabled: true,
+    clouds_enabled: false, cloud_density: 'medium', cloud_speed: 'medium',
+    cameos: [], condition_overrides: {}
+  };
+  Object.assign(theme, defaults);
+  for (const k of Object.keys(defaults)) {
+    if (k === 'colors') {
+      if (data.colors) Object.assign(theme.colors, data.colors);
+    } else if (k === 'cameos') {
+      theme.cameos = Array.isArray(data.cameos) ? data.cameos.map(c => ({...c})) : [];
+    } else if (k === 'condition_overrides') {
+      theme.condition_overrides = data.condition_overrides ? JSON.parse(JSON.stringify(data.condition_overrides)) : {};
+    } else if (data[k] !== undefined) {
+      theme[k] = data[k];
+    }
+  }
+  // backward compat: shooting_stars_enabled → cameo
+  if (data.shooting_stars_enabled && !theme.cameos.some(c => c.name === 'shooting_star')) {
+    theme.cameos.push({ name: 'shooting_star', chance_per_minute: 8 });
+  }
+  syncFormToTheme();
+  initStars(); initClouds();
+  render(); updateJSON();
+}
+
+// =====================================================================
+// FORM → THEME SYNC
+// =====================================================================
+function syncFormToTheme() {
+  setVal('i-name', theme.name);
+  setVal('i-desc', theme.description);
+  setVal('i-bgtype', theme.background_type);
+  setColorPair('i-bgcol', 'i-bgcol-h', theme.background_color);
+  setColorPair('i-bgtop', 'i-bgtop-h', theme.background_top);
+  setColorPair('i-bgbot', 'i-bgbot-h', theme.background_bottom);
+  document.getElementById('i-bgsplit').value = theme.background_split;
+  document.getElementById('i-bgsplit-v').textContent = theme.background_split.toFixed(2);
+  setVal('i-bgdir', theme.background_gradient_direction);
+  document.getElementById('i-stars').checked = theme.stars_enabled;
+  document.getElementById('i-sun').checked = theme.sun_enabled;
+  document.getElementById('i-clouds').checked = theme.clouds_enabled;
+  setVal('i-cdensity', theme.cloud_density);
+  setVal('i-cspeed', theme.cloud_speed);
+  setColorPair('c-time', 'c-time-h', theme.colors.time || '#F0F0F0');
+  setColorPair('c-low', 'c-low-h', theme.colors.low_temp || '#00CCFF');
+  setColorPair('c-high', 'c-high-h', theme.colors.high_temp || '#FF8C00');
+  setColorPair('c-cond', 'c-cond-h', theme.colors.condition || '#909090');
+  showHideBgGroups();
+  showHideCloudOptions();
+  buildCameoList();
+  buildOverrideList();
+}
+
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val;
+}
+
+function setColorPair(pickId, hexId, val) {
+  const pick = document.getElementById(pickId);
+  const hex = document.getElementById(hexId);
+  if (pick) pick.value = normalizeHex(val);
+  if (hex) hex.value = normalizeHex(val);
+}
+
+function normalizeHex(h) {
+  if (!h) return '#000000';
+  h = h.replace('#','');
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return '#' + h.padEnd(6,'0').slice(0,6).toLowerCase();
+}
+
+// =====================================================================
+// SHOW / HIDE CONDITIONAL GROUPS
+// =====================================================================
+function showHideBgGroups() {
+  const grad = theme.background_type === 'gradient';
+  document.getElementById('g-solid').classList.toggle('hidden', grad);
+  document.getElementById('g-grad').classList.toggle('hidden', !grad);
+}
+
+function showHideCloudOptions() {
+  document.getElementById('g-clouds').classList.toggle('hidden', !theme.clouds_enabled);
+}
+
+// =====================================================================
+// CAMEO LIST
+// =====================================================================
+function buildCameoList() {
+  const list = document.getElementById('cameo-list');
+  list.innerHTML = '';
+  theme.cameos.forEach((c, idx) => {
+    const li = document.createElement('div');
+    li.className = 'li';
+    li.innerHTML = `<div class="li-row">
+      <label>Name</label>
+      <select data-ci="${idx}" data-f="name">
+        <option value="shooting_star"${c.name==='shooting_star'?' selected':''}>shooting_star</option>
+      </select>
+      <span class="spacer"></span>
+      <label>Rate/min</label>
+      <input type="number" data-ci="${idx}" data-f="cpm" value="${c.chance_per_minute||8}" min="0.1" max="60" step="0.1" style="width:58px">
+      <button class="btn btn-d" data-ci="${idx}" data-f="del">x</button>
+    </div>`;
+    list.appendChild(li);
+  });
+
+  list.querySelectorAll('[data-ci]').forEach(el => {
+    el.addEventListener('change', cameoFieldChange);
+    el.addEventListener('input', cameoFieldChange);
+  });
+}
+
+function cameoFieldChange(e) {
+  const idx = +e.target.dataset.ci;
+  const field = e.target.dataset.f;
+  if (field === 'del') { theme.cameos.splice(idx, 1); buildCameoList(); }
+  else if (field === 'name') { theme.cameos[idx].name = e.target.value; }
+  else if (field === 'cpm') { theme.cameos[idx].chance_per_minute = parseFloat(e.target.value) || 8; }
+  render(); updateJSON();
+}
+
+// =====================================================================
+// CONDITION OVERRIDE LIST
+// =====================================================================
+function buildOverrideList() {
+  const list = document.getElementById('override-list');
+  list.innerHTML = '';
+  for (const [cond, ov] of Object.entries(theme.condition_overrides)) {
+    const li = document.createElement('div');
+    li.className = 'li';
+    li.setAttribute('data-oc', cond);
+
+    const bgtype = ov.background_type || 'solid';
+    const isSolid = bgtype === 'solid';
+
+    li.innerHTML = `
+      <div class="li-row">
+        <strong style="font-size:12px;color:var(--text)">${cond}</strong>
+        <span class="spacer"></span>
+        <button class="btn btn-d" data-oc="${cond}" data-of="del">x</button>
+      </div>
+      <div class="ov-fields">
+        <div class="li-row">
+          <label>Type</label>
+          <select data-oc="${cond}" data-of="background_type">
+            <option value="solid"${isSolid?' selected':''}>solid</option>
+            <option value="gradient"${!isSolid?' selected':''}>gradient</option>
+          </select>
+        </div>
+        <div class="li-row ov-solid"${isSolid?'':' style="display:none"'}>
+          <label>Color</label>
+          <input type="color" data-oc="${cond}" data-of="background_color" value="${normalizeHex(ov.background_color||'#020005')}">
+          <input type="text" data-oc="${cond}" data-of="background_color_hex" value="${normalizeHex(ov.background_color||'#020005')}" style="width:74px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:3px;font:11px monospace;outline:none">
+        </div>
+        <div class="ov-grad"${!isSolid?'':' style="display:none"'}>
+          <div class="li-row">
+            <label>Top</label>
+            <input type="color" data-oc="${cond}" data-of="background_top" value="${normalizeHex(ov.background_top||'#0F0019')}">
+            <input type="text" data-oc="${cond}" data-of="background_top_hex" value="${normalizeHex(ov.background_top||'#0F0019')}" style="width:74px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:3px;font:11px monospace;outline:none">
+          </div>
+          <div class="li-row">
+            <label>Bottom</label>
+            <input type="color" data-oc="${cond}" data-of="background_bottom" value="${normalizeHex(ov.background_bottom||'#3C1400')}">
+            <input type="text" data-oc="${cond}" data-of="background_bottom_hex" value="${normalizeHex(ov.background_bottom||'#3C1400')}" style="width:74px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:3px;font:11px monospace;outline:none">
+          </div>
+          <div class="li-row">
+            <label>Split</label>
+            <input type="range" data-oc="${cond}" data-of="background_split" min="0" max="1" step="0.01" value="${ov.background_split !== undefined ? ov.background_split : 0.5}" style="flex:1;accent-color:var(--accent)">
+            <span class="rv ov-split-val">${(ov.background_split !== undefined ? ov.background_split : 0.5).toFixed(2)}</span>
+          </div>
+          <div class="li-row">
+            <label>Direction</label>
+            <select data-oc="${cond}" data-of="background_gradient_direction">
+              <option value="sunset"${(ov.background_gradient_direction||'sunset')==='sunset'?' selected':''}>sunset</option>
+              <option value="sunrise"${ov.background_gradient_direction==='sunrise'?' selected':''}>sunrise</option>
+            </select>
+          </div>
+        </div>
+      </div>`;
+    list.appendChild(li);
+  }
+
+  list.querySelectorAll('[data-oc][data-of]').forEach(el => {
+    el.addEventListener('change', overrideFieldChange);
+    el.addEventListener('input', overrideFieldChange);
+  });
+}
+
+function overrideFieldChange(e) {
+  const cond = e.target.dataset.oc;
+  const field = e.target.dataset.of;
+  const ov = theme.condition_overrides[cond];
+  if (!ov) return;
+
+  if (field === 'del') {
+    delete theme.condition_overrides[cond];
+    buildOverrideList();
+    render(); updateJSON();
+    return;
+  }
+
+  if (field === 'background_type') {
+    ov.background_type = e.target.value;
+    const li = e.target.closest('.li');
+    const isSolid = e.target.value === 'solid';
+    li.querySelectorAll('.ov-solid').forEach(el => el.style.display = isSolid ? '' : 'none');
+    li.querySelectorAll('.ov-grad').forEach(el => el.style.display = isSolid ? 'none' : '');
+  } else if (field.endsWith('_hex')) {
+    const realField = field.replace('_hex','');
+    if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
+      ov[realField] = e.target.value;
+      // sync color picker
+      const pick = e.target.closest('.li-row').querySelector(`[data-of="${realField}"]`);
+      if (pick && pick.type === 'color') pick.value = e.target.value;
+    }
+  } else if (e.target.type === 'color') {
+    ov[field] = e.target.value;
+    // sync hex input
+    const hexEl = e.target.closest('.li-row').querySelector(`[data-of="${field}_hex"]`);
+    if (hexEl) hexEl.value = e.target.value;
+  } else if (field === 'background_split') {
+    ov.background_split = parseFloat(e.target.value);
+    const valEl = e.target.closest('.ov-grad').querySelector('.ov-split-val');
+    if (valEl) valEl.textContent = ov.background_split.toFixed(2);
+  } else if (field === 'background_gradient_direction') {
+    ov.background_gradient_direction = e.target.value;
+  }
+
+  render(); updateJSON();
+}
+
+// =====================================================================
+// COLOR PAIR WIRING
+// =====================================================================
+function wireColorPair(pickId, hexId, setter) {
+  const pick = document.getElementById(pickId);
+  const hex = document.getElementById(hexId);
+  pick.addEventListener('input', () => { hex.value = pick.value; setter(pick.value); });
+  hex.addEventListener('input', () => {
+    if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) { pick.value = hex.value; setter(hex.value); }
+  });
+}
+
+// =====================================================================
+// WIRE ALL FORM CONTROLS
+// =====================================================================
+function wireControls() {
+  // Identity
+  document.getElementById('i-name').addEventListener('input', e => {
+    theme.name = e.target.value; updateJSON();
+  });
+  document.getElementById('i-desc').addEventListener('input', e => {
+    theme.description = e.target.value; updateJSON();
+  });
+
+  // Background type
+  document.getElementById('i-bgtype').addEventListener('change', e => {
+    theme.background_type = e.target.value;
+    showHideBgGroups(); render(); updateJSON();
+  });
+
+  // Background color pickers
+  wireColorPair('i-bgcol', 'i-bgcol-h', v => { theme.background_color = v; render(); updateJSON(); });
+  wireColorPair('i-bgtop', 'i-bgtop-h', v => { theme.background_top = v; render(); updateJSON(); });
+  wireColorPair('i-bgbot', 'i-bgbot-h', v => { theme.background_bottom = v; render(); updateJSON(); });
+
+  // Gradient split
+  const splitEl = document.getElementById('i-bgsplit');
+  const splitVal = document.getElementById('i-bgsplit-v');
+  splitEl.addEventListener('input', () => {
+    theme.background_split = parseFloat(splitEl.value);
+    splitVal.textContent = theme.background_split.toFixed(2);
+    render(); updateJSON();
+  });
+
+  document.getElementById('i-bgdir').addEventListener('change', e => {
+    theme.background_gradient_direction = e.target.value; render(); updateJSON();
+  });
+
+  // Animations
+  document.getElementById('i-stars').addEventListener('change', e => {
+    theme.stars_enabled = e.target.checked; initStars(); render(); updateJSON();
+  });
+  document.getElementById('i-sun').addEventListener('change', e => {
+    theme.sun_enabled = e.target.checked; render(); updateJSON();
+  });
+  document.getElementById('i-clouds').addEventListener('change', e => {
+    theme.clouds_enabled = e.target.checked;
+    showHideCloudOptions(); initClouds(); render(); updateJSON();
+  });
+  document.getElementById('i-cdensity').addEventListener('change', e => {
+    theme.cloud_density = e.target.value; initClouds(); render(); updateJSON();
+  });
+  document.getElementById('i-cspeed').addEventListener('change', e => {
+    theme.cloud_speed = e.target.value; updateJSON();
+  });
+
+  // Colors
+  wireColorPair('c-time', 'c-time-h', v => { theme.colors.time = v; render(); updateJSON(); });
+  wireColorPair('c-low', 'c-low-h', v => { theme.colors.low_temp = v; render(); updateJSON(); });
+  wireColorPair('c-high', 'c-high-h', v => { theme.colors.high_temp = v; render(); updateJSON(); });
+  wireColorPair('c-cond', 'c-cond-h', v => { theme.colors.condition = v; render(); updateJSON(); });
+
+  // Cameos
+  document.getElementById('cameo-add-btn').addEventListener('click', () => {
+    const name = document.getElementById('cameo-add-sel').value;
+    theme.cameos.push({ name, chance_per_minute: 8 });
+    buildCameoList(); render(); updateJSON();
+  });
+
+  // Overrides
+  document.getElementById('override-add-btn').addEventListener('click', () => {
+    const cond = document.getElementById('override-add-sel').value;
+    if (!theme.condition_overrides[cond]) {
+      theme.condition_overrides[cond] = { background_type: 'solid', background_color: '#020005' };
+      buildOverrideList(); render(); updateJSON();
+    }
+  });
+
+  // Preview controls
+  document.getElementById('p-cond').addEventListener('change', e => {
+    preview.condition = e.target.value;
+    document.getElementById('p-condtext').value = e.target.value;
+    preview.condText = e.target.value;
+    render();
+  });
+  document.getElementById('p-night').addEventListener('change', e => {
+    preview.nightMode = e.target.checked; render();
+  });
+  document.getElementById('p-low').addEventListener('input', e => {
+    preview.lowTemp = parseInt(e.target.value) || 0; render();
+  });
+  document.getElementById('p-high').addEventListener('input', e => {
+    preview.highTemp = parseInt(e.target.value) || 0; render();
+  });
+  document.getElementById('p-condtext').addEventListener('input', e => {
+    preview.condText = e.target.value.toUpperCase(); render();
+  });
+  document.getElementById('p-animate').addEventListener('change', e => {
+    preview.animate = e.target.checked;
+    if (preview.animate) startAnim(); else { stopAnim(); render(); }
+  });
+
+  // Export / copy
+  document.getElementById('btn-export').addEventListener('click', exportJSON);
+  document.getElementById('btn-copy').addEventListener('click', copyJSON);
+  document.getElementById('btn-copy2').addEventListener('click', () => {
+    navigator.clipboard ? navigator.clipboard.writeText(buildJSON()).then(() => flashBtn('btn-copy2','Copied!'))
+      : (() => { document.getElementById('json-out').select(); document.execCommand('copy'); flashBtn('btn-copy2','Copied!'); })();
+  });
+  document.getElementById('file-load').addEventListener('change', e => {
+    loadFile(e.target.files[0]);
+    e.target.value = '';
+  });
+}
+
+// =====================================================================
+// INIT
+// =====================================================================
+function init() {
+  wireControls();
+  showHideBgGroups();
+  showHideCloudOptions();
+  buildCameoList();
+  buildOverrideList();
+  initStars();
+  initClouds();
+  render();
+  updateJSON();
+
+  // Live time update every 10 seconds when not animating
+  setInterval(() => { if (!preview.animate) render(); }, 10000);
+}
+
+init();
+</script>
+</body>
+</html>
