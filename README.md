@@ -33,7 +33,7 @@ STL and STEP files are in the `case/` folder, designed for the hardware listed i
 
 **Back cover**
 - Barrel jack only
-- Pi 4 variant with USB-C and full port cutouts
+- Pi 4 variant with and full port rear cutouts.
 
 **Bottom cover**
 - Pi 4

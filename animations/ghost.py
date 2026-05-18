@@ -28,14 +28,15 @@ class Animation:
         (1, 2), (2, 2), (4, 2), (5, 2),
         (1, 3), (2, 3), (4, 3), (5, 3),
     ]
-    # Colored pupils (blue, always)
-    _PUPILS = [(2, 3), (5, 3)]
+    # Pupils shift toward direction of travel: right=(2,2),(5,2) left=(1,2),(4,2)
+    _PUPILS_RIGHT = [(2, 2), (5, 2)]
+    _PUPILS_LEFT  = [(1, 2), (4, 2)]
 
     _COLORS = [
-        (220, 20,  20),   # red (Blinky)
-        (255, 180, 200),  # pink (Pinky)
-        (20,  210, 220),  # cyan (Inky)
-        (255, 140, 0),    # orange (Clyde)
+        (255, 0,   0),    # red   #FF0000 (Blinky)
+        (255, 184, 255),  # pink  #FFB8FF (Pinky)
+        (0,   255, 255),  # cyan  #00FFFF (Inky)
+        (255, 184, 82),   # orange #FFB852 (Clyde)
     ]
 
     def __init__(self, width, height, cfg, animator):
@@ -70,7 +71,8 @@ class Animation:
             px, py = ox + dx, oy + dy
             if 0 <= px < self._w and self._at <= py <= self._ab:
                 canvas.SetPixel(px, py, 240, 240, 240)
-        for dx, dy in self._PUPILS:
+        pupils = self._PUPILS_RIGHT if self._right else self._PUPILS_LEFT
+        for dx, dy in pupils:
             px, py = ox + dx, oy + dy
             if 0 <= px < self._w and self._at <= py <= self._ab:
                 canvas.SetPixel(px, py, 30, 30, 200)
