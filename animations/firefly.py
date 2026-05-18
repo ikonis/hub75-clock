@@ -1,0 +1,50 @@
+import math
+import random
+
+
+class Animation:
+    name = "firefly"
+    conditions = ["CLEAR"]
+    themes = ["Night", "Late Evening"]
+
+    def __init__(self, width, height, cfg, animator):
+        self._w = width
+        self._at = animator.anim_top
+        self._ab = animator.anim_bottom
+        count = random.randint(3, 5)
+        self._flies = []
+        for _ in range(count):
+            fx = random.uniform(4, width - 4)
+            fy = random.uniform(self._at + 2, self._ab - 2)
+            phase = random.random() * math.pi * 2
+            period = random.randint(20, 50)     # blink period in frames
+            bx = (random.random() - 0.5) * 0.06
+            by = (random.random() - 0.5) * 0.06
+            self._flies.append([fx, fy, phase, period, bx, by])
+        self._frame = 0
+        self._total = 120 + random.randint(0, 60)
+
+    def update(self):
+        self._frame += 1
+        for fly in self._flies:
+            fly[0] += fly[4]
+            fly[1] += fly[5]
+            fly[0] = max(1.0, min(float(self._w - 2), fly[0]))
+            fly[1] = max(float(self._at + 1), min(float(self._ab - 1), fly[1]))
+            # Occasionally change drift direction
+            if random.random() < 0.01:
+                fly[4] = (random.random() - 0.5) * 0.06
+                fly[5] = (random.random() - 0.5) * 0.06
+
+    def draw(self, canvas):
+        for fx, fy, phase, period, *_ in self._flies:
+            t = (self._frame % period) / period
+            brightness = (math.sin(t * math.pi * 2 + phase) + 1) / 2
+            b = int(brightness * 200)
+            if b > 20:
+                px, py = int(round(fx)), int(round(fy))
+                if 0 <= px < self._w and self._at <= py <= self._ab:
+                    canvas.SetPixel(px, py, b, b, int(b * 0.6))
+
+    def is_done(self) -> bool:
+        return self._frame >= self._total

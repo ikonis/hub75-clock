@@ -156,10 +156,11 @@ sudo usermod -a -G dialout,gpio,i2c "$USERNAME"
 echo "      Added to dialout, gpio, i2c."
 
 echo "[8/11] Installing clock files..."
-sudo mkdir -p "$CLOCK_DIR" "$CONFIG_DIR" "$CONFIG_DIR/themes"
+sudo mkdir -p "$CLOCK_DIR" "$CONFIG_DIR" "$CONFIG_DIR/themes" "$CONFIG_DIR/animations"
 sudo chmod 755 /home/$USERNAME
 sudo chmod 755 "$CONFIG_DIR"
 sudo chmod 755 "$CONFIG_DIR/themes"
+sudo chmod 755 "$CONFIG_DIR/animations"
 sudo cp "$REPO_DIR/clock/hub75_clock.py" "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/clock/test_sensors.py" "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/clock/theme_loader.py" "$CLOCK_DIR/"
@@ -171,6 +172,10 @@ if [ -z "$(ls -A "$CONFIG_DIR/themes" 2>/dev/null)" ]; then
 else
     echo "      Themes dir already has files — skipping built-in theme copy."
 fi
+# Copy animation files (always overwrite — user-custom animations go in the same dir)
+sudo cp "$REPO_DIR/animations/"*.py "$CONFIG_DIR/animations/"
+sudo chmod 644 "$CONFIG_DIR/animations/"*.py
+echo "      Animations installed to $CONFIG_DIR/animations/"
 sudo chown -R root:root "$CLOCK_DIR"
 echo "      Installed to $CLOCK_DIR"
 

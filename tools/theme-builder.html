@@ -195,7 +195,31 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     <div class="sec-body">
       <div id="cameo-list"></div>
       <div class="add-row">
-        <select id="cameo-add-sel"><option value="shooting_star">shooting_star</option></select>
+        <select id="cameo-add-sel">
+          <option value="shooting_star">shooting_star</option>
+          <option value="airplane">airplane</option>
+          <option value="biplane">biplane</option>
+          <option value="bird_flock">bird_flock</option>
+          <option value="butterfly">butterfly</option>
+          <option value="comet">comet</option>
+          <option value="easter_egg">easter_egg</option>
+          <option value="firefly">firefly</option>
+          <option value="fireworks">fireworks</option>
+          <option value="fish">fish</option>
+          <option value="ghost">ghost</option>
+          <option value="hot_air_balloon">hot_air_balloon</option>
+          <option value="jack_o_lantern">jack_o_lantern</option>
+          <option value="meteor">meteor</option>
+          <option value="rainbow">rainbow</option>
+          <option value="rocket">rocket</option>
+          <option value="santa">santa</option>
+          <option value="satellite">satellite</option>
+          <option value="snowman">snowman</option>
+          <option value="submarine">submarine</option>
+          <option value="tractor">tractor</option>
+          <option value="tumbleweed">tumbleweed</option>
+          <option value="ufo">ufo</option>
+        </select>
         <button class="btn btn-sm" id="cameo-add-btn">+ Add Cameo</button>
       </div>
     </div>
@@ -225,6 +249,9 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 <div class="pv">
   <div class="matrix-wrap">
     <canvas id="matrix" width="512" height="256"></canvas>
+  </div>
+  <div style="text-align:center;font-size:10px;color:var(--dim);margin-top:4px">
+    Font preview uses embedded bitmap glyphs (4&times;6 banner, Spleen 12&times;24 time) &mdash; approximate match to actual BDF files
   </div>
   <div class="pv-ctrl">
     <div class="f">
@@ -315,7 +342,7 @@ function hex2rgb(h) {
 function lerp(a, b, t) { return a + (b - a) * Math.max(0, Math.min(1, t)); }
 
 // =====================================================================
-// TEXT RENDERING (via offscreen canvas → pixel buffer)
+// TEXT RENDERING (offscreen canvas — used only for cameo flash label)
 // =====================================================================
 const TC = document.createElement('canvas');
 TC.width = W; TC.height = H;
@@ -324,23 +351,168 @@ TX.imageSmoothingEnabled = false;
 
 function drawText(text, x, y, r, g, b, font) {
   TX.clearRect(0, 0, W, H);
-  TX.fillStyle = '#000';
-  TX.fillRect(0, 0, W, H);
-  TX.fillStyle = '#fff';
-  TX.font = font;
-  TX.textBaseline = 'top';
+  TX.fillStyle = '#000'; TX.fillRect(0, 0, W, H);
+  TX.fillStyle = '#fff'; TX.font = font; TX.textBaseline = 'top';
   TX.fillText(text, x, y);
   const d = TX.getImageData(0, 0, W, H).data;
-  for (let row = 0; row < H; row++) {
-    for (let col = 0; col < W; col++) {
+  for (let row = 0; row < H; row++)
+    for (let col = 0; col < W; col++)
       if (d[(row * W + col) * 4] > 60) px(col, row, r, g, b);
-    }
+}
+
+// =====================================================================
+// EMBEDDED BITMAP FONTS
+// =====================================================================
+
+// 4×6 pixel font — glyph = 6 nibbles (rows), bit3=leftmost pixel
+const FONT4X6 = (function() {
+  const m = {};
+  m[' ']=[0,0,0,0,0,0];    m['!']=[4,4,4,4,0,4];
+  m['"']=[10,10,0,0,0,0];  m['#']=[10,15,10,15,10,0];
+  m['$']=[7,10,7,5,14,0];  m['%']=[9,2,4,8,9,0];
+  m['&']=[4,10,4,11,5,6];  m["'"]=[6,4,0,0,0,0];
+  m['(']=[2,4,8,8,4,2];    m[')']=[8,4,2,2,4,8];
+  m['*']=[0,5,2,5,0,0];    m['+']=[0,4,14,4,0,0];
+  m[',']=[0,0,0,6,4,8];    m['-']=[0,0,15,0,0,0];
+  m['.']=[0,0,0,0,6,0];    m['/']=[1,2,2,4,4,8];
+  m['0']=[6,9,9,9,9,6];    m['1']=[2,6,2,2,2,7];
+  m['2']=[6,9,1,2,4,15];   m['3']=[6,1,3,1,9,6];
+  m['4']=[5,9,15,1,1,1];   m['5']=[15,8,14,1,9,6];
+  m['6']=[3,8,14,9,9,6];   m['7']=[15,1,2,4,4,4];
+  m['8']=[6,9,6,9,9,6];    m['9']=[6,9,9,7,1,6];
+  m[':']=[0,6,0,6,0,0];    m[';']=[0,6,0,4,4,8];
+  m['<']=[2,4,8,8,4,2];    m['=']=[0,15,0,15,0,0];
+  m['>']=[8,4,2,2,4,8];    m['?']=[6,9,2,2,0,2];
+  m['@']=[6,9,11,10,8,6];
+  m['A']=[6,9,9,15,9,9];   m['B']=[14,9,14,9,9,14];
+  m['C']=[6,9,8,8,9,6];    m['D']=[14,9,9,9,9,14];
+  m['E']=[15,8,14,8,8,15]; m['F']=[15,8,14,8,8,8];
+  m['G']=[6,9,8,11,9,6];   m['H']=[9,9,15,9,9,9];
+  m['I']=[6,2,2,2,2,6];    m['J']=[3,1,1,1,9,6];
+  m['K']=[9,10,12,10,9,9]; m['L']=[8,8,8,8,8,15];
+  m['M']=[9,15,15,9,9,9];  m['N']=[9,13,11,9,9,9];
+  m['O']=[6,9,9,9,9,6];    m['P']=[14,9,9,14,8,8];
+  m['Q']=[6,9,9,9,5,3];    m['R']=[14,9,9,14,10,9];
+  m['S']=[6,9,6,1,9,6];    m['T']=[15,4,4,4,4,4];
+  m['U']=[9,9,9,9,9,6];    m['V']=[9,9,9,9,6,4];
+  m['W']=[9,9,9,15,15,9];  m['X']=[9,9,6,6,9,9];
+  m['Y']=[9,9,6,4,4,4];    m['Z']=[15,1,2,4,8,15];
+  m['a']=[0,0,7,9,9,7];    m['b']=[8,8,14,9,9,14];
+  m['c']=[0,0,6,8,8,7];    m['d']=[1,1,7,9,9,7];
+  m['e']=[0,6,9,15,8,6];   m['f']=[3,4,14,4,4,4];
+  m['g']=[0,7,9,7,1,6];    m['h']=[8,8,14,9,9,9];
+  m['i']=[0,4,0,4,4,4];    m['j']=[0,2,0,2,2,12];
+  m['k']=[8,9,10,12,10,9]; m['l']=[12,4,4,4,4,6];
+  m['m']=[0,0,10,15,9,9];  m['n']=[0,0,14,9,9,9];
+  m['o']=[0,0,6,9,9,6];    m['p']=[0,0,14,9,14,8];
+  m['q']=[0,0,7,9,7,1];    m['r']=[0,0,13,10,8,8];
+  m['s']=[0,0,6,4,2,14];   m['t']=[4,14,4,4,4,3];
+  m['u']=[0,0,9,9,9,7];    m['v']=[0,0,9,9,6,6];
+  m['w']=[0,0,9,9,15,9];   m['x']=[0,0,9,6,6,9];
+  m['y']=[0,0,9,9,7,1];    m['z']=[0,15,2,4,8,15];
+  m['°']=m['\xb0']=[6,9,6,0,0,0];
+  m['[']=[6,4,4,4,4,6];    m[']']=[6,2,2,2,2,6];
+  m['_']=[0,0,0,0,0,15];
+  return m;
+})();
+
+function drawChar4x6(ch, cx, cy, r, g, b) {
+  const rows = FONT4X6[ch] || FONT4X6['?'] || [15,9,9,9,9,15];
+  for (let row = 0; row < 6; row++) {
+    const bits = rows[row];
+    for (let col = 0; col < 4; col++)
+      if (bits & (8 >> col)) px(cx + col, cy + row, r, g, b);
   }
 }
 
-function textW(text, font) {
-  TX.font = font;
-  return TX.measureText(text).width;
+function measureStr4x6(text) {
+  return text.length ? text.length * 5 - 1 : 0;
+}
+
+function drawStr4x6(text, sx, sy, r, g, b) {
+  let x = sx;
+  for (const ch of text) { drawChar4x6(ch, x, sy, r, g, b); x += 5; }
+}
+
+// Spleen 12×24 embedded bitmaps — digits 0-9 and colon
+// Each row is a 12-bit integer; bit 11 = leftmost pixel.
+const SPLEEN12X24 = (function() {
+  const m = {};
+  m['0']=[
+    0x000,0x1F8,0x3FC,0x606,0x606,0xC03,
+    0xC03,0xC03,0xC03,0xC03,0xC03,0xC03,
+    0xC03,0xC03,0xC03,0xC03,0x606,0x606,
+    0x606,0x306,0x3FC,0x1F8,0x000,0x000];
+  m['1']=[
+    0x000,0x000,0x0C0,0x1C0,0x3C0,0x0C0,
+    0x0C0,0x0C0,0x0C0,0x0C0,0x0C0,0x0C0,
+    0x0C0,0x0C0,0x0C0,0x0C0,0x0C0,0x0C0,
+    0x0C0,0x0C0,0x3F0,0x3F0,0x000,0x000];
+  m['2']=[
+    0x000,0x1F8,0x3FC,0x306,0x006,0x006,
+    0x006,0x00C,0x018,0x030,0x060,0x0C0,
+    0x180,0x300,0x600,0xC00,0xC00,0xC00,
+    0xC00,0xC00,0xFFF,0xFFF,0x000,0x000];
+  m['3']=[
+    0x000,0x1F8,0x3FC,0x006,0x006,0x006,
+    0x006,0x00C,0x0FC,0x0FC,0x00C,0x006,
+    0x006,0x006,0x006,0x006,0x006,0x306,
+    0x306,0x306,0x3FC,0x1F8,0x000,0x000];
+  m['4']=[
+    0x000,0x000,0x018,0x038,0x078,0x0D8,
+    0x198,0x318,0x618,0xC18,0xFFF,0xFFF,
+    0x018,0x018,0x018,0x018,0x018,0x018,
+    0x018,0x018,0x018,0x018,0x000,0x000];
+  m['5']=[
+    0x000,0xFFF,0xFFF,0xC00,0xC00,0xC00,
+    0xC00,0xFF8,0xFFC,0x006,0x006,0x006,
+    0x006,0x006,0x006,0x006,0x006,0x306,
+    0x306,0x306,0x3FC,0x1F8,0x000,0x000];
+  m['6']=[
+    0x000,0x0FC,0x1FC,0x300,0x600,0xC00,
+    0xC00,0xCF8,0xDFC,0xF06,0xE03,0xC03,
+    0xC03,0xC03,0xC03,0xC03,0x603,0x703,
+    0x306,0x306,0x1FC,0x0F8,0x000,0x000];
+  m['7']=[
+    0x000,0xFFF,0xFFF,0x006,0x006,0x00C,
+    0x00C,0x018,0x018,0x030,0x030,0x060,
+    0x060,0x0C0,0x0C0,0x0C0,0x0C0,0x0C0,
+    0x0C0,0x0C0,0x0C0,0x0C0,0x000,0x000];
+  m['8']=[
+    0x000,0x1F8,0x3FC,0x306,0x603,0x603,
+    0x603,0x306,0x3FC,0x3FC,0x306,0x603,
+    0xC03,0xC03,0xC03,0xC03,0x603,0x603,
+    0x306,0x306,0x3FC,0x1F8,0x000,0x000];
+  m['9']=[
+    0x000,0x1F8,0x3FC,0x706,0xC03,0xC03,
+    0xC03,0xC03,0x703,0x3FF,0x1FF,0x006,
+    0x006,0x006,0x006,0x006,0x006,0x006,
+    0x30C,0x30C,0x3F8,0x1F0,0x000,0x000];
+  m[':']=[
+    0x000,0x000,0x000,0x000,0x000,0x1E0,
+    0x1E0,0x1E0,0x1E0,0x000,0x000,0x000,
+    0x000,0x000,0x000,0x1E0,0x1E0,0x1E0,
+    0x1E0,0x000,0x000,0x000,0x000,0x000];
+  return m;
+})();
+
+function drawChar12x24(ch, cx, cy, r, g, b) {
+  const rows = SPLEEN12X24[ch];
+  if (!rows) return;
+  for (let row = 0; row < 24; row++) {
+    const bits = rows[row];
+    for (let col = 0; col < 12; col++)
+      if (bits & (0x800 >> col)) px(cx + col, cy + row, r, g, b);
+  }
+}
+
+function measureStr12x24(text) {
+  return text.length ? text.length * 13 - 1 : 0;
+}
+
+function drawStr12x24(text, sx, sy, r, g, b) {
+  let x = sx;
+  for (const ch of text) { drawChar12x24(ch, x, sy, r, g, b); x += 13; }
 }
 
 // =====================================================================
@@ -385,33 +557,30 @@ function drawBackground() {
 }
 
 // =====================================================================
-// BANNER
+// BANNER — rendered with embedded 4×6 bitmap font
 // =====================================================================
 function drawBanner() {
-  // Dark banner row background
   for (let y = 0; y < BANNER_H; y++)
     for (let x = 0; x < W; x++) px(x, y, 4, 4, 9);
 
-  const bannerFont = 'bold 6px monospace';
-  const [lr, lg, lb] = hex2rgb(theme.colors.low_temp || '#00CCFF');
+  const [lr, lg, lb] = hex2rgb(theme.colors.low_temp  || '#00CCFF');
   const [hr, hg, hb] = hex2rgb(theme.colors.high_temp || '#FF8C00');
-  const [cr, cg, cb] = hex2rgb(theme.colors.condition || '#909090');
+  const [cr, cg, cb] = hex2rgb(theme.colors.condition  || '#909090');
 
-  const lo  = preview.lowTemp + '°';
-  const hi  = preview.highTemp + '°';
-  const con = preview.condText;
+  const lo  = String(preview.lowTemp)  + '\xb0';
+  const hi  = String(preview.highTemp) + '\xb0';
+  const con = preview.condText.toUpperCase();
 
-  const hiW = textW(hi, bannerFont);
-  const conW = textW(con, bannerFont);
+  const hiW  = measureStr4x6(hi);
+  const conW = measureStr4x6(con);
 
-  // Low temp left, high temp right, condition centered
-  drawText(lo, 1, 0, lr, lg, lb, bannerFont);
-  drawText(hi, W - hiW - 1, 0, hr, hg, hb, bannerFont);
-  drawText(con, Math.round((W - conW) / 2), 0, cr, cg, cb, bannerFont);
+  drawStr4x6(lo,  1,                            0, lr, lg, lb);
+  drawStr4x6(hi,  W - hiW - 1,                  0, hr, hg, hb);
+  drawStr4x6(con, Math.round((W - conW) / 2),   0, cr, cg, cb);
 }
 
 // =====================================================================
-// TIME DISPLAY
+// TIME DISPLAY — rendered with embedded Spleen 12×24 bitmap font
 // =====================================================================
 function drawTime() {
   const now = new Date();
@@ -420,13 +589,12 @@ function drawTime() {
   const timeStr = h + ':' + m;
   const [r, g, b] = hex2rgb(theme.colors.time || '#F0F0F0');
 
-  const timeFont = 'bold 11px monospace';
-  const tw = textW(timeStr, timeFont);
-  const tx = Math.round((W - tw) / 2);
-  const zoneH = ANIM_BOT - ANIM_TOP + 1; // 25
-  const ty = ANIM_TOP + Math.round((zoneH - 11) / 2);
+  const tw = measureStr12x24(timeStr);
+  const tx = Math.max(0, Math.round((W - tw) / 2));
+  const zoneH = ANIM_BOT - ANIM_TOP + 1; // 25 rows
+  const ty = ANIM_TOP + Math.round((zoneH - 24) / 2);
 
-  drawText(timeStr, tx, ty, r, g, b, timeFont);
+  drawStr12x24(timeStr, tx, ty, r, g, b);
 }
 
 // =====================================================================
@@ -582,6 +750,33 @@ function drawShootingStars() {
 }
 
 // =====================================================================
+// CAMEO FLASH LABEL (shows which cameo would fire, when animate is on)
+// =====================================================================
+let cameoFlash = { name: '', life: 0, maxLife: 45 };
+
+function updateCameoFlash() {
+  if (cameoFlash.life > 0) { cameoFlash.life--; return; }
+  if (!theme.cameos.length) return;
+  // Roll probability for any cameo to flash as a preview hint
+  for (const c of theme.cameos) {
+    const prob = (c.chance_per_minute || 8) / 60 / 15 * 3; // boosted for preview
+    if (Math.random() < prob) {
+      cameoFlash.name = c.name;
+      cameoFlash.life = cameoFlash.maxLife;
+      break;
+    }
+  }
+}
+
+function drawCameoFlash() {
+  if (!preview.animate || cameoFlash.life <= 0) return;
+  const alpha = cameoFlash.life > 10 ? 1.0 : cameoFlash.life / 10;
+  const bright = Math.round(200 * alpha);
+  const label = '★ ' + cameoFlash.name;
+  drawText(label, 1, ANIM_BOT - 5, bright, Math.round(bright * 0.85), 0, '5px monospace');
+}
+
+// =====================================================================
 // FLUSH PIXEL BUFFER TO CANVAS
 // =====================================================================
 const canvas = document.getElementById('matrix');
@@ -626,6 +821,7 @@ function render() {
   drawSun();
   drawClouds();
   drawShootingStars();
+  drawCameoFlash();
   drawBanner();
   drawTime();
   flushCanvas();
@@ -645,6 +841,7 @@ function animLoop(ts) {
   animT++;
   updateClouds();
   if (theme.cameos.some(c => c.name === 'shooting_star')) updateShootingStars();
+  updateCameoFlash();
   render();
 }
 
@@ -828,17 +1025,25 @@ function showHideCloudOptions() {
 // =====================================================================
 // CAMEO LIST
 // =====================================================================
+const ALL_ANIMATIONS = [
+  'shooting_star','airplane','biplane','bird_flock','butterfly','comet',
+  'easter_egg','firefly','fireworks','fish','ghost','hot_air_balloon',
+  'jack_o_lantern','meteor','rainbow','rocket','santa','satellite',
+  'snowman','submarine','tractor','tumbleweed','ufo'
+];
+
 function buildCameoList() {
   const list = document.getElementById('cameo-list');
   list.innerHTML = '';
   theme.cameos.forEach((c, idx) => {
+    const opts = ALL_ANIMATIONS.map(n =>
+      `<option value="${n}"${c.name===n?' selected':''}>${n}</option>`
+    ).join('');
     const li = document.createElement('div');
     li.className = 'li';
     li.innerHTML = `<div class="li-row">
       <label>Name</label>
-      <select data-ci="${idx}" data-f="name">
-        <option value="shooting_star"${c.name==='shooting_star'?' selected':''}>shooting_star</option>
-      </select>
+      <select data-ci="${idx}" data-f="name">${opts}</select>
       <span class="spacer"></span>
       <label>Rate/min</label>
       <input type="number" data-ci="${idx}" data-f="cpm" value="${c.chance_per_minute||8}" min="0.1" max="60" step="0.1" style="width:58px">
@@ -847,7 +1052,10 @@ function buildCameoList() {
     list.appendChild(li);
   });
 
-  list.querySelectorAll('[data-ci]').forEach(el => {
+  list.querySelectorAll('[data-ci][data-f="del"]').forEach(el => {
+    el.addEventListener('click', cameoFieldChange);
+  });
+  list.querySelectorAll('[data-ci]:not([data-f="del"])').forEach(el => {
     el.addEventListener('change', cameoFieldChange);
     el.addEventListener('input', cameoFieldChange);
   });
@@ -923,7 +1131,10 @@ function buildOverrideList() {
     list.appendChild(li);
   }
 
-  list.querySelectorAll('[data-oc][data-of]').forEach(el => {
+  list.querySelectorAll('[data-oc][data-of="del"]').forEach(el => {
+    el.addEventListener('click', overrideFieldChange);
+  });
+  list.querySelectorAll('[data-oc][data-of]:not([data-of="del"])').forEach(el => {
     el.addEventListener('change', overrideFieldChange);
     el.addEventListener('input', overrideFieldChange);
   });

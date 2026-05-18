@@ -27,6 +27,10 @@ echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
 echo "[update] copying files..."
 sudo cp "$REPO_DIR/clock/hub75_clock.py" "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/clock/theme_loader.py" "$CLOCK_DIR/"
+sudo mkdir -p "$CONFIG_DIR/animations"
+sudo cp "$REPO_DIR/animations/"*.py "$CONFIG_DIR/animations/"
+sudo chmod 644 "$CONFIG_DIR/animations/"*.py
+echo "[update] animations updated."
 
 echo "[update] restarting..."
 sudo systemctl restart "$SERVICE_NAME"

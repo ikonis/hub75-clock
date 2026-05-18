@@ -98,18 +98,49 @@ One-shot animated events that fire at a configurable rate. Only one cameo runs a
 
 | Field | Type | Description |
 |---|---|---|
-| `name` | string | Which cameo to spawn. Currently supported: `"shooting_star"`. |
-| `chance_per_minute` | float | Expected number of spawns per minute. `8` means on average 8 shooting stars per minute when conditions allow. The roll is evaluated every frame. |
-
-**`shooting_star`** fires a single streak across the upper third of the animation zone. Only spawns when the weather condition is `CLEAR` or `PARTLYCLOUDY`.
+| `name` | string | Which animation to spawn. Must match the `name` attribute of an animation file in `/etc/hub75-clock/animations/`. |
+| `chance_per_minute` | float | Expected spawns per minute on average. The roll is evaluated every frame at runtime FPS. |
 
 Example:
 
 ```json
 "cameos": [
-  {"name": "shooting_star", "chance_per_minute": 8}
+  {"name": "shooting_star", "chance_per_minute": 8},
+  {"name": "ufo", "chance_per_minute": 2}
 ]
 ```
+
+**Built-in animations** (installed to `/etc/hub75-clock/animations/` by `install.sh`):
+
+| Name | Conditions filter | Themes filter | Description |
+|---|---|---|---|
+| `shooting_star` | CLEAR, PARTLYCLOUDY | Night, Late Evening | Fast diagonal streak with fading tail |
+| `ufo` | CLEAR, PARTLYCLOUDY | Night, Late Evening | Saucer silhouette drifting across with cycling belly lights |
+| `satellite` | CLEAR | Night | ISS-silhouette cross, diagonal slow pass |
+| `meteor` | CLEAR | Night, Late Evening | Fast diagonal with 6-frame orange/red history trail |
+| `comet` | CLEAR | Night | Slow left-to-right with blue-white gradient tail |
+| `airplane` | _(any)_ | Day, Sunrise, Sunset | Fuselage + wings + windows, random direction |
+| `biplane` | CLEAR | Day | Double-wing sprite with alternating propeller, mirrors for direction |
+| `bird_flock` | _(any)_ | Day | V-formation of 5–7 birds with alternating flap frames |
+| `butterfly` | CLEAR | Day | Open/closed wing frames, sine wave vertical drift, orange |
+| `hot_air_balloon` | CLEAR, PARTLYCLOUDY | Day, Sunrise | 7×10px balloon with ROYGBIV stripes, drifts upward |
+| `tumbleweed` | _(any)_ | Day | Rolling circle with rotation transform, slight bounce |
+| `rainbow` | CLEAR, PARTLYCLOUDY | Day | ROYGBIV arc, fade in/hold/fade out |
+| `firefly` | CLEAR | Night, Late Evening | 3–5 dots, independent sine-phase blink, slow drift |
+| `snowman` | SNOW | _(any)_ | Pixel-art snowman, lower-right corner, fade in/out |
+| `santa` | _(any)_ | Night, Late Evening | Sleigh + reindeer silhouette, right-to-left, sine altitude |
+| `fireworks` | _(any)_ | _(any)_ | State machine: launch, explode, wait; 3 bursts, colored sparks |
+| `jack_o_lantern` | _(any)_ | Night, Late Evening | 9×7px pumpkin, flickering eyes, fade in/out |
+| `easter_egg` | _(any)_ | Day | 6×8px striped oval, bounces left-to-right |
+| `rocket` | _(any)_ | _(any)_ | 3×7px rocket, accelerates upward with flame trail |
+| `submarine` | _(any)_ | Day | Long hull + conning tower + periscope, slow left-to-right |
+| `ghost` | _(any)_ | Night, Late Evening | Dome + wavy skirt, sine float, dimmed white/pale |
+| `fish` | RAIN, SNOW | _(any)_ | Body oval + tail + eye, sine swim, blue/silver |
+| `tractor` | _(any)_ | Day | Side-profile tractor with rotating wheel spokes, rolls across bottom |
+
+Conditions and themes filters on each animation are enforced by `CameoManager` at spawn time. A cameo listed in `cameos` will only actually fire when both filters pass. An empty filter list means "any". Use this to put cameos on themes without worrying about them firing at the wrong time.
+
+See `docs/animations.md` for the drop-in animation interface and how to write your own.
 
 ### Clouds
 

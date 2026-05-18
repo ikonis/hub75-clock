@@ -1,0 +1,245 @@
+# Animations
+
+The clock supports a drop-in animation system. Any `.py` file placed in `/etc/hub75-clock/animations/` is automatically loaded at runtime. The watchdog detects new and changed files within seconds — no restart required.
+
+Animations are triggered as **cameos** inside theme JSON files. See `docs/themes.md` for how to add them to a theme.
+
+---
+
+## How the drop-in system works
+
+1. `AnimationLoader` scans `/etc/hub75-clock/animations/` at startup and imports every `.py` file that contains a class named `Animation`.
+2. Each `Animation` class is registered under its `name` attribute.
+3. A watchdog monitors the directory. When any `.py` file changes or a new one appears, the loader rescans and rebuilds the registry.
+4. The built-in `shooting_star` animation is always registered as a fallback even if the directory is empty.
+5. `CameoManager` uses the registry when a theme's `cameos` list asks for an animation by name.
+
+---
+
+## Writing a custom animation
+
+Create a file in `/etc/hub75-clock/animations/` with exactly this structure:
+
+```python
+import math
+import random
+
+
+class Animation:
+    name = "my_animation"          # unique string key — must match what you put in themes
+    conditions = []                # list of condition strings that allow this to fire, e.g. ["CLEAR", "RAIN"]
+                                   # empty list = fire in any condition
+    themes = []                    # list of theme names that allow this to fire, e.g. ["Night", "Day"]
+                                   # empty list = fire in any theme
+
+    def __init__(self, width, height, cfg, animator):
+        self._w = width
+        self._at = animator.anim_top   # first row of the animation zone (row 8 on a 64×32 panel)
+        self._ab = animator.anim_bottom  # last row of the animation zone (row 31)
+        # Initialize your animation state here
+
+    def update(self):
+        # Advance state by one frame. Called every frame before draw().
+        pass
+
+    def draw(self, canvas):
+        # Draw to canvas using canvas.SetPixel(x, y, r, g, b).
+        # x must be in 0 .. width-1.
+        # y must be in anim_top .. anim_bottom.
+        # Do NOT draw outside the animation zone.
+        pass
+
+    def is_done(self) -> bool:
+        # Return True when the animation has finished. CameoManager will discard it.
+        return False
+```
+
+Drop the file into `/etc/hub75-clock/animations/`. The clock picks it up within a few seconds. Add its `name` to a theme's `cameos` list:
+
+```json
+"cameos": [
+  {"name": "my_animation", "chance_per_minute": 3}
+]
+```
+
+---
+
+## Class attributes
+
+### `name` (required)
+
+A unique string key. This is what you put in the theme JSON. If two files declare the same name the second one loaded wins (load order is alphabetical by filename).
+
+### `conditions` (optional, list of strings)
+
+Which weather conditions allow this animation to fire. The comparison is against the current normalized condition string. Use the canonical names from `docs/themes.md` (e.g. `"CLEAR"`, `"RAIN"`, `"SNOW"`).
+
+An empty list (`[]`) means the animation is allowed in any condition.
+
+### `themes` (optional, list of strings)
+
+Which theme names allow this animation to fire. Compared against the `name` field of the active theme.
+
+An empty list (`[]`) means the animation is allowed in any theme.
+
+---
+
+## `__init__` parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `width` | int | Panel width in pixels (64 for a 64×32 panel) |
+| `height` | int | Panel height in pixels (32 for a 64×32 panel) |
+| `cfg` | dict | The full clock config dict. Access MQTT or other settings if needed. Usually not needed. |
+| `animator` | WeatherAnimator | The running animator instance. Use `animator.anim_top` and `animator.anim_bottom` for the animation zone boundaries. |
+
+---
+
+## Drawing API
+
+`canvas.SetPixel(x, y, r, g, b)` — set a single pixel.
+
+- `x`: 0–63 (left to right)
+- `y`: 0–31 (top to bottom)
+- `r`, `g`, `b`: 0–255
+
+The animation zone runs from `anim_top` (row 8) to `anim_bottom` (row 31). Rows 0–7 are the banner strip (time, temps, condition). Always guard your pixel writes:
+
+```python
+if 0 <= px < self._w and self._at <= py <= self._ab:
+    canvas.SetPixel(px, py, r, g, b)
+```
+
+---
+
+## Minimal working example
+
+A single pixel that blinks yellow and drifts across the screen:
+
+```python
+import random
+
+
+class Animation:
+    name = "blink_dot"
+    conditions = []
+    themes = []
+
+    def __init__(self, width, height, cfg, animator):
+        self._w = width
+        self._at = animator.anim_top
+        self._ab = animator.anim_bottom
+        self.x = 0.0
+        self.y = float(self._at + random.randint(0, self._ab - self._at))
+        self._frame = 0
+
+    def update(self):
+        self.x += 0.4
+        self._frame += 1
+
+    def draw(self, canvas):
+        if self._frame % 8 < 4:   # blink: on for 4 frames, off for 4
+            px, py = int(self.x), int(self.y)
+            if 0 <= px < self._w and self._at <= py <= self._ab:
+                canvas.SetPixel(px, py, 255, 220, 0)
+
+    def is_done(self) -> bool:
+        return self.x > self._w + 2
+```
+
+---
+
+## Built-in animations reference
+
+All of these are installed to `/etc/hub75-clock/animations/` by `install.sh` and updated on `make update`.
+
+### Space / Night
+
+| File | Name | Conditions | Themes | Description |
+|---|---|---|---|---|
+| `shooting_star.py` | `shooting_star` | CLEAR, PARTLYCLOUDY | Night, Late Evening | Fast diagonal streak with fading tail. Built-in fallback; always registered even if the file is missing. |
+| `ufo.py` | `ufo` | CLEAR, PARTLYCLOUDY | Night, Late Evening | Saucer silhouette drifting across with cycling teal belly lights and glow trail. |
+| `satellite.py` | `satellite` | CLEAR | Night | ISS-profile cross sprite, slow diagonal pass from top-right to bottom-left. |
+| `meteor.py` | `meteor` | CLEAR | Night, Late Evening | Fast diagonal (3.5–5 px/frame) with 6-frame orange/red history trail. |
+| `comet.py` | `comet` | CLEAR | Night | Slow left-to-right with 10–14px blue-white gradient tail. |
+
+### Day / Sky
+
+| File | Name | Conditions | Themes | Description |
+|---|---|---|---|---|
+| `airplane.py` | `airplane` | _(any)_ | Day, Sunrise, Sunset | 8px fuselage + wings + windows, random left/right direction, upper zone. |
+| `biplane.py` | `biplane` | CLEAR | Day | Double-wing sprite with alternating propeller, mirrors for direction. |
+| `bird_flock.py` | `bird_flock` | _(any)_ | Day | V-formation of 5–7 birds with alternating flap frames. |
+| `butterfly.py` | `butterfly` | CLEAR | Day | Open/closed wing frames every 5 ticks, sine wave vertical drift, orange. |
+| `hot_air_balloon.py` | `hot_air_balloon` | CLEAR, PARTLYCLOUDY | Day, Sunrise | 7×10px balloon with ROYGBIV stripes, drifts upward. |
+| `tumbleweed.py` | `tumbleweed` | _(any)_ | Day | 5px circle with rotation transform, slight bounce via `|sin|×1.5`. |
+
+### Weather
+
+| File | Name | Conditions | Themes | Description |
+|---|---|---|---|---|
+| `rainbow.py` | `rainbow` | CLEAR, PARTLYCLOUDY | Day | ROYGBIV arc using radius math per band, fade in 15 / hold 45 / fade out 15 frames. |
+| `firefly.py` | `firefly` | CLEAR | Night, Late Evening | 3–5 dots with independent sine-phase blink, slow random drift, yellow-green. |
+| `snowman.py` | `snowman` | SNOW | _(any)_ | Pixel-art snowman lower-right corner, fade in 20 / hold 90 / fade out 20 frames, flickering eyes. |
+
+### Holiday
+
+| File | Name | Conditions | Themes | Description |
+|---|---|---|---|---|
+| `santa.py` | `santa` | _(any)_ | Night, Late Evening | 14px-wide sleigh + reindeer silhouette, right-to-left, sine wave altitude. |
+| `fireworks.py` | `fireworks` | _(any)_ | _(any)_ | State machine (launch → explode → wait), 3 bursts, 12–18 colored sparks with gravity. |
+| `jack_o_lantern.py` | `jack_o_lantern` | _(any)_ | Night, Late Evening | 9×7px orange pumpkin, triangle eyes with flicker, black mouth cutout, lower-right corner, fade in/out. |
+| `easter_egg.py` | `easter_egg` | _(any)_ | Day | 6×8px oval with 4-color stripe pattern, bounces left-to-right with slight vertical bob. |
+
+### Fun
+
+| File | Name | Conditions | Themes | Description |
+|---|---|---|---|---|
+| `rocket.py` | `rocket` | _(any)_ | _(any)_ | 3×7px rocket sprite, accelerates upward, flame trail below, exits top. |
+| `submarine.py` | `submarine` | _(any)_ | Day | Long hull + conning tower + periscope, slow left-to-right with slight sine wave. |
+| `ghost.py` | `ghost` | _(any)_ | Night, Late Evening | Dome + wavy skirt bottom, sine float, dimmed white/pale colors. |
+| `fish.py` | `fish` | RAIN, SNOW | _(any)_ | Body oval + tail fin + dot eye, sine swim, blue/silver, random direction. |
+| `tractor.py` | `tractor` | _(any)_ | Day | Side-profile tractor with rotating wheel spokes, slowly rolls across bottom of animation zone. |
+
+---
+
+## Chance per minute tuning
+
+`chance_per_minute` controls how often a cameo spawns on average. The roll is evaluated every frame:
+
+```
+probability_per_frame = chance_per_minute / 60 / fps
+```
+
+At 15 fps (night) with `chance_per_minute: 8`:
+
+```
+8 / 60 / 15 = 0.0089  →  ~1 spawn per 113 frames (~7.5 seconds)
+```
+
+At 30 fps (day) you need a higher value for the same visual density:
+
+```
+chance_per_minute: 16  →  16 / 60 / 30 = 0.0089  (same rate as 8/min at night)
+```
+
+Typical values:
+
+| Rate | Feel |
+|---|---|
+| 1–2 | Rare, occasional surprise |
+| 4–8 | Regular — visible but not constant |
+| 15–20 | Frequent |
+| 30+ | Near-continuous |
+
+Only one cameo runs at a time. While one is active, rolls for all cameos are skipped. High rates shorten the idle time between cameos; a new one starts almost immediately after the previous finishes.
+
+---
+
+## Tips
+
+- **Keep animations entirely within the animation zone.** The banner rows (0–7) must stay intact. Always guard pixel writes with the `anim_top` / `anim_bottom` check.
+- **Do not import heavy libraries.** `math` and `random` are always available. Avoid anything that requires install-time dependencies.
+- **Name collisions:** if your file's `Animation.name` matches an existing built-in, your file wins because `_scan()` processes files alphabetically and yours will likely run after the built-in. Prefix custom names to avoid accidental overrides (`"my_ufo"` instead of `"ufo"`).
+- **Errors are logged, not crashed.** If your file has a syntax error or the `Animation` class is missing required attributes, the loader prints a warning and skips the file. The rest of the animations continue working.
+- **Test interactively:** run the clock manually (`sudo python3 /opt/hub75-clock/hub75_clock.py`) and watch the logs with `make logs` while you drop files in. The watchdog reloads within 2 seconds of a file write.

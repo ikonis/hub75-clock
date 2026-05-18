@@ -19,6 +19,7 @@ import signal
 import threading
 import random
 import re
+import importlib.util
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
@@ -200,6 +201,9 @@ DEFAULTS = {
     "themes": {
         "themes_dir":    "/etc/hub75-clock/themes",
         "default_theme": "Day",
+    },
+    "animations": {
+        "animations_dir": "/etc/hub75-clock/animations",
     },
 }
 
@@ -384,13 +388,97 @@ class ShootingStarCameo:
         return self._star is None or self._star.life <= 0
 
 
-_CAMEO_REGISTRY = {
-    "shooting_star": ShootingStarCameo,
-}
+try:
+    from watchdog.observers import Observer as _WatchdogObserver
+    from watchdog.events import FileSystemEventHandler as _WatchdogHandler
+    _WATCHDOG_OK = True
+except ImportError:
+    _WATCHDOG_OK = False
+
+
+class AnimationLoader:
+    """Drop-in animation loader. Watches a directory for .py files, imports each,
+    and registers the Animation class found inside by its `name` attribute."""
+
+    def __init__(self, animations_dir: str):
+        self._dir = animations_dir
+        self._registry: dict = {}
+        # Built-in fallback: ShootingStarCameo registered under its own name
+        self._registry["shooting_star"] = ShootingStarCameo
+        self._observer = None
+        os.makedirs(animations_dir, exist_ok=True)
+        self._scan()
+        self._start_watcher()
+
+    def _scan(self):
+        try:
+            entries = list(os.scandir(self._dir))
+        except OSError:
+            return
+        for entry in entries:
+            if not entry.name.endswith(".py") or not entry.is_file():
+                continue
+            self._load_file(entry.path)
+
+    def _load_file(self, path: str):
+        try:
+            mod_name = "hub75_anim_" + os.path.basename(path)[:-3]
+            spec = importlib.util.spec_from_file_location(mod_name, path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            cls = getattr(mod, "Animation", None)
+            if cls is None:
+                print(f"[animations] warning: {path} has no Animation class — skipping")
+                return
+            anim_name = getattr(cls, "name", None)
+            if not anim_name:
+                print(f"[animations] warning: Animation in {path} has no name — skipping")
+                return
+            self._registry[anim_name] = cls
+            print(f"[animations] loaded: {anim_name}")
+        except Exception as e:
+            print(f"[animations] warning: failed to load {path}: {e}")
+
+    def _reload(self):
+        self._registry = {"shooting_star": ShootingStarCameo}
+        self._scan()
+
+    def _start_watcher(self):
+        if not _WATCHDOG_OK:
+            return
+        loader = self
+
+        class _H(_WatchdogHandler):
+            def on_any_event(self, event):
+                if event.is_directory:
+                    return
+                src = getattr(event, "src_path", "")
+                dst = getattr(event, "dest_path", "")
+                if src.endswith(".py") or dst.endswith(".py"):
+                    loader._reload()
+
+        self._observer = _WatchdogObserver()
+        self._observer.schedule(_H(), self._dir, recursive=False)
+        self._observer.daemon = True
+        self._observer.start()
+
+    def get(self, name: str):
+        return self._registry.get(name)
+
+    def available(self) -> list:
+        return sorted(self._registry.keys())
+
+    def stop(self):
+        if self._observer:
+            self._observer.stop()
+            self._observer.join()
+            self._observer = None
 
 
 class CameoManager:
-    def __init__(self):
+    def __init__(self, loader: AnimationLoader, cfg: dict):
+        self._loader = loader
+        self._cfg = cfg
         self._active = None
 
     def reset(self):
@@ -403,22 +491,39 @@ class CameoManager:
                 self._active = None
 
         if self._active is None:
-            for cfg in cameos:
-                cls = _CAMEO_REGISTRY.get(cfg.get("name", ""))
+            theme_name = animator.current_theme.name if animator.current_theme else ""
+            for cameo_cfg in cameos:
+                cls = self._loader.get(cameo_cfg.get("name", ""))
                 if cls is None:
                     continue
-                prob = cfg.get("chance_per_minute", 0) / 60.0 / fps
+                # Condition filter (empty list = any)
+                allowed_conds = getattr(cls, "conditions", [])
+                if allowed_conds and condition not in allowed_conds:
+                    continue
+                # Theme filter (empty list = any)
+                allowed_themes = getattr(cls, "themes", [])
+                if allowed_themes and theme_name not in allowed_themes:
+                    continue
+                prob = cameo_cfg.get("chance_per_minute", 0) / 60.0 / fps
                 if random.random() < prob:
-                    self._active = cls(condition, animator)
+                    try:
+                        self._active = cls(animator.width, animator.height,
+                                           self._cfg, animator)
+                    except Exception as e:
+                        print(f"[animations] warning: failed to spawn {cls}: {e}")
                     break
 
     def draw(self, canvas):
         if self._active is not None:
-            self._active.draw(canvas)
+            try:
+                self._active.draw(canvas)
+            except Exception as e:
+                print(f"[animations] warning: draw error: {e}")
+                self._active = None
 
 
 class WeatherAnimator:
-    def __init__(self, cfg: dict, layout: dict):
+    def __init__(self, cfg: dict, layout: dict, animation_loader: "AnimationLoader" = None):
         self.cfg = cfg
         self.layout = layout
         self.width   = cfg["panel"]["width"]
@@ -435,7 +540,10 @@ class WeatherAnimator:
         self.current_theme: Optional[Theme] = None
         self.night_mode = False
         self.frame = 0
-        self._cameo_manager = CameoManager()
+        _loader = animation_loader or AnimationLoader(
+            cfg.get("animations", {}).get("animations_dir", "/etc/hub75-clock/animations")
+        )
+        self._cameo_manager = CameoManager(_loader, cfg)
         self._init_for_condition()
 
     _CONDITION_ALIASES = {
@@ -1291,7 +1399,10 @@ class HUB75Clock:
         self.weather_condition = "CLEAR"
         self.weather_outdoor   = None
 
-        self.animator = WeatherAnimator(cfg, layout)
+        self.animation_loader = AnimationLoader(
+            cfg.get("animations", {}).get("animations_dir", "/etc/hub75-clock/animations")
+        )
+        self.animator = WeatherAnimator(cfg, layout, self.animation_loader)
         self.alert    = AlertOverlay(cfg, self.font_alert,
                                      cfg["fonts"]["alert_w"],
                                      cfg["fonts"]["alert_h"])

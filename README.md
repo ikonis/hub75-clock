@@ -213,7 +213,7 @@ Run once on a fresh Pi. Does everything in sequence:
 5. Downloads fonts (rpi-rgb-led-matrix bundled BDF fonts + Spleen 12x24/16x32) to `~/hub75-fonts`
 6. Enables I2C and UART hardware; disables serial console; disables Bluetooth; blacklists `snd_bcm2835`
 7. Adds user to `dialout`, `gpio`, `i2c` groups
-8. Installs clock files (`hub75_clock.py`, `theme_loader.py`, `test_sensors.py`, `test_display.py`) to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only
+8. Installs clock files (`hub75_clock.py`, `theme_loader.py`, `test_sensors.py`, `test_display.py`) to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only; copies all built-in animation `.py` files to `/etc/hub75-clock/animations/`
 9. Installs and enables the `hub75-clock` systemd service
 10. Installs `update.sh` to `~/update-clock.sh`
 11. Launches `scripts/configure.sh` to write your `config.yaml`
@@ -477,7 +477,7 @@ mosquitto_pub -h <broker> -u <user> -P <pass> \
 ```
 hub75-clock/
 ├── .gitignore
-├── Makefile                    make update / logs / restart / test / config
+├── Makefile                    make update / logs / restart / test / config / rgb
 ├── README.md
 ├── config.example.yaml         Reference config; configure.sh writes the real config
 ├── install.sh                  One-shot installer, run once on a fresh Pi
@@ -491,12 +491,17 @@ hub75-clock/
 │   └── test_sensors.py         Per-sensor test utility (make test)
 ├── themes/
 │   └── *.json                  Built-in themes; copied to /etc/hub75-clock/themes/ on first install
+├── animations/
+│   └── *.py                    Built-in drop-in animations; copied to /etc/hub75-clock/animations/
+│                               Drop your own .py files there to add custom animations at runtime
 └── automations/
     ├── 01_helpers.yaml         HA input helpers
     ├── 02_weather.yaml         Weather push automation
     ├── 03_brightness.yaml      Bucket brightness + night mode
     └── 04_lifecycle_alerts.yaml  Online/offline + Tornado Warning
 ```
+
+Custom animations can be added at runtime by dropping a `.py` file into `/etc/hub75-clock/animations/`. The clock detects the new file within seconds and makes it available for use in theme `cameos` lists without a restart. See `docs/animations.md` for the full interface.
 
 ---
 
