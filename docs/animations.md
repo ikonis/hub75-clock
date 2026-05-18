@@ -27,10 +27,8 @@ import random
 
 class Animation:
     name = "my_animation"          # unique string key — must match what you put in themes
-    conditions = []                # list of condition strings that allow this to fire, e.g. ["CLEAR", "RAIN"]
-                                   # empty list = fire in any condition
-    themes = []                    # list of theme names that allow this to fire, e.g. ["Night", "Day"]
-                                   # empty list = fire in any theme
+    conditions = []                # informational: intended weather conditions (not enforced at runtime)
+    themes = []                    # informational: intended theme names (not enforced at runtime)
 
     def __init__(self, width, height, cfg, animator):
         self._w = width
@@ -72,15 +70,15 @@ A unique string key. This is what you put in the theme JSON. If two files declar
 
 ### `conditions` (optional, list of strings)
 
-Which weather conditions allow this animation to fire. The comparison is against the current normalized condition string. Use the canonical names from `docs/themes.md` (e.g. `"CLEAR"`, `"RAIN"`, `"SNOW"`).
+Informational metadata describing the weather conditions this animation is designed for (e.g. `["CLEAR", "RAIN"]`). **Not enforced at runtime.** The clock does not check this attribute before spawning — if the animation is listed in a theme's `cameos` array, it will fire regardless of the current weather condition.
 
-An empty list (`[]`) means the animation is allowed in any condition.
+Use this field as documentation for yourself and for tools like the theme builder. An empty list (`[]`) means "suitable for any condition."
 
 ### `themes` (optional, list of strings)
 
-Which theme names allow this animation to fire. Compared against the `name` field of the active theme.
+Informational metadata describing the theme names this animation is designed for (e.g. `["Night", "Day"]`). **Not enforced at runtime.** The clock does not check this attribute before spawning.
 
-An empty list (`[]`) means the animation is allowed in any theme.
+An empty list (`[]`) means "suitable for any theme."
 
 ---
 

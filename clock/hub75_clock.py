@@ -484,25 +484,16 @@ class CameoManager:
     def reset(self):
         self._active = None
 
-    def update(self, cameos: list, condition: str, fps: float, animator):
+    def update(self, cameos: list, fps: float, animator):
         if self._active is not None:
             self._active.update()
             if self._active.is_done():
                 self._active = None
 
         if self._active is None:
-            theme_name = animator.current_theme.name if animator.current_theme else ""
             for cameo_cfg in cameos:
                 cls = self._loader.get(cameo_cfg.get("name", ""))
                 if cls is None:
-                    continue
-                # Condition filter (empty list = any)
-                allowed_conds = getattr(cls, "conditions", [])
-                if allowed_conds and condition not in allowed_conds:
-                    continue
-                # Theme filter (empty list = any)
-                allowed_themes = getattr(cls, "themes", [])
-                if allowed_themes and theme_name not in allowed_themes:
                     continue
                 prob = cameo_cfg.get("chance_per_minute", 0) / 60.0 / fps
                 if random.random() < prob:
@@ -817,7 +808,7 @@ class WeatherAnimator:
         if self.current_theme and self.current_theme.cameos:
             fps = (self.cfg["animation"]["fps_night"] if self.night_mode
                    else self.cfg["animation"]["fps"])
-            self._cameo_manager.update(self.current_theme.cameos, self.condition, fps, self)
+            self._cameo_manager.update(self.current_theme.cameos, fps, self)
 
     def _draw_hazard_stripes(self, canvas):
         for y in range(self.anim_top, self.anim_bottom + 1):

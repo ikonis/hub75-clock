@@ -1,0 +1,18 @@
+{
+  "name": "Test: UFO",
+  "description": "Test theme for ufo cameo",
+  "background_type": "solid",
+  "background_color": "#000000",
+  "stars_enabled": false,
+  "clouds_enabled": false,
+  "sun_enabled": false,
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090"
+  },
+  "cameos": [
+    {"name": "ufo", "chance_per_minute": 60}
+  ]
+}
