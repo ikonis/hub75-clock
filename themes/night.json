@@ -10,7 +10,7 @@
     "condition": "#202020"
   },
   "stars_enabled": true,
-  "shooting_stars_enabled": true,
+  "cameos": [{"name": "shooting_star", "chance_per_minute": 8}],
   "clouds_enabled": false,
   "cloud_density": "sparse",
   "cloud_speed": "slow",

@@ -6,7 +6,7 @@
 
 ## Why Pi Zero W Needs Extra Steps
 
-The Pi Zero W uses an ARMv6 processor. The `rpi-rgb-led-matrix` library includes code for the Raspberry Pi 5's RP1 chip which fails to compile on ARMv6. You need to stub out the RP1 backend before building.
+The Pi Zero W uses an ARMv6 processor. Recent versions of the `rpi-rgb-led-matrix` library include code for the Raspberry Pi 5's RP1 chip which fails to compile on ARMv6. `install.sh` works around this by pinning to commit `076c54b`, the last version before RP1 support was added, and building with the library's own `make build-python` target instead of pip.
 
 ---
 
@@ -30,115 +30,20 @@ Use **Raspberry Pi OS Lite (32-bit, Bookworm)**. Do NOT use 64-bit on Pi Zero W.
 
 ## Building rpi-rgb-led-matrix on Pi Zero W
 
-The standard build will fail. Follow these steps exactly:
+`install.sh` handles this automatically. It detects Pi Zero W at runtime, then:
 
-### 1. Clone the repo
-
-```bash
-cd ~
-git clone https://github.com/hzeller/rpi-rgb-led-matrix
-cd rpi-rgb-led-matrix
-```
-
-### 2. Edit the Makefile to remove RP1 objects
+1. Clones `rpi-rgb-led-matrix` to `~/rpi-rgb-led-matrix`
+2. Checks out commit `076c54b` (last version before Pi 5 RP1 support was added; later commits fail to compile on ARMv6)
+3. Builds the C++ library and Python bindings with the repo's own build targets:
 
 ```bash
-nano lib/Makefile
+make build-python PYTHON="$(which python3)"
+sudo make install-python PYTHON="$(which python3)"
 ```
 
-Find the `OBJECTS` line and remove these entries:
-```
-rp1/rp1_rio_backend.o
-```
+Just run `bash install.sh` as normal. No manual source edits are needed.
 
-Save and exit.
-
-### 3. Comment out RP1 includes in source files
-
-```bash
-nano lib/led-matrix.cc
-```
-
-Find and comment out:
-```cpp
-// #include "rp1/rp1_rio_backend.h"
-```
-
-Do the same in `lib/framebuffer.cc`.
-
-### 4. Create RP1 stub header
-
-```bash
-mkdir -p lib/rp1
-nano lib/rp1/rp1_rio_backend.h
-```
-
-Paste this content:
-
-```cpp
-#pragma once
-namespace rgb_matrix {
-namespace internal {
-class Rp1RioBackend {
-public:
-    static bool IsAvailable() { return false; }
-};
-class Rp1PioBackend {
-public:
-    static bool IsAvailable() { return false; }
-};
-}
-}
-```
-
-Save and exit.
-
-### 5. Build with custom setup.py
-
-```bash
-mkdir /tmp/rgbmatrix_build
-cat > /tmp/rgbmatrix_build/setup.py << 'EOF'
-from setuptools import setup, Extension
-import os
-
-lib_dir = os.path.expanduser('~/rpi-rgb-led-matrix/lib')
-inc_dir = os.path.expanduser('~/rpi-rgb-led-matrix/include')
-
-module = Extension(
-    'rgbmatrix._rgbmatrix',
-    sources=[
-        os.path.expanduser('~/rpi-rgb-led-matrix/bindings/python/rgbmatrix/led-matrix-swig.cc'),
-    ],
-    include_dirs=[inc_dir, lib_dir],
-    library_dirs=[lib_dir],
-    libraries=['rgbmatrix'],
-    extra_compile_args=['-std=c++11'],
-)
-
-setup(
-    name='rgbmatrix',
-    packages=['rgbmatrix'],
-    package_dir={'rgbmatrix': os.path.expanduser('~/rpi-rgb-led-matrix/bindings/python/rgbmatrix')},
-    ext_modules=[module],
-)
-EOF
-```
-
-First build the C++ library:
-
-```bash
-cd ~/rpi-rgb-led-matrix
-make -C lib
-```
-
-Then build the Python bindings:
-
-```bash
-cd /tmp/rgbmatrix_build
-sudo python3 setup.py install
-```
-
-### 6. Verify
+### Verify after install
 
 ```bash
 python3 -c "from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics; print('OK')"

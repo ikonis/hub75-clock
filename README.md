@@ -207,13 +207,13 @@ make status
 Run once on a fresh Pi. Does everything in sequence:
 
 1. Updates apt package lists
-2. Installs system packages (git, python3-pip, i2c-tools)
-3. Installs Python packages (paho-mqtt, PyYAML, pyserial, RPi.GPIO, adafruit-circuitpython-veml7700)
-4. Clones and builds `rpi-rgb-led-matrix` with Python bindings
-5. Downloads Spleen fonts (12×24, 16×32) into the fonts directory
-6. Enables I²C and UART hardware; disables serial console; disables Bluetooth; blacklists `snd_bcm2835`
+2. Installs system packages (git, build-essential, python3-dev, python3-pip, python3-pillow, cython3, i2c-tools, wget, and others)
+3. Installs Python packages (paho-mqtt, PyYAML, pyserial, RPi.GPIO, adafruit-circuitpython-veml7700, adafruit-blinka, watchdog)
+4. Builds and installs `rpi-rgb-led-matrix` with Python bindings. Pi 4: installs a pinned commit via pip. Pi Zero W: clones, checks out commit `076c54b`, and builds with `make build-python` / `make install-python`. See `docs/pi-zero-w.md`.
+5. Downloads fonts (rpi-rgb-led-matrix bundled BDF fonts + Spleen 12x24/16x32) to `~/hub75-fonts`
+6. Enables I2C and UART hardware; disables serial console; disables Bluetooth; blacklists `snd_bcm2835`
 7. Adds user to `dialout`, `gpio`, `i2c` groups
-8. Installs clock files to `/opt/hub75-clock/`
+8. Installs clock files (`hub75_clock.py`, `theme_loader.py`, `test_sensors.py`, `test_display.py`) to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only
 9. Installs and enables the `hub75-clock` systemd service
 10. Installs `update.sh` to `~/update-clock.sh`
 11. Launches `scripts/configure.sh` to write your `config.yaml`
@@ -262,6 +262,7 @@ make stop       # stop the service
 make start      # start the service
 make test       # run test_sensors.py
 make config     # open config wizard (reconfigure)
+make rgb        # run test_display.py (panel pixel test)
 ```
 
 After editing `/etc/hub75-clock/config.yaml` directly:
@@ -384,7 +385,6 @@ Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registere
 | `clock/config` | `{"brightness": 40}` and/or `{"night_mode": true}` |
 | `clock/alert` | `{"message": "Tornado Warning - County - until 4:45 PM", "expires": "2026-04-25T16:45:00-05:00"}` |
 | `clock/alert` | `{"clear": true}` to dismiss |
-| `hub75_clock/update/install` | `install` to trigger OTA update |
 
 **Clock → HA:**
 
@@ -483,10 +483,14 @@ hub75-clock/
 ├── install.sh                  One-shot installer, run once on a fresh Pi
 ├── update.sh                   Installed to ~/update-clock.sh; called by make update
 ├── scripts/
-│   └── configure.sh            Interactive config wizard; run by install.sh
+│   ├── configure.sh            Interactive config wizard; run by install.sh
+│   └── test_display.py         Panel pixel test (make rgb)
 ├── clock/
 │   ├── hub75_clock.py          Main application
+│   ├── theme_loader.py         Theme dataclass, JSON loader, file watcher
 │   └── test_sensors.py         Per-sensor test utility (make test)
+├── themes/
+│   └── *.json                  Built-in themes; copied to /etc/hub75-clock/themes/ on first install
 └── automations/
     ├── 01_helpers.yaml         HA input helpers
     ├── 02_weather.yaml         Weather push automation

@@ -26,6 +26,7 @@ class Theme:
     colors: dict = field(default_factory=dict)
     stars_enabled: bool = False
     shooting_stars_enabled: bool = False
+    cameos: list = field(default_factory=list)
     clouds_enabled: bool = False
     cloud_density: str = "medium"
     cloud_speed: str = "medium"
@@ -36,7 +37,13 @@ class Theme:
 def _theme_from_dict(data: dict) -> Theme:
     known = {f.name for f in Theme.__dataclass_fields__.values()}  # type: ignore[attr-defined]
     filtered = {k: v for k, v in data.items() if k in known}
-    return Theme(**filtered)
+    theme = Theme(**filtered)
+    # Backward compatibility: shooting_stars_enabled → cameo entry
+    if data.get("shooting_stars_enabled") and not any(
+        c.get("name") == "shooting_star" for c in theme.cameos
+    ):
+        theme.cameos = theme.cameos + [{"name": "shooting_star", "chance_per_minute": 8}]
+    return theme
 
 
 class ThemeLoader:

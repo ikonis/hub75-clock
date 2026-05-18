@@ -85,7 +85,31 @@ All values are hex color strings (`"#RRGGBB"`). When a key is present in the the
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `stars_enabled` | bool | `false` | Show twinkling stars in the animation zone. Use for night themes where the condition is CLEAR, SUNNY, or PARTLYCLOUDY. |
-| `shooting_stars_enabled` | bool | `false` | Show occasional shooting stars. Requires `stars_enabled: true`. |
+
+### Cameos
+
+One-shot animated events that fire at a configurable rate. Only one cameo runs at a time; if one is already playing, rolls for new ones are skipped until it finishes.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `cameos` | array | `[]` | List of cameo objects. Each has `name` (string) and `chance_per_minute` (float). |
+
+**Cameo object fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Which cameo to spawn. Currently supported: `"shooting_star"`. |
+| `chance_per_minute` | float | Expected number of spawns per minute. `8` means on average 8 shooting stars per minute when conditions allow. The roll is evaluated every frame. |
+
+**`shooting_star`** fires a single streak across the upper third of the animation zone. Only spawns when the weather condition is `CLEAR` or `PARTLYCLOUDY`.
+
+Example:
+
+```json
+"cameos": [
+  {"name": "shooting_star", "chance_per_minute": 8}
+]
+```
 
 ### Clouds
 
@@ -105,7 +129,24 @@ All values are hex color strings (`"#RRGGBB"`). When a key is present in the the
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `condition_overrides` | object | `{}` | Per-condition background overrides. Keys are condition strings (see below). Values are objects containing any subset of the background fields (`background_type`, `background_color`, `background_top`, `background_bottom`, `background_split`, `background_gradient_direction`). Text colors and animation flags cannot be overridden per-condition. |
+| `condition_overrides` | object | `{}` | Per-condition background overrides. Keys are condition strings (see below). Values are objects containing any subset of the background fields (`background_type`, `background_color`, `background_top`, `background_bottom`, `background_split`, `background_gradient_direction`). Text colors, `stars_enabled`, `cameos`, and `sun_enabled` cannot be overridden per-condition. |
+
+Example:
+
+```json
+"condition_overrides": {
+  "TSTORM": {
+    "background_type": "solid",
+    "background_color": "#010005"
+  },
+  "RAIN": {
+    "background_type": "gradient",
+    "background_top": "#030010",
+    "background_bottom": "#010008",
+    "background_gradient_direction": "sunset"
+  }
+}
+```
 
 ---
 
@@ -187,7 +228,7 @@ No restart required.
   },
 
   "stars_enabled": false,
-  "shooting_stars_enabled": false,
+  "cameos": [],
 
   "clouds_enabled": true,
   "cloud_density": "dense",
@@ -217,7 +258,7 @@ No restart required.
 - `colors.time: "#404040"`: dark grey instead of white. At night a bright clock face is intrusive.
 - `clouds_enabled: true` + `dense` + `fast`: thick fast clouds feel stormy even before rain starts.
 - `condition_overrides.TSTORM`: deepens the background further during active thunderstorms. The rain and lightning particles are drawn on top of this.
-- `stars_enabled: false`: no stars; this theme is for overcast/stormy sky.
+- `stars_enabled: false` / `cameos: []`: no stars or shooting stars; this theme is for overcast/stormy sky.
 
 ---
 

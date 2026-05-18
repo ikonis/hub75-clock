@@ -337,6 +337,86 @@ class ShootingStar:
         self.life = life; self.max_life = life
 
 
+class ShootingStarCameo:
+    """Single shooting-star event for the cameo system."""
+    _ALLOWED = frozenset({"CLEAR", "PARTLYCLOUDY"})
+
+    def __init__(self, condition: str, animator):
+        self._px = animator._px
+        self._star: Optional[ShootingStar] = None
+        if condition not in self._ALLOWED:
+            return
+        anim_top    = animator.anim_top
+        anim_bottom = animator.anim_bottom
+        width       = animator.width
+        anim_third  = anim_top + (anim_bottom - anim_top + 1) // 3
+        speed = random.uniform(1.0, 2.5)
+        if random.random() < 0.5:
+            speed = -speed
+        self._star = ShootingStar(
+            x=random.uniform(0, width),
+            y=random.uniform(anim_top, anim_third),
+            vx=speed,
+            vy=random.uniform(0.8, 1.4),
+            life=random.randint(10, 16),
+        )
+
+    def update(self):
+        if self._star is None:
+            return
+        self._star.life -= 1
+        self._star.x += self._star.vx
+        self._star.y += self._star.vy
+
+    def draw(self, canvas):
+        if self._star is None:
+            return
+        ss = self._star
+        brightness = int(220 * (ss.life / ss.max_life))
+        self._px(canvas, int(ss.x), int(ss.y), (brightness, brightness, brightness))
+        for i in range(1, 6):
+            trail_b = int(brightness * (1.0 - i / 5.0))
+            if trail_b > 5:
+                self._px(canvas, int(ss.x - ss.vx * i), int(ss.y - ss.vy * i),
+                         (trail_b, trail_b, trail_b))
+
+    def is_done(self) -> bool:
+        return self._star is None or self._star.life <= 0
+
+
+_CAMEO_REGISTRY = {
+    "shooting_star": ShootingStarCameo,
+}
+
+
+class CameoManager:
+    def __init__(self):
+        self._active = None
+
+    def reset(self):
+        self._active = None
+
+    def update(self, cameos: list, condition: str, fps: float, animator):
+        if self._active is not None:
+            self._active.update()
+            if self._active.is_done():
+                self._active = None
+
+        if self._active is None:
+            for cfg in cameos:
+                cls = _CAMEO_REGISTRY.get(cfg.get("name", ""))
+                if cls is None:
+                    continue
+                prob = cfg.get("chance_per_minute", 0) / 60.0 / fps
+                if random.random() < prob:
+                    self._active = cls(condition, animator)
+                    break
+
+    def draw(self, canvas):
+        if self._active is not None:
+            self._active.draw(canvas)
+
+
 class WeatherAnimator:
     def __init__(self, cfg: dict, layout: dict):
         self.cfg = cfg
@@ -349,13 +429,13 @@ class WeatherAnimator:
         self.particles: List[Particle] = []
         self.clouds: List[Cloud] = []
         self.stars: List[Star] = []
-        self.shooting_stars: List[ShootingStar] = []
         self.bolts: List[LightningBolt] = []
         self._ice_cracks = []
         self.condition = "CLEAR"
         self.current_theme: Optional[Theme] = None
         self.night_mode = False
         self.frame = 0
+        self._cameo_manager = CameoManager()
         self._init_for_condition()
 
     _CONDITION_ALIASES = {
@@ -427,8 +507,8 @@ class WeatherAnimator:
         self.particles = []
         self.clouds = []
         self.stars = []
-        self.shooting_stars = []
         self.bolts = []
+        self._cameo_manager.reset()
 
         stars_ok = (self.current_theme.stars_enabled if self.current_theme else self.night_mode)
         clouds_ok = (self.current_theme.clouds_enabled if self.current_theme else True)
@@ -625,27 +705,11 @@ class WeatherAnimator:
                     random.random() < self.cfg["animation"]["tstorm_lightning_chance"]):
                 self.bolts.append(self._make_bolt())
 
-        # Shooting stars
-        shooting_ok = (self.current_theme.shooting_stars_enabled
-                       if self.current_theme else False)
-        if shooting_ok and self.condition in ("CLEAR", "PARTLYCLOUDY"):
-            for ss in self.shooting_stars:
-                ss.life -= 1
-                ss.x += ss.vx
-                ss.y += ss.vy
-            self.shooting_stars = [ss for ss in self.shooting_stars if ss.life > 0]
-            if random.random() < 0.004:
-                anim_third = self.anim_top + (self.anim_bottom - self.anim_top + 1) // 3
-                speed = random.uniform(1.0, 2.5)
-                if random.random() < 0.5:
-                    speed = -speed
-                self.shooting_stars.append(ShootingStar(
-                    x=random.uniform(0, self.width),
-                    y=random.uniform(self.anim_top, anim_third),
-                    vx=speed,
-                    vy=random.uniform(0.8, 1.4),
-                    life=random.randint(10, 16),
-                ))
+        # Cameos (shooting stars, etc.)
+        if self.current_theme and self.current_theme.cameos:
+            fps = (self.cfg["animation"]["fps_night"] if self.night_mode
+                   else self.cfg["animation"]["fps"])
+            self._cameo_manager.update(self.current_theme.cameos, self.condition, fps, self)
 
     def _draw_hazard_stripes(self, canvas):
         for y in range(self.anim_top, self.anim_bottom + 1):
@@ -767,15 +831,8 @@ class WeatherAnimator:
             if b > 5:
                 self._px(canvas, s.x, s.y, (b, b, b))
 
-        # Shooting stars
-        for ss in self.shooting_stars:
-            brightness = int(220 * (ss.life / ss.max_life))
-            self._px(canvas, int(ss.x), int(ss.y), (brightness, brightness, brightness))
-            for i in range(1, 6):
-                trail_b = int(brightness * (1.0 - i / 5.0))
-                if trail_b > 5:
-                    self._px(canvas, int(ss.x - ss.vx * i), int(ss.y - ss.vy * i),
-                             (trail_b, trail_b, trail_b))
+        # Cameos
+        self._cameo_manager.draw(canvas)
 
         # Sun: drawn before clouds so clouds pass in front of it
         if self.condition == "SUNNY" and not self.night_mode:

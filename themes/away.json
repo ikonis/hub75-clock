@@ -10,7 +10,6 @@
     "condition": "#101010"
   },
   "stars_enabled": false,
-  "shooting_stars_enabled": false,
   "clouds_enabled": false,
   "cloud_density": "sparse",
   "cloud_speed": "slow",

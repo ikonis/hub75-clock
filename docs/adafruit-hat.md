@@ -1,5 +1,7 @@
 # HUB75 Smart Clock: Adafruit RGB Matrix HAT
 
+> **Note:** HAT support is untested and community-supported. The primary supported build uses direct GPIO wiring without a HAT. These notes are provided for users who already have an Adafruit HAT and want to try it, but issues specific to the HAT configuration are not actively supported.
+
 Using an Adafruit RGB Matrix HAT simplifies wiring significantly. Just plug the HAT onto the Pi's 40-pin header and connect the HUB75 panel to the HAT's output connector.
 
 ---
