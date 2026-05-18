@@ -23,14 +23,14 @@ fi
 echo "[update] pulling latest..."
 git -C "$REPO_DIR" pull origin $(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD)
 echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
+cp "$REPO_DIR/update.sh" "$HOME/update-clock.sh"
 
 echo "[update] copying files..."
 sudo cp "$REPO_DIR/clock/hub75_clock.py" "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/clock/theme_loader.py" "$CLOCK_DIR/"
 sudo mkdir -p "$CONFIG_DIR/themes" "$CONFIG_DIR/animations"
-sudo cp "$REPO_DIR/themes/"*.json "$CONFIG_DIR/themes/"
-sudo cp "$REPO_DIR/animations/"*.py "$CONFIG_DIR/animations/"
-sudo chmod 644 "$CONFIG_DIR/animations/"*.py
+sudo rsync -av --delete "$REPO_DIR/themes/" "$CONFIG_DIR/themes/"
+sudo rsync -av --delete "$REPO_DIR/animations/" "$CONFIG_DIR/animations/"
 
 echo "[update] restarting..."
 sudo systemctl restart "$SERVICE_NAME"
