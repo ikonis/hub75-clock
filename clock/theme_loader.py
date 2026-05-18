@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -92,12 +93,23 @@ class ThemeLoader:
         loader = self
 
         class _Handler(FileSystemEventHandler):
+            def __init__(self):
+                super().__init__()
+                self._timer = None
+                self._lock = threading.Lock()
+
             def on_any_event(self, event):
                 if event.is_directory:
                     return
-                if getattr(event, "src_path", "").endswith(".json") or \
-                   getattr(event, "dest_path", "").endswith(".json"):
-                    loader._reload()
+                if not (getattr(event, "src_path", "").endswith(".json") or
+                        getattr(event, "dest_path", "").endswith(".json")):
+                    return
+                with self._lock:
+                    if self._timer is not None:
+                        self._timer.cancel()
+                    self._timer = threading.Timer(0.5, loader._reload)
+                    self._timer.daemon = True
+                    self._timer.start()
 
         self._observer = Observer()
         self._observer.schedule(_Handler(), self.themes_dir, recursive=False)
