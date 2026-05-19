@@ -6,6 +6,7 @@ class Animation:
     name = "meteor"
     conditions = ["CLEAR"]
     themes = ["Night", "Late Evening"]
+    layer = "celestial"
 
     def __init__(self, width, height, cfg, animator):
         self._w = width

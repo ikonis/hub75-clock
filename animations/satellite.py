@@ -6,6 +6,7 @@ class Animation:
     name = "satellite"
     conditions = ["CLEAR"]
     themes = ["Night"]
+    layer = "celestial"
 
     # ISS-like profile: central body + solar panel wings
     # Offsets from top-left of bounding box (11 wide, 3 tall)

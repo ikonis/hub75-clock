@@ -343,6 +343,7 @@ class ShootingStar:
 
 class ShootingStarCameo:
     """Single shooting-star event for the cameo system."""
+    layer = "celestial"
     _ALLOWED = frozenset({"CLEAR", "PARTLYCLOUDY"})
 
     def __init__(self, condition: str, animator):
@@ -480,11 +481,31 @@ class CameoManager:
         self._loader = loader
         self._cfg = cfg
         self._active = None
+        self._persistent = None
 
     def reset(self):
         self._active = None
 
+    def setup_persistent(self, cameos: list, animator):
+        self._persistent = None
+        for cameo_cfg in cameos:
+            cls = self._loader.get(cameo_cfg.get("name", ""))
+            if cls is None or not getattr(cls, "persistent", False):
+                continue
+            try:
+                self._persistent = cls(animator.width, animator.height,
+                                       self._cfg, animator)
+            except Exception as e:
+                print(f"[animations] warning: failed to spawn persistent {cls}: {e}")
+            break
+
     def update(self, cameos: list, fps: float, animator):
+        if self._persistent is not None:
+            try:
+                self._persistent.update()
+            except Exception as e:
+                print(f"[animations] warning: persistent update error: {e}")
+
         if self._active is not None:
             self._active.update()
             if self._active.is_done():
@@ -493,7 +514,7 @@ class CameoManager:
         if self._active is None:
             for cameo_cfg in cameos:
                 cls = self._loader.get(cameo_cfg.get("name", ""))
-                if cls is None:
+                if cls is None or getattr(cls, "persistent", False):
                     continue
                 prob = cameo_cfg.get("chance_per_minute", 0) / 60.0 / fps
                 if random.random() < prob:
@@ -504,13 +525,35 @@ class CameoManager:
                         print(f"[animations] warning: failed to spawn {cls}: {e}")
                     break
 
-    def draw(self, canvas):
-        if self._active is not None:
+    def draw_celestial(self, canvas):
+        if (self._active is not None and
+                getattr(self._active, "layer", "foreground") == "celestial"):
             try:
                 self._active.draw(canvas)
             except Exception as e:
                 print(f"[animations] warning: draw error: {e}")
                 self._active = None
+        if (self._persistent is not None and
+                getattr(self._persistent, "layer", "foreground") == "celestial"):
+            try:
+                self._persistent.draw(canvas)
+            except Exception as e:
+                print(f"[animations] warning: persistent draw error: {e}")
+
+    def draw_foreground(self, canvas):
+        if (self._active is not None and
+                getattr(self._active, "layer", "foreground") == "foreground"):
+            try:
+                self._active.draw(canvas)
+            except Exception as e:
+                print(f"[animations] warning: draw error: {e}")
+                self._active = None
+        if (self._persistent is not None and
+                getattr(self._persistent, "layer", "foreground") == "foreground"):
+            try:
+                self._persistent.draw(canvas)
+            except Exception as e:
+                print(f"[animations] warning: persistent draw error: {e}")
 
 
 class WeatherAnimator:
@@ -523,7 +566,6 @@ class WeatherAnimator:
         self.anim_top    = self.banner_bottom + 1
         self.anim_bottom = self.height - 1
         self.particles: List[Particle] = []
-        self.clouds: List[Cloud] = []
         self.stars: List[Star] = []
         self.bolts: List[LightningBolt] = []
         self._ice_cracks = []
@@ -562,6 +604,7 @@ class WeatherAnimator:
     def set_theme(self, theme: Theme):
         self.current_theme = theme
         self._init_for_condition()
+        self._cameo_manager.setup_persistent(theme.cameos, self)
 
     def set_night_mode(self, night: bool):
         if night == self.night_mode:
@@ -580,56 +623,28 @@ class WeatherAnimator:
             lo, hi = max(2, lo // 2), max(3, hi // 2)
         return max(1, random.randint(lo, hi))
 
-    def _theme_cloud_count(self) -> int:
-        if self.current_theme is None:
-            return random.randint(2, 3)
-        density = self.current_theme.cloud_density
-        if density == "sparse":
-            return 2
-        elif density == "dense":
-            return random.randint(5, 6)
-        return random.randint(3, 4)
-
-    def _theme_cloud_speed(self) -> float:
-        if self.current_theme is None:
-            return random.uniform(0.08, 0.18)
-        speed = self.current_theme.cloud_speed
-        if speed == "slow":
-            return random.uniform(0.04, 0.10)
-        elif speed == "fast":
-            return random.uniform(0.14, 0.28)
-        return random.uniform(0.08, 0.18)
-
     def _init_for_condition(self):
         self.condition = self._CONDITION_ALIASES.get(self.condition, self.condition)
         print(f"[animator] condition={self.condition}")
         self.particles = []
-        self.clouds = []
         self.stars = []
         self.bolts = []
         self._cameo_manager.reset()
 
         stars_ok = (self.current_theme.stars_enabled if self.current_theme else self.night_mode)
-        clouds_ok = (self.current_theme.clouds_enabled if self.current_theme else True)
 
         if self.condition == "CLEAR":
             if stars_ok:
                 self._init_stars()
         elif self.condition == "SUNNY":
-            if clouds_ok:
-                self._init_clear_day()
             if stars_ok:
                 self._init_stars()
         elif self.condition == "CLOUDY":
             if stars_ok:
                 self._init_stars()
-            if clouds_ok:
-                self._init_clouds()
         elif self.condition in ("PARTLYCLOUDY", "FOG"):
             if stars_ok:
                 self._init_stars()
-            if clouds_ok:
-                self._init_partly_cloudy()
         elif self.condition == "ICE":
             self._init_ice()
         elif self.condition == "RAIN":
@@ -643,8 +658,6 @@ class WeatherAnimator:
         else:
             if stars_ok:
                 self._init_stars()
-            if clouds_ok:
-                self._init_partly_cloudy()
 
     def _init_stars(self):
         anim_h = self.anim_bottom - self.anim_top + 1
@@ -658,49 +671,6 @@ class WeatherAnimator:
                 max_brightness=random.choice([60, 80, 100, 140, 200]),
             ))
 
-    def _init_clear_day(self):
-        color = self._color("cloud_day", "cloud_night")
-        count = self._theme_cloud_count()
-        for _ in range(count):
-            direction = random.choice([-1, 1])
-            speed = self._theme_cloud_speed() * direction
-            self.clouds.append(Cloud(
-                x=random.uniform(0, self.width),
-                y=random.randint(self.anim_top + 1, self.anim_bottom - 5),
-                vx=speed,
-                size=random.choice(["small", "medium"]),
-                color=color,
-            ))
-
-    def _init_clouds(self):
-        color = self._color("cloud_day", "cloud_night")
-        count = self._theme_cloud_count()
-        for _ in range(count):
-            direction = random.choice([-1, 1])
-            speed = self._theme_cloud_speed() * direction
-            size = random.choice(["medium", "large"])
-            self.clouds.append(Cloud(
-                x=random.uniform(0, self.width),
-                y=random.randint(self.anim_top + 1, self.anim_bottom - 5),
-                vx=speed,
-                size=size,
-                color=color,
-            ))
-
-    def _init_partly_cloudy(self):
-        color = self._color("cloud_day", "cloud_night")
-        count = self._theme_cloud_count()
-        for _ in range(count):
-            direction = random.choice([-1, 1])
-            speed = self._theme_cloud_speed() * direction
-            size = random.choice(["small", "medium"])
-            self.clouds.append(Cloud(
-                x=random.uniform(0, self.width),
-                y=random.randint(self.anim_top + 1, self.anim_bottom - 5),
-                vx=speed,
-                size=size,
-                color=color,
-            ))
 
     def _init_rain(self, fast=False):
         color = self._color("rain_day", "rain_night")
@@ -787,13 +757,6 @@ class WeatherAnimator:
                 p.x = random.uniform(0, self.width)
             if p.x < 0: p.x = self.width - 1
             elif p.x >= self.width: p.x = 0
-
-        for c in self.clouds:
-            c.x += c.vx
-            if c.vx > 0 and c.x > self.width + 12:
-                c.x = -12
-            elif c.vx < 0 and c.x < -12:
-                c.x = self.width + 12
 
         # Lightning bolts (TSTORM)
         if self.condition == "TSTORM":
@@ -922,7 +885,7 @@ class WeatherAnimator:
 
         self._draw_background(canvas)
 
-        # Stars: populated by _init_for_condition only when theme allows them
+        # Stars
         for s in self.stars:
             phase = s.phase + (self.frame * s.speed)
             level = (math.sin(phase) + 1.0) * 0.5
@@ -930,17 +893,17 @@ class WeatherAnimator:
             if b > 5:
                 self._px(canvas, s.x, s.y, (b, b, b))
 
-        # Cameos
-        self._cameo_manager.draw(canvas)
-
-        # Sun: drawn before clouds so clouds pass in front of it
+        # Sun: drawn before celestial cameos so they can pass in front
         if self.condition == "SUNNY" and not self.night_mode:
             if self.current_theme is None or getattr(self.current_theme, 'sun_enabled', True):
                 self._draw_sun(canvas)
 
-        # Clouds
-        for c in self.clouds:
-            self._draw_cloud(canvas, c)
+        # Moon
+        if self.current_theme is not None and getattr(self.current_theme, 'moon_enabled', False):
+            self._draw_moon(canvas)
+
+        # Celestial cameos (shooting stars, meteors, comets, satellites) — behind weather
+        self._cameo_manager.draw_celestial(canvas)
 
         # ICE: light blue bg + static crack lines
         if self.condition == "ICE":
@@ -974,35 +937,39 @@ class WeatherAnimator:
                 x2, y2 = bolt.points[i + 1]
                 self._line(canvas, x1, y1, x2, y2, c)
 
-    def _draw_cloud(self, canvas, cloud: Cloud):
-        x = int(cloud.x)
-        y = int(cloud.y)
-        c = cloud.color
-        if cloud.size == "small":
-            shape = [
-                "  XXX  ",
-                " XXXXX ",
-                "XXXXXXX",
-            ]
-        elif cloud.size == "medium":
-            shape = [
-                "   XXXX   ",
-                " XXXXXXXX ",
-                "XXXXXXXXXX",
-                " XXXXXXXX ",
-            ]
-        else:  # large
-            shape = [
-                "   XXXXX   ",
-                " XXXXXXXXX ",
-                "XXXXXXXXXXX",
-                "XXXXXXXXXXX",
-                " XXXXXXXXX ",
-            ]
-        for row, line in enumerate(shape):
-            for col, ch in enumerate(line):
-                if ch == "X":
-                    self._px(canvas, x + col, y + row, c)
+        # Foreground cameos (clouds, ghosts, etc.) — in front of weather
+        self._cameo_manager.draw_foreground(canvas)
+
+    def _draw_moon(self, canvas):
+        cx, cy = 3, self.anim_top + 3
+        radius = 3
+        glow_r = 5
+        sky = (parse_color(self.current_theme.background_color)
+               if self.current_theme and self.current_theme.background_type == "solid"
+               else (0, 0, 8))
+        # Glow
+        for dy in range(-glow_r, glow_r + 1):
+            for dx in range(-glow_r, glow_r + 1):
+                dist = math.sqrt(dx * dx + dy * dy)
+                if radius < dist <= glow_r:
+                    fade = 1.0 - (dist - radius) / (glow_r - radius)
+                    gc = (
+                        int(200 * fade * 0.4 + sky[0] * (1.0 - fade * 0.4)),
+                        int(200 * fade * 0.4 + sky[1] * (1.0 - fade * 0.4)),
+                        int(160 * fade * 0.3 + sky[2] * (1.0 - fade * 0.3)),
+                    )
+                    self._px(canvas, cx + dx, cy + dy, gc)
+        # Filled disk with mottled surface
+        for dy in range(-radius, radius + 1):
+            for dx in range(-radius, radius + 1):
+                if dx * dx + dy * dy <= radius * radius:
+                    shade = 180 + ((dx * 13 + dy * 7) % 40) - 20
+                    # Two crater patches
+                    if (dx == -1 and dy == -1) or (dx == 1 and dy == 1):
+                        shade = 120
+                    shade = max(80, min(220, shade))
+                    self._px(canvas, cx + dx, cy + dy,
+                              (shade, shade, int(shade * 0.85)))
 
     def _line(self, canvas, x1, y1, x2, y2, color):
         dx, dy = abs(x2 - x1), abs(y2 - y1)

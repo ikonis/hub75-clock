@@ -6,6 +6,7 @@ class Animation:
     name = "jack_o_lantern"
     conditions = []
     themes = ["Night", "Late Evening"]
+    layer = "foreground"
 
     # Orange oval pumpkin (9 wide, 7 tall)
     _BODY = [

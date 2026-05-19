@@ -15,6 +15,7 @@
   "cloud_density": "sparse",
   "cloud_speed": "slow",
   "sun_enabled": false,
+  "moon_enabled": true,
   "condition_overrides": {
     "RAIN": {"background_type": "solid", "background_color": "#040008"},
     "TSTORM": {"background_type": "solid", "background_color": "#020005"}

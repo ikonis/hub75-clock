@@ -6,6 +6,7 @@ class Animation:
     name = "tumbleweed"
     conditions = []
     themes = ["Day"]
+    layer = "foreground"
 
     # 5-pixel diameter circle pixel offsets
     _CIRCLE = [

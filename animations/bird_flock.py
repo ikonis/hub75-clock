@@ -6,6 +6,7 @@ class Animation:
     name = "bird_flock"
     conditions = []
     themes = ["Day"]
+    layer = "foreground"
 
     def __init__(self, width, height, cfg, animator):
         self._w = width

@@ -5,6 +5,7 @@ class Animation:
     name = "rainbow"
     conditions = ["CLEAR", "PARTLYCLOUDY"]
     themes = ["Day"]
+    layer = "foreground"
 
     _BANDS = [
         (255, 0,   0),    # Red

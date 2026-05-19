@@ -6,6 +6,7 @@ class Animation:
     name = "firefly"
     conditions = ["CLEAR"]
     themes = ["Night", "Late Evening"]
+    layer = "foreground"
 
     def __init__(self, width, height, cfg, animator):
         self._w = width

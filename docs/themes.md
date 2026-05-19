@@ -112,49 +112,51 @@ Example:
 
 **Built-in animations** (installed to `/etc/hub75-clock/animations/` by `install.sh`):
 
-| Name | Conditions filter | Themes filter | Description |
-|---|---|---|---|
-| `shooting_star` | CLEAR, PARTLYCLOUDY | Night, Late Evening | Fast diagonal streak with fading tail |
-| `ufo` | CLEAR, PARTLYCLOUDY | Night, Late Evening | Saucer silhouette drifting across with cycling belly lights |
-| `satellite` | CLEAR | Night | ISS-silhouette cross, diagonal slow pass |
-| `meteor` | CLEAR | Night, Late Evening | Fast diagonal with 6-frame orange/red history trail |
-| `comet` | CLEAR | Night | Slow left-to-right with blue-white gradient tail |
-| `airplane` | _(any)_ | Day, Sunrise, Sunset | Fuselage + wings + windows, random direction |
-| `biplane` | CLEAR | Day | Double-wing sprite with alternating propeller, mirrors for direction |
-| `bird_flock` | _(any)_ | Day | V-formation of 5–7 birds with alternating flap frames |
-| `butterfly` | CLEAR | Day | Open/closed wing frames, sine wave vertical drift, orange |
-| `hot_air_balloon` | CLEAR, PARTLYCLOUDY | Day, Sunrise | 7×10px balloon with ROYGBIV stripes, drifts upward |
-| `tumbleweed` | _(any)_ | Day | Rolling circle with rotation transform, slight bounce |
-| `rainbow` | CLEAR, PARTLYCLOUDY | Day | ROYGBIV arc, fade in/hold/fade out |
-| `firefly` | CLEAR | Night, Late Evening | 3–5 dots, independent sine-phase blink, slow drift |
-| `snowman` | SNOW | _(any)_ | Pixel-art snowman, lower-right corner, fade in/out |
-| `santa` | _(any)_ | Night, Late Evening | Sleigh + reindeer silhouette, right-to-left, sine altitude |
-| `fireworks` | _(any)_ | _(any)_ | State machine: launch, explode, wait; 3 bursts, colored sparks |
-| `jack_o_lantern` | _(any)_ | Night, Late Evening | 9×7px pumpkin, flickering eyes, fade in/out |
-| `easter_egg` | _(any)_ | Day | 6×8px striped oval, bounces left-to-right |
-| `rocket` | _(any)_ | _(any)_ | 3×7px rocket, accelerates upward with flame trail |
-| `submarine` | _(any)_ | Day | Long hull + conning tower + periscope, slow left-to-right |
-| `ghost` | _(any)_ | Night, Late Evening | Dome + wavy skirt, sine float, dimmed white/pale |
-| `fish` | RAIN, SNOW | _(any)_ | Body oval + tail + eye, sine swim, blue/silver |
-| `tractor` | _(any)_ | Day | Side-profile tractor with rotating wheel spokes, rolls across bottom |
+| Name | Layer | Conditions | Themes | Description |
+|---|---|---|---|---|
+| `clouds` | foreground | _(any)_ | Day, Sunrise, Sunset, Late Evening | **Persistent** — add without `chance_per_minute`. Count and speed driven by `cloud_density` / `cloud_speed`. |
+| `shooting_star` | celestial | CLEAR, PARTLYCLOUDY | Night, Late Evening | Fast diagonal streak with fading tail |
+| `ufo` | foreground | CLEAR, PARTLYCLOUDY | Night, Late Evening | Saucer silhouette, cycling belly lights, occasional tractor beam abduction |
+| `satellite` | celestial | CLEAR | Night | ISS-silhouette cross, diagonal slow pass |
+| `meteor` | celestial | CLEAR | Night, Late Evening | Fast bidirectional diagonal with orange/red history trail |
+| `comet` | celestial | CLEAR | Night | Slow diagonal with blue-white gradient tail |
+| `airplane` | foreground | _(any)_ | Day, Sunrise, Sunset | Fuselage + wings + windows, mirrors to face direction of travel |
+| `bird_flock` | foreground | _(any)_ | Day | V-formation of 5–7 birds with alternating flap frames |
+| `butterfly` | foreground | CLEAR | Day | Open/closed wing frames, sine wave vertical drift, orange |
+| `hot_air_balloon` | foreground | CLEAR, PARTLYCLOUDY | Day, Sunrise | 7×10px balloon with ROYGBIV stripes, drifts upward |
+| `tumbleweed` | foreground | _(any)_ | Day | Rolling circle with rotation transform, slight bounce |
+| `rainbow` | foreground | CLEAR, PARTLYCLOUDY | Day | ROYGBIV arc, 2px thick bands, fade in/hold/fade out |
+| `firefly` | foreground | CLEAR | Night, Late Evening | 6–8 dots, independent sine-phase blink, slow drift, 2px tall |
+| `snowman` | foreground | SNOW | _(any)_ | Pixel-art snowman, lower-right corner, fade in/out |
+| `santa` | foreground | _(any)_ | Night, Late Evening | Sleigh + reindeer silhouette, right-to-left, sine altitude |
+| `fireworks` | foreground | _(any)_ | _(any)_ | 1–3 physics-based rockets, 16–20 sparks each with velocity tails |
+| `jack_o_lantern` | foreground | _(any)_ | Night, Late Evening | 9×7px pumpkin with triangle eyes and zigzag mouth, fade in/out |
+| `easter_egg` | foreground | _(any)_ | Day | 6×8px striped oval, bounces left-to-right |
+| `rocket` | foreground | _(any)_ | _(any)_ | 3×7px rocket, accelerates upward from random X, flame trail |
+| `submarine` | foreground | _(any)_ | Day | Long hull + conning tower + periscope, slow left-to-right |
+| `ghost` | foreground | _(any)_ | Night, Late Evening | Pac-Man ghost (Blinky/Pinky/Inky/Clyde colors), directional pupils, sine float |
 
-Conditions and themes filters on each animation are enforced by `CameoManager` at spawn time. A cameo listed in `cameos` will only actually fire when both filters pass. An empty filter list means "any". Use this to put cameos on themes without worrying about them firing at the wrong time.
+The `layer` column shows when the animation is drawn relative to weather particles. `celestial` renders behind rain and snow; `foreground` renders in front. See `docs/animations.md` for details.
 
 See `docs/animations.md` for the drop-in animation interface and how to write your own.
 
 ### Clouds
 
+Clouds are now rendered by the persistent `clouds` cameo animation, not by the weather engine directly. To enable clouds on a theme, add `{"name": "clouds"}` to the `cameos` array. The cloud count, size, and speed are controlled by the fields below.
+
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `clouds_enabled` | bool | `false` | Show drifting clouds. Clouds are drawn when the weather condition is CLOUDY, PARTLYCLOUDY, SUNNY, or similar. |
 | `cloud_density` | string | `"medium"` | How many clouds to spawn. `"sparse"` = 2, `"medium"` = 3–4, `"dense"` = 5–6. |
-| `cloud_speed` | string | `"medium"` | How fast clouds drift. `"slow"` = 0.04–0.10 px/frame, `"medium"` = 0.08–0.18, `"fast"` = 0.14–0.28. |
+| `cloud_speed` | string | `"medium"` | How fast clouds drift. `"slow"` ≈ 0.07 px/frame, `"medium"` ≈ 0.13, `"fast"` ≈ 0.21. |
 
-### Sun
+The `clouds_enabled` field is no longer used by the clock but is preserved in existing theme files for reference.
+
+### Sun and Moon
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `sun_enabled` | bool | `true` | Draw the sun quarter-circle glow in the top-right corner when the condition is SUNNY and night mode is off. Set to `false` for themes where the background already represents the sun (e.g. sunrise gradient, sunset gradient), so the glow doesn't stack on top of the coloured sky. |
+| `moon_enabled` | bool | `false` | Draw a small moon disk (radius 3, ~7×7px) in the upper-left corner of the animation zone with a mottled gray surface and a dim glow border. Intended for night and late-evening themes. |
 
 ### Condition overrides
 
@@ -259,9 +261,8 @@ No restart required.
   },
 
   "stars_enabled": false,
-  "cameos": [],
+  "cameos": [{"name": "clouds"}],
 
-  "clouds_enabled": true,
   "cloud_density": "dense",
   "cloud_speed": "fast",
 
@@ -287,7 +288,7 @@ No restart required.
 - `background_color: "#020008"`: nearly black with a faint purple tint. Keeps the panel very dim.
 - `background_top/bottom`: unused here since `background_type` is `"solid"`, but provided so the file is a complete reference.
 - `colors.time: "#404040"`: dark grey instead of white. At night a bright clock face is intrusive.
-- `clouds_enabled: true` + `dense` + `fast`: thick fast clouds feel stormy even before rain starts.
+- `cameos: [{"name": "clouds"}]` + `cloud_density: "dense"` + `cloud_speed: "fast"`: thick fast clouds feel stormy even before rain starts.
 - `condition_overrides.TSTORM`: deepens the background further during active thunderstorms. The rain and lightning particles are drawn on top of this.
 - `stars_enabled: false` / `cameos: []`: no stars or shooting stars; this theme is for overcast/stormy sky.
 

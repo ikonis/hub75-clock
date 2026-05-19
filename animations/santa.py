@@ -6,6 +6,7 @@ class Animation:
     name = "santa"
     conditions = []
     themes = ["Night", "Late Evening"]
+    layer = "foreground"
 
     # Santa + sleigh silhouette (facing left, moves right-to-left)
     # (dx, dy, r, g, b) — 0,0 at left edge of sprite, 16 wide total

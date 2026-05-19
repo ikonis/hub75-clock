@@ -6,6 +6,7 @@ class Animation:
     name = "comet"
     conditions = ["CLEAR"]
     themes = ["Night"]
+    layer = "celestial"
 
     def __init__(self, width, height, cfg, animator):
         self._w = width

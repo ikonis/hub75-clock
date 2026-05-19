@@ -1,0 +1,17 @@
+{
+  "name": "Test Clear Night",
+  "description": "Moon-only test: black background, nothing else",
+  "background_type": "solid",
+  "background_color": "#000000",
+  "colors": {
+    "time": "#505050",
+    "low_temp": "#003344",
+    "high_temp": "#441E00",
+    "condition": "#202020"
+  },
+  "stars_enabled": false,
+  "cameos": [],
+  "clouds_enabled": false,
+  "sun_enabled": false,
+  "moon_enabled": true
+}

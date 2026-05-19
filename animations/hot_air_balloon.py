@@ -6,6 +6,7 @@ class Animation:
     name = "hot_air_balloon"
     conditions = ["CLEAR", "PARTLYCLOUDY"]
     themes = ["Day", "Sunrise"]
+    layer = "foreground"
 
     # Balloon: 7 wide, 7 tall oval with colorful stripes
     # (dx, dy, r, g, b)

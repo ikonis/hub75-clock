@@ -6,6 +6,7 @@ class Animation:
     name = "butterfly"
     conditions = ["CLEAR"]
     themes = ["Day"]
+    layer = "foreground"
 
     # Two frames: wings open and wings closed
     # Body center at (3, 2), wings span ±4

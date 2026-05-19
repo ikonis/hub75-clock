@@ -6,6 +6,7 @@ class Animation:
     name = "fireworks"
     conditions = []
     themes = []
+    layer = "foreground"
 
     _COLORS = [
         (255, 255, 255),  # white

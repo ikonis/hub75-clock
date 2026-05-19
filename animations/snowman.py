@@ -6,6 +6,7 @@ class Animation:
     name = "snowman"
     conditions = ["SNOW"]
     themes = []
+    layer = "foreground"
 
     # Pixel art snowman: lower circle (5 dia), upper circle (3 dia), hat, arms, face
     # All offsets from top-left of bounding box, anchored to bottom-right of screen

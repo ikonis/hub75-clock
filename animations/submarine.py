@@ -6,6 +6,7 @@ class Animation:
     name = "submarine"
     conditions = []
     themes = ["Day"]
+    layer = "foreground"
 
     # Sub hull: 18 wide, 5 tall. Conning tower at dx=12..14, periscope at dx=13
     _HULL = [

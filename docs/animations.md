@@ -29,6 +29,8 @@ class Animation:
     name = "my_animation"          # unique string key — must match what you put in themes
     conditions = []                # informational: intended weather conditions (not enforced at runtime)
     themes = []                    # informational: intended theme names (not enforced at runtime)
+    layer = "foreground"           # "celestial" renders behind weather; "foreground" renders in front
+    persistent = False             # True = runs every frame without a chance_per_minute roll
 
     def __init__(self, width, height, cfg, animator):
         self._w = width
@@ -49,6 +51,7 @@ class Animation:
 
     def is_done(self) -> bool:
         # Return True when the animation has finished. CameoManager will discard it.
+        # For persistent animations, return False always.
         return False
 ```
 
@@ -59,6 +62,34 @@ Drop the file into `/etc/hub75-clock/animations/`. The clock picks it up within 
   {"name": "my_animation", "chance_per_minute": 3}
 ]
 ```
+
+---
+
+## Two-slot cameo system
+
+`CameoManager` maintains two independent animation slots:
+
+- **One-shot slot (`_active`)**: The normal cameo slot. Spawned via `chance_per_minute` probability rolls. Only one runs at a time; while one is active, new rolls are skipped. Cleared on condition change.
+- **Persistent slot (`_persistent`)**: Started once when the theme is applied. Runs every frame without any roll. Cleared only on theme change, surviving condition changes. Used for continuously visible effects (e.g. `clouds`).
+
+A persistent animation sets `persistent = True` on its class and should return `False` from `is_done()` always. It does not need a `chance_per_minute` entry in the cameos array:
+
+```json
+"cameos": [{"name": "clouds"}]
+```
+
+---
+
+## Draw layer ordering
+
+Animations declare their draw layer via the `layer` class attribute:
+
+| Value | When drawn | Examples |
+|---|---|---|
+| `"celestial"` | After stars, before weather particles | `shooting_star`, `meteor`, `comet`, `satellite` |
+| `"foreground"` | After weather particles, on top of rain/snow | `clouds`, `ghost`, `ufo`, all others |
+
+Draw order each frame: background → stars → sun → moon → celestial cameos → ICE → particles → lightning → foreground cameos.
 
 ---
 
@@ -79,6 +110,17 @@ Use this field as documentation for yourself and for tools like the theme builde
 Informational metadata describing the theme names this animation is designed for (e.g. `["Night", "Day"]`). **Not enforced at runtime.** The clock does not check this attribute before spawning.
 
 An empty list (`[]`) means "suitable for any theme."
+
+### `layer` (optional, string)
+
+Controls where in the draw stack this animation is rendered. Default is `"foreground"`.
+
+- `"celestial"` — rendered after stars and sun/moon but before weather particles. Use for space objects (meteors, shooting stars, satellites, comets) that should appear behind rain and snow.
+- `"foreground"` — rendered after all weather particles. Use for everything else.
+
+### `persistent` (optional, bool)
+
+Default `False`. When `True`, the animation is instantiated once when the theme is applied and runs every frame without a `chance_per_minute` roll. It is replaced only when the theme changes. Persistent animations should always return `False` from `is_done()`.
 
 ---
 
@@ -151,53 +193,53 @@ class Animation:
 
 All of these are installed to `/etc/hub75-clock/animations/` by `install.sh` and updated on `make update`.
 
-### Space / Night
+### Space / Night (layer: celestial)
+
+These animations are drawn behind weather particles so meteors appear to fall through rain.
 
 | File | Name | Conditions | Themes | Description |
 |---|---|---|---|---|
 | `shooting_star.py` | `shooting_star` | CLEAR, PARTLYCLOUDY | Night, Late Evening | Fast diagonal streak with fading tail. Built-in fallback; always registered even if the file is missing. |
-| `ufo.py` | `ufo` | CLEAR, PARTLYCLOUDY | Night, Late Evening | Saucer silhouette drifting across with cycling teal belly lights and glow trail. |
+| `ufo.py` | `ufo` | CLEAR, PARTLYCLOUDY | Night, Late Evening | Saucer silhouette drifting across with cycling teal belly lights, glow trail, and occasional tractor beam abduction sequence. |
 | `satellite.py` | `satellite` | CLEAR | Night | ISS-profile cross sprite, slow diagonal pass from top-right to bottom-left. |
-| `meteor.py` | `meteor` | CLEAR | Night, Late Evening | Fast diagonal (3.5–5 px/frame) with 6-frame orange/red history trail. |
-| `comet.py` | `comet` | CLEAR | Night | Slow left-to-right with 10–14px blue-white gradient tail. |
+| `meteor.py` | `meteor` | CLEAR | Night, Late Evening | Fast bidirectional diagonal (3.5–5 px/frame) with 6-frame orange/red history trail. |
+| `comet.py` | `comet` | CLEAR | Night | Slow diagonal with 10–14px blue-white gradient tail, always drifts downward. |
 
-### Day / Sky
+### Day / Sky (layer: foreground)
 
 | File | Name | Conditions | Themes | Description |
 |---|---|---|---|---|
-| `airplane.py` | `airplane` | _(any)_ | Day, Sunrise, Sunset | 8px fuselage + wings + windows, random left/right direction, upper zone. |
-| `biplane.py` | `biplane` | CLEAR | Day | Double-wing sprite with alternating propeller, mirrors for direction. |
+| `clouds.py` | `clouds` | _(any)_ | Day, Sunrise, Sunset, Late Evening | **Persistent.** Drifting clouds whose count, size, and speed are driven by the theme's `cloud_density` and `cloud_speed` fields. Runs continuously without a `chance_per_minute` roll. |
+| `airplane.py` | `airplane` | _(any)_ | Day, Sunrise, Sunset | 8px fuselage + wings + windows, random left/right direction, mirrors sprite to face direction of travel. |
 | `bird_flock.py` | `bird_flock` | _(any)_ | Day | V-formation of 5–7 birds with alternating flap frames. |
 | `butterfly.py` | `butterfly` | CLEAR | Day | Open/closed wing frames every 5 ticks, sine wave vertical drift, orange. |
 | `hot_air_balloon.py` | `hot_air_balloon` | CLEAR, PARTLYCLOUDY | Day, Sunrise | 7×10px balloon with ROYGBIV stripes, drifts upward. |
 | `tumbleweed.py` | `tumbleweed` | _(any)_ | Day | 5px circle with rotation transform, slight bounce via `|sin|×1.5`. |
 
-### Weather
+### Weather (layer: foreground)
 
 | File | Name | Conditions | Themes | Description |
 |---|---|---|---|---|
-| `rainbow.py` | `rainbow` | CLEAR, PARTLYCLOUDY | Day | ROYGBIV arc using radius math per band, fade in 15 / hold 45 / fade out 15 frames. |
-| `firefly.py` | `firefly` | CLEAR | Night, Late Evening | 3–5 dots with independent sine-phase blink, slow random drift, yellow-green. |
+| `rainbow.py` | `rainbow` | CLEAR, PARTLYCLOUDY | Day | ROYGBIV arc using radius math per band, 2px thick, fade in 15 / hold 45 / fade out 15 frames. |
+| `firefly.py` | `firefly` | CLEAR | Night, Late Evening | 6–8 dots with independent sine-phase blink, slow random drift, yellow-green, 2px tall. |
 | `snowman.py` | `snowman` | SNOW | _(any)_ | Pixel-art snowman lower-right corner, fade in 20 / hold 90 / fade out 20 frames, flickering eyes. |
 
-### Holiday
+### Holiday (layer: foreground)
 
 | File | Name | Conditions | Themes | Description |
 |---|---|---|---|---|
 | `santa.py` | `santa` | _(any)_ | Night, Late Evening | 14px-wide sleigh + reindeer silhouette, right-to-left, sine wave altitude. |
-| `fireworks.py` | `fireworks` | _(any)_ | _(any)_ | State machine (launch → explode → wait), 3 bursts, 12–18 colored sparks with gravity. |
-| `jack_o_lantern.py` | `jack_o_lantern` | _(any)_ | Night, Late Evening | 9×7px orange pumpkin, triangle eyes with flicker, black mouth cutout, lower-right corner, fade in/out. |
+| `fireworks.py` | `fireworks` | _(any)_ | _(any)_ | 1–3 rockets with staggered launches. Physics-based: gravity applied each frame, apex triggers explosion. 16–20 sparks per burst with velocity-based tails at 60%/30% brightness. |
+| `jack_o_lantern.py` | `jack_o_lantern` | _(any)_ | Night, Late Evening | 9×7px orange pumpkin with triangle eyes, triangle nose, zigzag mouth. Lower-right corner, fade in/out. |
 | `easter_egg.py` | `easter_egg` | _(any)_ | Day | 6×8px oval with 4-color stripe pattern, bounces left-to-right with slight vertical bob. |
 
-### Fun
+### Fun (layer: foreground)
 
 | File | Name | Conditions | Themes | Description |
 |---|---|---|---|---|
-| `rocket.py` | `rocket` | _(any)_ | _(any)_ | 3×7px rocket sprite, accelerates upward, flame trail below, exits top. |
+| `rocket.py` | `rocket` | _(any)_ | _(any)_ | 3×7px rocket sprite, accelerates upward from a random X position, flame trail below, exits top. |
 | `submarine.py` | `submarine` | _(any)_ | Day | Long hull + conning tower + periscope, slow left-to-right with slight sine wave. |
-| `ghost.py` | `ghost` | _(any)_ | Night, Late Evening | Dome + wavy skirt bottom, sine float, dimmed white/pale colors. |
-| `fish.py` | `fish` | RAIN, SNOW | _(any)_ | Body oval + tail fin + dot eye, sine swim, blue/silver, random direction. |
-| `tractor.py` | `tractor` | _(any)_ | Day | Side-profile tractor with rotating wheel spokes, slowly rolls across bottom of animation zone. |
+| `ghost.py` | `ghost` | _(any)_ | Night, Late Evening | Pac-Man ghost (7×8px): Blinky/Pinky/Inky/Clyde colors, directional pupils, scalloped bottom, sine float. |
 
 ---
 

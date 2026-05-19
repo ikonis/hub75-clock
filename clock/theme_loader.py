@@ -32,6 +32,7 @@ class Theme:
     cloud_density: str = "medium"
     cloud_speed: str = "medium"
     sun_enabled: bool = True
+    moon_enabled: bool = False
     condition_overrides: dict = field(default_factory=dict)
 
 

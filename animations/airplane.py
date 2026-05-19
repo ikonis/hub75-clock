@@ -6,6 +6,7 @@ class Animation:
     name = "airplane"
     conditions = []
     themes = ["Day", "Sunrise", "Sunset"]
+    layer = "foreground"
 
     # Sprite offsets — fuselage 8px long, 2px tall, wing at col 3, tail at col 7
     # (dx, dy, r, g, b)  — facing RIGHT

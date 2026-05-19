@@ -6,6 +6,7 @@ class Animation:
     name = "easter_egg"
     conditions = []
     themes = ["Day"]
+    layer = "foreground"
 
     # Oval egg: 6 wide, 8 tall with stripe pattern
     _STRIPES = [

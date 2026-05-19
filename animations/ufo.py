@@ -6,6 +6,7 @@ class Animation:
     name = "ufo"
     conditions = ["CLEAR", "PARTLYCLOUDY"]
     themes = ["Night", "Late Evening"]
+    layer = "foreground"
 
     # Saucer sprite (9 wide, 5 tall), row by row, (dx, dy, r, g, b)
     _BODY = [

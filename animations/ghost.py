@@ -6,6 +6,7 @@ class Animation:
     name = "ghost"
     conditions = []
     themes = ["Night", "Late Evening"]
+    layer = "foreground"
 
     # Pac-Man style ghost: 7 wide x 8 tall
     # Body pixels (excluding eye area), drawn in ghost color

@@ -6,6 +6,7 @@ class Animation:
     name = "rocket"
     conditions = []
     themes = []
+    layer = "foreground"
 
     # Rocket facing upward: 3 wide, 7 tall
     # (dx, dy, r, g, b)
