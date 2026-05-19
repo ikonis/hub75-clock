@@ -17,7 +17,6 @@
   "stars_enabled": false,
   "sun_enabled": false,
   "moon_enabled": true,
-  "clouds_enabled": true,
   "cloud_density": "dense",
   "cloud_speed": "slow",
   "precipitation": "snow",
