@@ -1,12 +1,23 @@
 # ============================================================================
-# HUB75 Clock - Push Weather Data
+# HUB75 Clocks - Push Weather Data
 # ============================================================================
-# Pushes hourly forecast data to the clock every 15 minutes.
-# Requires a weather integration — NWS, OpenWeatherMap, PirateWeather etc.
+# Pushes hourly forecast data to both clocks every 15 minutes via a shared
+# MQTT topic that both clocks subscribe to.
 #
-# Customize:
+# Also updates input_text.clock_condition so that automation 01_set_theme
+# can react to condition changes and pick the right precipitation theme.
+#
+# ── Required helper ───────────────────────────────────────────────────────────
+#   input_text.clock_condition — create this text helper in HA:
+#     Settings → Devices & Services → Helpers → Create Helper → Text
+#     Name: clock_condition  |  Max length: 20
+#   It is written by this automation and read by script.clocks_select_theme.
+#
+# ── Customize ─────────────────────────────────────────────────────────────────
 #   weather.YOUR_WEATHER_ENTITY — your weather integration entity
 #   sensor.YOUR_OUTDOOR_TEMP   — your outdoor temperature sensor (or remove)
+#   binary_sensor.bedroom_clock_online      — bedroom clock online sensor
+#   binary_sensor.living_room_clock_online  — living room clock online sensor
 #
 # Condition logic:
 #   - Uses weighted precipitation probability over the next 12 hours
@@ -30,7 +41,10 @@ triggers:
   - trigger: homeassistant
     event: start
   - trigger: state
-    entity_id: binary_sensor.YOUR_CLOCK_ONLINE
+    entity_id: binary_sensor.bedroom_clock_online
+    to: "on"
+  - trigger: state
+    entity_id: binary_sensor.living_room_clock_online
     to: "on"
 actions:
   - action: weather.get_forecasts
@@ -155,3 +169,10 @@ actions:
           "condition":    "{{ mapped_condition | trim }}",
           "outdoor_temp": {{ outdoor_temp | trim }}
         }
+  # Update the shared condition helper so 01_set_theme can react and pick
+  # the right precipitation theme (Rainy Day, Stormy Night, Snowy Day, etc.)
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.clock_condition
+    data:
+      value: "{{ mapped_condition | trim }}"

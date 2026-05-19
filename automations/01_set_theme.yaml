@@ -1,67 +1,72 @@
 # ============================================================================
-# HUB75 Clock - Set Theme by Time of Day
+# HUB75 Clocks - Set Theme and Brightness
 # ============================================================================
-# Uses sun elevation to pick the right theme automatically.
-# No bucket system required — just the built-in sun integration.
+# Fires whenever the house bucket changes, the sun rises/sets, a clock comes
+# online, or the mapped weather condition changes. Sets brightness on both
+# clocks directly, then calls script.clocks_select_theme to pick the theme.
 #
-# Customize:
-#   binary_sensor.YOUR_CLOCK_ONLINE — your clock's online binary sensor
+# ── Required helpers ──────────────────────────────────────────────────────────
+#   input_select.house_bucket  — your time-of-day bucket selector
+#     Suggested options: Day, Sunrise, Sunset, after_sunset, Late Evening,
+#                        Night, Away
+#   input_text.clock_condition — set by automation 02_push_weather.yaml
+#     Values: CLEAR, SUNNY, PARTLYCLOUDY, CLOUDY, RAIN, SNOW, SLEET, TSTORM,
+#             ICE, and aliases resolved by the clock (BLIZZARD, HURRICANE, …)
 #
-# Built-in themes: Day, Sunrise, Sunset, Late Evening, Night, Away
+# ── Required script ───────────────────────────────────────────────────────────
+#   script.clocks_select_theme — defined in 01b_select_theme_script.yaml
+#   Import it as a script in HA (not as an automation). See that file for
+#   instructions.
+#
+# ── Customize ─────────────────────────────────────────────────────────────────
+#   number.bedroom_clock_brightness     — auto-discovered via MQTT Discovery
+#   number.living_room_clock_brightness — auto-discovered via MQTT Discovery
+#   Brightness values below: Away=1, Night=5, after_sunset=30, all others=60
 # ============================================================================
 
-alias: "HUB75 Clock - Set Theme"
-description: Sets clock theme based on sun position and time of day.
-mode: single
+alias: "HUB75 Clocks - Set Theme and Brightness"
+description: >
+  Sets brightness on both clocks and calls clocks_select_theme to pick the
+  right theme based on house bucket and current weather condition.
+mode: queued
+max: 2
 triggers:
   - trigger: sun
     event: sunrise
-    offset: "-01:00:00"
-    id: early_morning
-  - trigger: sun
-    event: sunrise
-    id: day
+    id: sunrise
   - trigger: sun
     event: sunset
-    offset: "-00:30:00"
-    id: evening
-  - trigger: time
-    at: "21:00:00"
-    id: late_evening
-  - trigger: time
-    at: "23:00:00"
-    id: night
+    id: sunset
+  - trigger: state
+    entity_id: input_select.house_bucket
+    id: bucket_change
   - trigger: homeassistant
     event: start
+    id: ha_start
   - trigger: state
-    entity_id: binary_sensor.YOUR_CLOCK_ONLINE
+    entity_id: binary_sensor.bedroom_clock_online
     to: "on"
+    id: bedroom_online
+  - trigger: state
+    entity_id: binary_sensor.living_room_clock_online
+    to: "on"
+    id: living_room_online
+  - trigger: state
+    entity_id: input_text.clock_condition
+    id: condition_change
 actions:
   - variables:
-      elevation: "{{ state_attr('sun.sun', 'elevation') | float }}"
-      after_sunset: "{{ is_state('sun.sun', 'below_horizon') }}"
-      theme: >
-        {% if trigger.id == 'early_morning' %}Sunrise
-        {% elif trigger.id == 'day' %}Day
-        {% elif trigger.id == 'evening' %}Sunset
-        {% elif trigger.id == 'late_evening' %}Late Evening
-        {% elif trigger.id == 'night' %}Night
-        {% elif after_sunset and elevation < -6 %}Late Evening
-        {% elif after_sunset %}Sunset
-        {% elif now().hour < 6 %}Night
-        {% else %}Day{% endif %}
+      bucket: "{{ states('input_select.house_bucket') }}"
       brightness: >
-        {% if theme == 'Night' %}5
-        {% elif theme == 'Late Evening' %}15
-        {% elif theme == 'Sunset' %}30
-        {% elif theme == 'Sunrise' %}25
-        {% elif theme == 'Away' %}1
+        {% if bucket == 'Away' %}1
+        {% elif bucket == 'Night' %}5
+        {% elif bucket == 'after_sunset' %}30
         {% else %}60{% endif %}
-  - action: mqtt.publish
+  - action: number.set_value
+    target:
+      entity_id:
+        - number.bedroom_clock_brightness
+        - number.living_room_clock_brightness
     data:
-      topic: clock/config
-      payload: >
-        {
-          "theme": "{{ theme }}",
-          "brightness": {{ brightness }}
-        }
+      value: "{{ brightness }}"
+  - action: script.clocks_select_theme

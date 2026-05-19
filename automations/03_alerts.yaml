@@ -1,9 +1,16 @@
 # ============================================================================
-# HUB75 Clock - NWS Weather Alerts
+# HUB75 Clocks - NWS Weather Alerts
 # ============================================================================
 # Shows a scrolling red alert banner on the clock for severe weather warnings.
 # Requires the NWS Alerts custom integration from HACS:
 #   https://github.com/finity69x2/nws_alerts
+#
+# ── Shared topic ──────────────────────────────────────────────────────────────
+# Alerts publish to clock/alert — a shared MQTT topic that ALL clocks
+# subscribe to. Both bedroom_clock and living_room_clock (and any future
+# clocks) receive alerts automatically with no per-device changes needed here.
+# Each clock's config.yaml maps its alert topic to clock/alert.
+# ──────────────────────────────────────────────────────────────────────────────
 #
 # Customize:
 #   sensor.nws_alerts        — your NWS alerts sensor entity

@@ -331,23 +331,41 @@ sudo ./text-example -f ~/rpi-rgb-led-matrix/fonts/spleen-12x24.bdf
 
 ### Automations
 
-Put the files from `automations/` into HA packages:
+Copy the files from `automations/` into an HA package directory and add the script separately:
 
 ```
-config/packages/hub75_clock/
-├── 01_helpers.yaml
-├── 02_weather.yaml
-├── 03_brightness.yaml
-└── 04_lifecycle_alerts.yaml
+config/
+├── packages/
+│   └── hub75_clock/
+│       ├── 01_set_theme.yaml          automation: brightness + calls theme script
+│       ├── 01b_select_theme_script.yaml  SCRIPT (see note below)
+│       ├── 02_push_weather.yaml       automation: weather push every 15 min
+│       ├── 03_alerts.yaml             automation: NWS weather alert banner
+│       └── 04_online_offline.yaml     automation: offline notification
+└── scripts/
+    └── clocks_select_theme.yaml       copy of 01b content under script: key
 ```
 
 In `configuration.yaml`:
 ```yaml
 homeassistant:
   packages: !include_dir_named packages
+
+script: !include_dir_merge_named scripts
 ```
 
-Restart HA fully after adding.
+**Important — the script file:** `01b_select_theme_script.yaml` defines `script.clocks_select_theme`, which `01_set_theme.yaml` calls. Scripts and automations use different HA keys and cannot live in the same file. Copy the contents of `01b_select_theme_script.yaml` into your `config/scripts/` directory (or inline it under a `script:` key in a package). See the comment header in that file for both import options.
+
+Restart HA fully after adding any new package or script file.
+
+### Required HA helpers
+
+Create these helpers before enabling the automations (Settings → Devices & Services → Helpers):
+
+| Helper | Type | Notes |
+|---|---|---|
+| `input_select.house_bucket` | Select | Options: Day, Sunrise, Sunset, after_sunset, Late Evening, Night, Away |
+| `input_text.clock_condition` | Text | Max length 20. Written by `02_push_weather`, read by the theme script. |
 
 ### Required HA entities
 
@@ -382,7 +400,8 @@ Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registere
 | Topic | Payload |
 |---|---|
 | `clock/weather` | `{"low_temp": 68, "high_temp": 88, "condition": "TSTORM", "outdoor_temp": 64}` |
-| `clock/config` | `{"brightness": 40}` and/or `{"night_mode": true}` |
+| `clock/config` | `{"brightness": 40}` — brightness; additional config keys documented in `config.example.yaml` |
+| `{client_id}/theme/set` | Theme name string, e.g. `"Rainy Night"` — per-clock, uses `mqtt.client_id` from config |
 | `clock/alert` | `{"message": "Tornado Warning - County - until 4:45 PM", "expires": "2026-04-25T16:45:00-05:00"}` |
 | `clock/alert` | `{"clear": true}` to dismiss |
 
@@ -398,17 +417,18 @@ Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registere
 
 ### Weather conditions
 
-| String | Animation |
-|---|---|
-| `CLEAR` | None (stars at night) |
-| `SUNNY` | Sun rays |
-| `PARTLYCLOUDY` | Drifting clouds |
-| `CLOUDY` / `FOG` / `SMOKE` / `DUST` / `WINDY` | Dense clouds |
-| `RAIN` / `FLOOD` | Falling blue streaks |
-| `SNOW` / `BLIZZARD` | Drifting white dots |
-| `SLEET` / `FREEZING_DRIZZLE` | Faster dots, cyan tint |
-| `TSTORM` / `HURRICANE` / `TROPICAL_STORM` | Rain + lightning flash |
-| `ICE` / `FREEZING_RAIN` | Cyan corner accents |
+The clock receives a condition string from the weather automation. The script `clocks_select_theme` maps condition + time-of-day bucket to the best precipitation theme:
+
+| Condition | Day-side theme | Night-side theme |
+|---|---|---|
+| `CLEAR` / `SUNNY` / `PARTLYCLOUDY` | Day / Sunrise / Sunset | Night / Late Evening |
+| `CLOUDY` / `FOG` / `SMOKE` / `DUST` / `WINDY` | Day (overcast sky) | Night (no stars) |
+| `RAIN` / `FLOOD` | Rainy Day | Rainy Night |
+| `TSTORM` / `HURRICANE` / `TROPICAL_STORM` | Stormy Day | Stormy Night |
+| `SNOW` / `BLIZZARD` | Snowy Day | Snowy Night |
+| `SLEET` / `ICE` / `FREEZING_DRIZZLE` / `FREEZING_RAIN` | Sleety Day | Rainy Night |
+
+All precipitation (rain drops, snow flakes, sleet, lightning) is rendered by the `clouds.py` animation via the `precipitation` field in the theme JSON. See `docs/themes.md` for the full field reference.
 
 Condition is the **most severe expected in the next 12 hours**, not just the current moment.
 
@@ -495,10 +515,11 @@ hub75-clock/
 │   └── *.py                    Built-in drop-in animations; copied to /etc/hub75-clock/animations/
 │                               Drop your own .py files there to add custom animations at runtime
 └── automations/
-    ├── 01_helpers.yaml         HA input helpers
-    ├── 02_weather.yaml         Weather push automation
-    ├── 03_brightness.yaml      Bucket brightness + night mode
-    └── 04_lifecycle_alerts.yaml  Online/offline + Tornado Warning
+    ├── 01_set_theme.yaml            Set brightness + call theme script on bucket/condition change
+    ├── 01b_select_theme_script.yaml Script: maps bucket + condition → theme, publishes to both clocks
+    ├── 02_push_weather.yaml         Push forecast weather to clocks every 15 min
+    ├── 03_alerts.yaml               NWS alert banner (shared clock/alert topic, all clocks receive)
+    └── 04_online_offline.yaml       Offline notification for both clocks
 ```
 
 Custom animations can be added at runtime by dropping a `.py` file into `/etc/hub75-clock/animations/`. The clock detects the new file within seconds and makes it available for use in theme `cameos` lists without a restart. See `docs/animations.md` for the full interface.
