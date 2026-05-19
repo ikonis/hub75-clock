@@ -28,6 +28,13 @@ class Animation:
     # Underbelly lights
     _LIGHTS = [(2, 4), (4, 4), (6, 4)]
 
+    # --- Appearance settings (hull colors are in _BODY list above) ---
+    COLOR_LIGHT_ON   = (0, 255, 180)   # active belly light
+    COLOR_LIGHT_OFF  = (0,  60,  40)   # inactive belly light
+    COLOR_BEAM_G     = 50              # tractor beam green peak (r=0, g=COLOR_BEAM_G, b=g//2)
+    COLOR_FIGURE     = (200, 200, 200) # stick figure abductee
+    # -----------------------------------------------------------------
+
     # Tractor beam: triangular rows below the UFO (row offset from dy=5)
     # Each entry is (half_width, alpha_factor)
     _BEAM_ROWS = [(0, 1.0), (1, 0.9), (1, 0.85), (2, 0.8),
@@ -112,7 +119,7 @@ class Animation:
             for ddx, ddy in self._FIGURE:
                 px, py = fx + ddx, fy + ddy
                 if 0 <= px < self._w and self._at <= py <= self._ab:
-                    canvas.SetPixel(px, py, 200, 200, 200)
+                    canvas.SetPixel(px, py, *self.COLOR_FIGURE)
         elif self._mode == "beam_out":
             intensity = max(0, 50 - self._beam_frame * 4)
             if intensity > 0:
@@ -126,9 +133,9 @@ class Animation:
         li = self._light_phase // 6
         for idx, (ldx, ldy) in enumerate(self._LIGHTS):
             if idx == li:
-                canvas.SetPixel(ox + ldx, oy + ldy, 0, 255, 180)
+                canvas.SetPixel(ox + ldx, oy + ldy, *self.COLOR_LIGHT_ON)
             else:
-                canvas.SetPixel(ox + ldx, oy + ldy, 0, 60, 40)
+                canvas.SetPixel(ox + ldx, oy + ldy, *self.COLOR_LIGHT_OFF)
 
         # Glow trail (only while flying)
         if self._mode == "fly":

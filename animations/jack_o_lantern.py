@@ -48,6 +48,13 @@ class Animation:
     # Jagged zigzag smile across row 5 with teeth dipping into row 4
     _MOUTH = [(1, 5), (2, 4), (3, 5), (4, 4), (5, 5), (6, 4), (7, 5)]
 
+    # --- Appearance settings (body/stem colors are in _BODY sprite list above) ---
+    EYE_BASE_R  = 200   # eye glow red base (flickers up to +40)
+    EYE_BASE_G  = 160   # eye glow green base (flickers up to +30)
+    NOSE_R      = 180   # nose red
+    NOSE_G      = 140   # nose green
+    # ----------------------------------------------------------------------------
+
     def __init__(self, width, height, cfg, animator):
         self._w = width
         self._at = animator.anim_top
@@ -79,15 +86,15 @@ class Animation:
             if 0 <= px < self._w and self._at <= py <= self._ab:
                 canvas.SetPixel(px, py, int(r * alpha), int(g * alpha), int(b * alpha))
         # Eyes: bright yellow/orange glow with flicker, drawn as cut-outs
-        eye_r = int((200 + self._flicker * 20) * alpha)
-        eye_g = int((160 + self._flicker * 15) * alpha)
+        eye_r = int((self.EYE_BASE_R + self._flicker * 20) * alpha)
+        eye_g = int((self.EYE_BASE_G + self._flicker * 15) * alpha)
         for ex, ey in self._EYES:
             px, py = ox + ex, oy + ey
             if 0 <= px < self._w and self._at <= py <= self._ab:
                 canvas.SetPixel(px, py, eye_r, eye_g, 0)
         # Nose: yellow glow
-        nose_r = int(180 * alpha)
-        nose_g = int(140 * alpha)
+        nose_r = int(self.NOSE_R * alpha)
+        nose_g = int(self.NOSE_G * alpha)
         for nx, ny in self._NOSE:
             px, py = ox + nx, oy + ny
             if 0 <= px < self._w and self._at <= py <= self._ab:

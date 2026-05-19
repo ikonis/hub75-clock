@@ -8,6 +8,12 @@ class Animation:
     themes = ["Day"]
     layer = "foreground"
 
+    # --- Appearance settings ---
+    # Edit colors directly in _HULL and _SCOPE below.
+    # Key areas: hull (olive green ~100,160,100), porthole (cyan 160,220,255),
+    #            propeller (dark green ~55,90,55), periscope (dark green ~65,108,65)
+    # ---------------------------
+
     # Sub hull: 18 wide, 5 tall. Conning tower at dx=12..14, periscope at dx=13
     _HULL = [
         # Main hull (oval)

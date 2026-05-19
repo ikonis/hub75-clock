@@ -8,6 +8,12 @@ class Animation:
     themes = ["Night", "Late Evening"]
     layer = "foreground"
 
+    # --- Appearance settings ---
+    # Edit colors directly in _SPRITE below.
+    # Key areas: reindeer (tan 160,120,80), sleigh body (red ~200,40,40),
+    #            Santa hat (red 200,40,40), hat trim (white 220,220,220)
+    # ---------------------------
+
     # Santa + sleigh silhouette (facing left, moves right-to-left)
     # (dx, dy, r, g, b) — 0,0 at left edge of sprite, 16 wide total
     _SPRITE = [

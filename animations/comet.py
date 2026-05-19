@@ -8,6 +8,14 @@ class Animation:
     themes = ["Night"]
     layer = "celestial"
 
+    # --- Appearance settings ---
+    COLOR_HEAD      = (220, 240, 255)   # bright blue-white leading pixel
+    COLOR_HEAD_GLOW = (120, 160, 220)   # 1px glow halo around head
+    TAIL_R = 180   # tail root red channel (fades to 0 at tip)
+    TAIL_G = 200   # tail root green channel
+    TAIL_B = 255   # tail root blue channel (fades least — stays blue)
+    # ---------------------------
+
     def __init__(self, width, height, cfg, animator):
         self._w = width
         self._at = animator.anim_top
@@ -46,9 +54,9 @@ class Animation:
             if not (0 <= tx < self._w and self._at <= ty <= self._ab):
                 continue
             t = i / self._tail_len
-            r = int(180 * (1 - t))
-            g = int(200 * (1 - t * 0.6))
-            b = int(255 * (1 - t * 0.3))
+            r = int(self.TAIL_R * (1 - t))
+            g = int(self.TAIL_G * (1 - t * 0.6))
+            b = int(self.TAIL_B * (1 - t * 0.3))
             canvas.SetPixel(tx, ty, r, g, b)
             if i < self._tail_len // 2:
                 dim = int((1 - t) * 80)
@@ -59,11 +67,11 @@ class Animation:
 
         # Bright blue-white head
         if 0 <= hx < self._w and self._at <= hy <= self._ab:
-            canvas.SetPixel(hx, hy, 220, 240, 255)
+            canvas.SetPixel(hx, hy, *self.COLOR_HEAD)
             for ddx, ddy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                 gx, gy = hx + ddx, hy + ddy
                 if 0 <= gx < self._w and self._at <= gy <= self._ab:
-                    canvas.SetPixel(gx, gy, 120, 160, 220)
+                    canvas.SetPixel(gx, gy, *self.COLOR_HEAD_GLOW)
 
     def is_done(self) -> bool:
         return (self.x < -self._tail_len - 4 or

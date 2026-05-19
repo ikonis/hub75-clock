@@ -168,7 +168,6 @@ DEFAULTS = {
     },
     "animation": {
         "fps":                        15,
-        "fps_night":                   8,
         "rain_count":                [5, 8],
         "snow_count":                [6, 10],
         "sleet_count":               [6, 10],
@@ -571,7 +570,6 @@ class WeatherAnimator:
         self._ice_cracks = []
         self.condition = "CLEAR"
         self.current_theme: Optional[Theme] = None
-        self.night_mode = False
         self.frame = 0
         _loader = animation_loader or AnimationLoader(
             cfg.get("animations", {}).get("animations_dir", "/etc/hub75-clock/animations")
@@ -606,21 +604,11 @@ class WeatherAnimator:
         self._init_for_condition()
         self._cameo_manager.setup_persistent(theme.cameos, self)
 
-    def set_night_mode(self, night: bool):
-        if night == self.night_mode:
-            return
-        self.night_mode = night
-        self._init_for_condition()
-
-    def _color(self, day_key: str, night_key: str) -> Tuple:
-        c = self.cfg["colors"]
-        raw = c[night_key] if self.night_mode else c[day_key]
-        return parse_color(raw)
+    def _color(self, key: str) -> Tuple:
+        return parse_color(self.cfg["colors"][key])
 
     def _count(self, range_key: str) -> int:
         lo, hi = self.cfg["animation"][range_key]
-        if self.night_mode:
-            lo, hi = max(2, lo // 2), max(3, hi // 2)
         return max(1, random.randint(lo, hi))
 
     def _init_for_condition(self):
@@ -631,7 +619,7 @@ class WeatherAnimator:
         self.bolts = []
         self._cameo_manager.reset()
 
-        stars_ok = (self.current_theme.stars_enabled if self.current_theme else self.night_mode)
+        stars_ok = (self.current_theme.stars_enabled if self.current_theme else False)
 
         if self.condition == "CLEAR":
             if stars_ok:
@@ -673,7 +661,7 @@ class WeatherAnimator:
 
 
     def _init_rain(self, fast=False):
-        color = self._color("rain_day", "rain_night")
+        color = self._color("rain_day")
         count = self._count("rain_count")
         if fast:
             count = int(count * 1.5)
@@ -688,7 +676,7 @@ class WeatherAnimator:
             ))
 
     def _init_snow(self):
-        color = self._color("snow_day", "snow_night")
+        color = self._color("snow_day")
         for _ in range(self._count("snow_count")):
             self.particles.append(Particle(
                 x=random.uniform(0, self.width),
@@ -699,7 +687,7 @@ class WeatherAnimator:
             ))
 
     def _init_sleet(self):
-        color = self._color("sleet_day", "sleet_night")
+        color = self._color("sleet_day")
         for _ in range(self._count("sleet_count")):
             self.particles.append(Particle(
                 x=random.uniform(0, self.width),
@@ -715,7 +703,7 @@ class WeatherAnimator:
 
     def _generate_ice_cracks(self):
         cracks = []
-        color = self._color("ice_day", "ice_night")
+        color = self._color("ice_day")
         count = random.randint(3, 5)
         for _ in range(count):
             x = random.randint(4, self.width - 4)
@@ -769,8 +757,7 @@ class WeatherAnimator:
 
         # Cameos (shooting stars, etc.)
         if self.current_theme and self.current_theme.cameos:
-            fps = (self.cfg["animation"]["fps_night"] if self.night_mode
-                   else self.cfg["animation"]["fps"])
+            fps = self.cfg["animation"]["fps"]
             self._cameo_manager.update(self.current_theme.cameos, fps, self)
 
     def _draw_hazard_stripes(self, canvas):
@@ -781,7 +768,7 @@ class WeatherAnimator:
 
     def _draw_background(self, canvas):
         if self.current_theme is None:
-            col = parse_color(self.cfg["colors"].get("night_bg", "#020005"))
+            col = parse_color(self.cfg["colors"].get("sky_day", "#000820"))
             for y in range(self.anim_top, self.anim_bottom + 1):
                 for x in range(self.width):
                     canvas.SetPixel(x, y, col[0], col[1], col[2])
@@ -853,7 +840,7 @@ class WeatherAnimator:
                     canvas.SetPixel(x, y, 0, 0, 0)
 
     def _draw_sun(self, canvas):
-        color = self._color("sun_day", "sun_night")
+        color = self._color("sun_day")
         ox = self.width - 1
         oy = self.anim_top
         radius = 12
@@ -894,7 +881,7 @@ class WeatherAnimator:
                 self._px(canvas, s.x, s.y, (b, b, b))
 
         # Sun: drawn before celestial cameos so they can pass in front
-        if self.condition == "SUNNY" and not self.night_mode:
+        if self.condition == "SUNNY":
             if self.current_theme is None or getattr(self.current_theme, 'sun_enabled', True):
                 self._draw_sun(canvas)
 
@@ -1323,7 +1310,6 @@ class HUB75Clock:
         self.config_path = config_path
         self.running = False
         self.bucket = "Day"
-        self.night_mode = False
 
         opts = RGBMatrixOptions()
         opts.rows              = 32
@@ -1502,11 +1488,6 @@ class HUB75Clock:
                 em = bool(payload["engineering_mode"])
                 threading.Thread(target=self._set_engineering_mode, args=(em,), daemon=True).start()
 
-            if "night_mode" in payload:
-                self.night_mode = bool(payload["night_mode"])
-                self.animator.set_night_mode(self.night_mode)
-                print(f"[config] night_mode={self.night_mode}")
-
             if "bucket" in payload:
                 self._apply_bucket(payload["bucket"])
 
@@ -1520,12 +1501,6 @@ class HUB75Clock:
                             self.cfg["colors"][key] = rgb_to_hex(r, g, b)
                         else:
                             self.cfg["colors"][key] = val
-                        # Auto-derive night variant
-                        if key.endswith("_day"):
-                            night_key = key.replace("_day", "_night")
-                            r, g, b = parse_color(self.cfg["colors"][key])
-                            self.cfg["colors"][night_key] = rgb_to_hex(
-                                max(0, r // 3), max(0, g // 3), max(0, b // 3))
                 needs_save = True
                 print(f"[config] colors updated")
 
@@ -1646,9 +1621,7 @@ class HUB75Clock:
 
     def _apply_bucket(self, bucket: str):
         self.bucket = bucket
-        self.night_mode = bucket in ("Late Evening", "Night")
-        self.animator.set_night_mode(self.night_mode)
-        print(f"[config] bucket={bucket} night_mode={self.night_mode}")
+        print(f"[config] bucket={bucket}")
 
     def _publish_discovery(self):
         prefix    = self.cfg["ha_discovery"]["prefix"]
@@ -1846,8 +1819,7 @@ class HUB75Clock:
     def _render_loop(self):
         try:
             while self.running:
-                fps = (self.cfg["animation"]["fps_night"]
-                       if self.night_mode else self.cfg["animation"]["fps"])
+                fps = self.cfg["animation"]["fps"]
                 t0 = time.time()
                 self.canvas.Clear()
                 banner_top    = self.layout["banner"]["top"]
@@ -1887,11 +1859,6 @@ class HUB75Clock:
             r, g, b = hex_to_rgb(theme.colors[key])
             return graphics.Color(r, g, b)
         colors = self.cfg["colors"]
-        if self.night_mode:
-            night_key = key + "_night"
-            if night_key in colors:
-                r, g, b = parse_color(colors[night_key])
-                return graphics.Color(r, g, b)
         day_key = key + "_day"
         if day_key in colors:
             r, g, b = parse_color(colors[day_key])
@@ -2006,7 +1973,7 @@ class HUB75Clock:
         region_h  = tl["bottom"] - tl["top"] + 1
         baseline  = tl["top"] + (region_h + font_h) // 2 - 4
 
-        if tl.get("outline", True) and not self.night_mode:
+        if tl.get("outline", True):
             ol = parse_color(self.cfg["colors"].get("outline", [0, 0, 0]))
             ol_col = graphics.Color(ol[0], ol[1], ol[2])
             for dx in (-1, 0, 1):

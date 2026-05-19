@@ -8,6 +8,12 @@ class Animation:
     themes = []
     layer = "foreground"
 
+    # --- Appearance settings ---
+    # Edit colors directly in _SPRITE below.
+    # Key areas: body/head (icy blue-white ~210,230,250), hat (dark gray ~45,45,45),
+    #            carrot nose (orange 255,120,0), arms (brown 120,80,40)
+    # ---------------------------
+
     # Pixel art snowman: lower circle (5 dia), upper circle (3 dia), hat, arms, face
     # All offsets from top-left of bounding box, anchored to bottom-right of screen
     _SPRITE = [

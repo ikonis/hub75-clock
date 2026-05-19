@@ -7,15 +7,17 @@ class Animation:
     themes = ["Day"]
     layer = "foreground"
 
+    # --- Appearance settings ---
     _BANDS = [
-        (255, 0,   0),    # Red
-        (255, 165, 0),    # Orange
-        (255, 255, 0),    # Yellow
-        (0,   200, 0),    # Green
-        (0,   0,   255),  # Blue
-        (75,  0,   130),  # Indigo
-        (148, 0,   211),  # Violet
+        (255,   0,   0),  # Red
+        (255, 165,   0),  # Orange
+        (255, 255,   0),  # Yellow
+        (  0, 200,   0),  # Green
+        (  0,   0, 255),  # Blue
+        ( 75,   0, 130),  # Indigo
+        (148,   0, 211),  # Violet
     ]
+    # ---------------------------
 
     def __init__(self, width, height, cfg, animator):
         self._w = width

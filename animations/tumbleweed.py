@@ -8,6 +8,12 @@ class Animation:
     themes = ["Day"]
     layer = "foreground"
 
+    # --- Appearance settings ---
+    COLOR_BASE_SHADE = 140   # base brightness (varies ±30 per pixel for texture)
+    COLOR_GREEN_MULT = 0.7   # green channel multiplier
+    COLOR_BLUE_MULT  = 0.3   # blue channel multiplier (warm tan/brown result)
+    # ---------------------------
+
     # 5-pixel diameter circle pixel offsets
     _CIRCLE = [
         (1, 0), (2, 0), (3, 0),
@@ -47,8 +53,10 @@ class Animation:
             py = oy + 2 + int(round(ry))
             if 0 <= px < self._w and self._at <= py <= self._ab:
                 # Vary brightness slightly for texture
-                shade = 140 + int(30 * math.sin(self._roll + dx))
-                canvas.SetPixel(px, py, shade, int(shade * 0.7), int(shade * 0.3))
+                shade = self.COLOR_BASE_SHADE + int(30 * math.sin(self._roll + dx))
+                canvas.SetPixel(px, py, shade,
+                                int(shade * self.COLOR_GREEN_MULT),
+                                int(shade * self.COLOR_BLUE_MULT))
 
     def is_done(self) -> bool:
         return self.x > self._w + 6

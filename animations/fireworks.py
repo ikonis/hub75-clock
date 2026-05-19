@@ -8,14 +8,16 @@ class Animation:
     themes = []
     layer = "foreground"
 
+    # --- Appearance settings ---
     _COLORS = [
         (255, 255, 255),  # white
-        (255, 200, 20),   # gold
-        (255, 40,  40),   # red
-        (60,  120, 255),  # blue
-        (40,  255, 80),   # green
-        (200, 60,  255),  # purple
+        (255, 200,  20),  # gold
+        (255,  40,  40),  # red
+        ( 60, 120, 255),  # blue
+        ( 40, 255,  80),  # green
+        (200,  60, 255),  # purple
     ]
+    # ---------------------------
 
     _GRAVITY = 0.06
 

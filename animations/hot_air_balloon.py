@@ -8,6 +8,13 @@ class Animation:
     themes = ["Day", "Sunrise"]
     layer = "foreground"
 
+    # --- Appearance settings ---
+    # Edit colors directly in _BALLOON, _ROPES, _BASKET below.
+    # Balloon uses ROYGBIV stripe pattern: red (255,60,60), orange (255,160,0),
+    #   yellow (255,240,0), green (60,180,60), blue (40,120,220)
+    # Ropes/basket: warm wood brown ~(110,75,40)
+    # ---------------------------
+
     # Balloon: 7 wide, 7 tall oval with colorful stripes
     # (dx, dy, r, g, b)
     _BALLOON = []

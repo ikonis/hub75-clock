@@ -8,6 +8,12 @@ class Animation:
     themes = ["Day"]
     layer = "foreground"
 
+    # --- Appearance settings ---
+    # Edit colors directly in _OPEN and _CLOSED below.
+    # Key areas: upper wings (orange ~255,140,40), lower wings (dark orange ~210,70,15),
+    #            body (dark brown ~45,22,11)
+    # ---------------------------
+
     # Two frames: wings open and wings closed
     # Body center at (3, 2), wings span ±4
     # Frame 0: wings open

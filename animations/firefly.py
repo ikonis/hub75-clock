@@ -8,6 +8,11 @@ class Animation:
     themes = ["Night", "Late Evening"]
     layer = "foreground"
 
+    # --- Appearance settings ---
+    MAX_BRIGHTNESS  = 200   # peak glow value (0-255); brightness scales with blink phase
+    GREEN_RATIO     = 0.6   # green tint multiplier for 2nd pixel (gives yellow-green color)
+    # ---------------------------
+
     def __init__(self, width, height, cfg, animator):
         self._w = width
         self._at = animator.anim_top
@@ -41,13 +46,13 @@ class Animation:
         for fx, fy, phase, period, *_ in self._flies:
             t = (self._frame % period) / period
             brightness = (math.sin(t * math.pi * 2 + phase) + 1) / 2
-            b = int(brightness * 200)
+            b = int(brightness * self.MAX_BRIGHTNESS)
             if b > 20:
                 px, py = int(round(fx)), int(round(fy))
                 if 0 <= px < self._w and self._at <= py <= self._ab:
-                    canvas.SetPixel(px, py, b, b, int(b * 0.6))
+                    canvas.SetPixel(px, py, b, b, int(b * self.GREEN_RATIO))
                     if self._at <= py + 1 <= self._ab:
-                        canvas.SetPixel(px, py + 1, b // 2, b // 2, int(b * 0.3))
+                        canvas.SetPixel(px, py + 1, b // 2, b // 2, int(b * self.GREEN_RATIO / 2))
 
     def is_done(self) -> bool:
         return self._frame >= self._total

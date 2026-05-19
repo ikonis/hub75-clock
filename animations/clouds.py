@@ -1,5 +1,14 @@
-import math
 import random
+
+
+# --- Appearance settings ---
+DEFAULT_COLOR = "#646464"   # fallback cloud color if theme has no cloud_day color
+# ---------------------------
+
+
+def _parse_hex(h):
+    h = h.lstrip("#")
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 
 class Animation:
@@ -11,22 +20,34 @@ class Animation:
 
     _SHAPES = {
         "small": [
-            "  XXX  ",
-            " XXXXX ",
-            "XXXXXXX",
+            "    XXXXXX    ",
+            "  XXXXXXXXXX  ",
+            " XXXXXXXXXXXX ",
+            "XXXXXXXXXXXXXX",
+            " XXXXXXXXXXXX ",
+            "  XXXXXXXXXX  ",
         ],
         "medium": [
-            "   XXXX   ",
-            " XXXXXXXX ",
-            "XXXXXXXXXX",
-            " XXXXXXXX ",
+            "      XXXXXXXX      ",
+            "   XXXXXXXXXXXXXX   ",
+            "  XXXXXXXXXXXXXXXX  ",
+            " XXXXXXXXXXXXXXXXXXXX",
+            "XXXXXXXXXXXXXXXXXXXX",
+            " XXXXXXXXXXXXXXXXXXXX",
+            "  XXXXXXXXXXXXXXXX  ",
+            "   XXXXXXXXXXXXXX   ",
         ],
         "large": [
-            "   XXXXX   ",
-            " XXXXXXXXX ",
-            "XXXXXXXXXXX",
-            "XXXXXXXXXXX",
-            " XXXXXXXXX ",
+            "       XXXXXXXXXX       ",
+            "    XXXXXXXXXXXXXXXX    ",
+            "  XXXXXXXXXXXXXXXXXXXXXX",
+            " XXXXXXXXXXXXXXXXXXXXXXX",
+            "XXXXXXXXXXXXXXXXXXXXXXXXX",
+            "XXXXXXXXXXXXXXXXXXXXXXXXX",
+            " XXXXXXXXXXXXXXXXXXXXXXX",
+            "  XXXXXXXXXXXXXXXXXXXXXX",
+            "    XXXXXXXXXXXXXXXX    ",
+            "       XXXXXXXXXX       ",
         ],
     }
 
@@ -53,17 +74,21 @@ class Animation:
         else:
             base_speed = 0.13
 
-        # Cloud color: soft gray-white
-        color = (176, 184, 200)
+        # Read cloud color from theme colors, fall back to DEFAULT_COLOR
+        theme_color_hex = None
+        if theme is not None:
+            theme_color_hex = getattr(theme, "colors", {}).get("cloud_day")
+        color = _parse_hex(theme_color_hex) if theme_color_hex else _parse_hex(DEFAULT_COLOR)
 
         self._clouds = []
         for _ in range(count):
             direction = random.choice([-1, 1])
             speed = (base_speed + random.uniform(-0.03, 0.03)) * direction
-            size = random.choice(["small", "medium"]) if density != "dense" else random.choice(["medium", "large"])
+            size = (random.choice(["small", "medium"]) if density != "dense"
+                    else random.choice(["medium", "large"]))
             self._clouds.append({
                 "x": random.uniform(0, width),
-                "y": float(random.randint(self._at + 1, self._ab - 6)),
+                "y": float(random.randint(self._at + 1, max(self._at + 1, self._ab - 10))),
                 "vx": speed,
                 "size": size,
                 "color": color,
@@ -72,10 +97,10 @@ class Animation:
     def update(self):
         for c in self._clouds:
             c["x"] += c["vx"]
-            if c["vx"] > 0 and c["x"] > self._w + 12:
-                c["x"] = -12.0
-            elif c["vx"] < 0 and c["x"] < -12:
-                c["x"] = float(self._w + 12)
+            if c["vx"] > 0 and c["x"] > self._w + 25:
+                c["x"] = -25.0
+            elif c["vx"] < 0 and c["x"] < -25:
+                c["x"] = float(self._w + 25)
 
     def draw(self, canvas):
         for c in self._clouds:

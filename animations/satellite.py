@@ -8,6 +8,12 @@ class Animation:
     themes = ["Night"]
     layer = "celestial"
 
+    # --- Appearance settings ---
+    # Edit colors directly in _SPRITE below.
+    # Key areas: solar panels (blue 40-60, 80-120, 120-180),
+    #            body (silver ~200,200,220), truss (gray 100,100,120)
+    # ---------------------------
+
     # ISS-like profile: central body + solar panel wings
     # Offsets from top-left of bounding box (11 wide, 3 tall)
     _SPRITE = [

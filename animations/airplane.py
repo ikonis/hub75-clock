@@ -8,6 +8,11 @@ class Animation:
     themes = ["Day", "Sunrise", "Sunset"]
     layer = "foreground"
 
+    # --- Appearance settings ---
+    # Edit colors directly in _SPRITE_R below.
+    # Key areas: fuselage (silver-gray ~210,210,220), windows (blue 160,200,255)
+    # ---------------------------
+
     # Sprite offsets — fuselage 8px long, 2px tall, wing at col 3, tail at col 7
     # (dx, dy, r, g, b)  — facing RIGHT
     _SPRITE_R = [

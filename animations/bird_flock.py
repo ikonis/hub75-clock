@@ -8,6 +8,11 @@ class Animation:
     themes = ["Day"]
     layer = "foreground"
 
+    # --- Appearance settings ---
+    COLOR_BODY = (30, 30, 30)   # bird body center pixel
+    COLOR_WING = (40, 40, 40)   # wing pixels
+    # ---------------------------
+
     def __init__(self, width, height, cfg, animator):
         self._w = width
         self._at = animator.anim_top
@@ -41,12 +46,12 @@ class Animation:
             cx = int(round(self._ox + bx))
             cy = int(round(self._oy + by))
             if 0 <= cx < self._w and self._at <= cy <= self._ab:
-                canvas.SetPixel(cx, cy, 30, 30, 30)
+                canvas.SetPixel(cx, cy, *self.COLOR_BODY)
                 wy = cy - (1 if wing_up else 0)
                 if 0 <= cx - 1 < self._w and self._at <= wy <= self._ab:
-                    canvas.SetPixel(cx - 1, wy, 40, 40, 40)
+                    canvas.SetPixel(cx - 1, wy, *self.COLOR_WING)
                 if 0 <= cx + 1 < self._w and self._at <= wy <= self._ab:
-                    canvas.SetPixel(cx + 1, wy, 40, 40, 40)
+                    canvas.SetPixel(cx + 1, wy, *self.COLOR_WING)
 
     def is_done(self) -> bool:
         return self._ox > self._w + 10

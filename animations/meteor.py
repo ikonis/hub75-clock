@@ -8,6 +8,15 @@ class Animation:
     themes = ["Night", "Late Evening"]
     layer = "celestial"
 
+    # --- Appearance settings ---
+    COLOR_HEAD      = (255, 255, 255)   # leading pixel
+    COLOR_HEAD_GLOW = (255, 210,  80)   # 1px glow halo around head
+    TAIL_COLORS = [
+        (230, 130, 30), (210, 90, 15), (170, 50, 8),
+        (130, 25,  4),  (90,  10,  2), (55,   4, 0), (30, 1, 0), (12, 0, 0),
+    ]
+    # ---------------------------
+
     def __init__(self, width, height, cfg, animator):
         self._w = width
         self._at = animator.anim_top
@@ -32,23 +41,19 @@ class Animation:
         self.y += self._vy
 
     def draw(self, canvas):
-        tail_colors = [
-            (230, 130, 30), (210, 90, 15), (170, 50, 8),
-            (130, 25, 4), (90, 10, 2), (55, 4, 0), (30, 1, 0), (12, 0, 0),
-        ]
         for i, (hx, hy) in enumerate(reversed(self._history)):
-            c = tail_colors[min(i, len(tail_colors) - 1)]
+            c = self.TAIL_COLORS[min(i, len(self.TAIL_COLORS) - 1)]
             px, py = int(round(hx)), int(round(hy))
             if 0 <= px < self._w and self._at <= py <= self._ab:
                 canvas.SetPixel(px, py, *c)
 
         hx, hy = int(round(self.x)), int(round(self.y))
         if 0 <= hx < self._w and self._at <= hy <= self._ab:
-            canvas.SetPixel(hx, hy, 255, 255, 255)
+            canvas.SetPixel(hx, hy, *self.COLOR_HEAD)
             for ddx, ddy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                 gx, gy = hx + ddx, hy + ddy
                 if 0 <= gx < self._w and self._at <= gy <= self._ab:
-                    canvas.SetPixel(gx, gy, 255, 210, 80)
+                    canvas.SetPixel(gx, gy, *self.COLOR_HEAD_GLOW)
 
     def is_done(self) -> bool:
         return (self.x < -12 or self.x >= self._w + 12 or self.y > self._ab + 2)

@@ -33,12 +33,14 @@ class Animation:
     _PUPILS_RIGHT = [(2, 2), (5, 2)]
     _PUPILS_LEFT  = [(1, 2), (4, 2)]
 
+    # --- Appearance settings ---
     _COLORS = [
-        (255, 0,   0),    # red   #FF0000 (Blinky)
+        (255,   0,   0),  # red   #FF0000 (Blinky)
         (255, 184, 255),  # pink  #FFB8FF (Pinky)
-        (0,   255, 255),  # cyan  #00FFFF (Inky)
-        (255, 184, 82),   # orange #FFB852 (Clyde)
+        (  0, 255, 255),  # cyan  #00FFFF (Inky)
+        (255, 184,  82),  # orange #FFB852 (Clyde)
     ]
+    # ---------------------------
 
     def __init__(self, width, height, cfg, animator):
         self._w = width

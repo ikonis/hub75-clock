@@ -20,12 +20,14 @@ class Animation:
         (1, 6, 2), (2, 6, 1), (3, 6, 2), (4, 6, 1),
         (2, 7, 3), (3, 7, 2),
     ]
+    # --- Appearance settings ---
     _PALETTE = [
-        (255, 80, 120),   # pink
-        (255, 200, 0),    # yellow
+        (255,  80, 120),  # pink
+        (255, 200,   0),  # yellow
         (100, 200, 255),  # sky blue
         (160, 255, 120),  # mint green
     ]
+    # ---------------------------
 
     def __init__(self, width, height, cfg, animator):
         self._w = width

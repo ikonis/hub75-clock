@@ -8,6 +8,11 @@ class Animation:
     themes = []
     layer = "foreground"
 
+    # --- Appearance settings (body colors are in _BODY sprite list below) ---
+    FLAME_CORE_R = 255   # flame center red channel
+    FLAME_CORE_G = 120   # flame center green (fades with distance)
+    # -------------------------------------------------------------------------
+
     # Rocket facing upward: 3 wide, 7 tall
     # (dx, dy, r, g, b)
     _BODY = [
@@ -52,8 +57,8 @@ class Animation:
             fy = flame_y + fi
             if self._at <= fy <= self._ab:
                 fade = 1.0 - fi / 4.0
-                fr = int(255 * fade)
-                fg = int(120 * fade * (1 - fi * 0.2))
+                fr = int(self.FLAME_CORE_R * fade)
+                fg = int(self.FLAME_CORE_G * fade * (1 - fi * 0.2))
                 canvas.SetPixel(ox + 1, fy, fr, fg, 0)
                 if fi < 2:
                     canvas.SetPixel(ox, fy, int(fr * 0.6), int(fg * 0.4), 0)
