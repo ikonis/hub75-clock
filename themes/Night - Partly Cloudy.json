@@ -1,0 +1,31 @@
+{
+  "name": "Night - Partly Cloudy",
+  "description": "Partly cloudy night sky",
+  "background_type": "solid",
+  "background_color": "#020005",
+  "background_top": "#000000",
+  "background_bottom": "#000000",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090",
+    "cloud_day": "#303038"
+  },
+  "stars_enabled": true,
+  "sun_enabled": false,
+  "moon_enabled": true,
+  "clouds_enabled": true,
+  "cloud_density": "sparse",
+  "cloud_speed": "slow",
+  "precipitation": "none",
+  "cameos": [
+    {"name": "clouds"},
+    {"name": "shooting_star", "chance_per_minute": 4},
+    {"name": "satellite",     "chance_per_minute": 1},
+    {"name": "firefly",       "chance_per_minute": 2}
+  ],
+  "condition_overrides": {}
+}

@@ -1,0 +1,28 @@
+{
+  "name": "Night - Cloudy",
+  "description": "Overcast night sky",
+  "background_type": "solid",
+  "background_color": "#030308",
+  "background_top": "#000000",
+  "background_bottom": "#000000",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090",
+    "cloud_day": "#282830"
+  },
+  "stars_enabled": false,
+  "sun_enabled": false,
+  "moon_enabled": false,
+  "clouds_enabled": true,
+  "cloud_density": "medium",
+  "cloud_speed": "slow",
+  "precipitation": "none",
+  "cameos": [
+    {"name": "clouds"}
+  ],
+  "condition_overrides": {}
+}

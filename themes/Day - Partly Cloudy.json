@@ -1,0 +1,31 @@
+{
+  "name": "Day - Partly Cloudy",
+  "description": "Partly cloudy daytime",
+  "background_type": "solid",
+  "background_color": "#000820",
+  "background_top": "#000000",
+  "background_bottom": "#000000",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090",
+    "cloud_day": "#646464"
+  },
+  "stars_enabled": false,
+  "sun_enabled": true,
+  "moon_enabled": false,
+  "clouds_enabled": true,
+  "cloud_density": "sparse",
+  "cloud_speed": "slow",
+  "precipitation": "none",
+  "cameos": [
+    {"name": "clouds"},
+    {"name": "airplane",        "chance_per_minute": 2},
+    {"name": "bird_flock",      "chance_per_minute": 2},
+    {"name": "hot_air_balloon", "chance_per_minute": 1}
+  ],
+  "condition_overrides": {}
+}

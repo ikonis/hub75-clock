@@ -1,0 +1,29 @@
+{
+  "name": "Evening - Partly Cloudy",
+  "description": "Partly cloudy evening sky",
+  "background_type": "gradient",
+  "background_color": "#000000",
+  "background_top": "#0F0019",
+  "background_bottom": "#3C1400",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090",
+    "cloud_day": "#585858"
+  },
+  "stars_enabled": false,
+  "sun_enabled": false,
+  "moon_enabled": false,
+  "clouds_enabled": true,
+  "cloud_density": "sparse",
+  "cloud_speed": "slow",
+  "precipitation": "none",
+  "cameos": [
+    {"name": "clouds"},
+    {"name": "airplane", "chance_per_minute": 1}
+  ],
+  "condition_overrides": {}
+}

@@ -1,0 +1,28 @@
+{
+  "name": "Early Morning - Clear",
+  "description": "Clear pre-dawn gradient sky",
+  "background_type": "gradient",
+  "background_color": "#000000",
+  "background_top": "#0F0019",
+  "background_bottom": "#3C1400",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunrise",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090"
+  },
+  "stars_enabled": false,
+  "sun_enabled": false,
+  "moon_enabled": false,
+  "clouds_enabled": false,
+  "cloud_density": "medium",
+  "cloud_speed": "medium",
+  "precipitation": "none",
+  "cameos": [
+    {"name": "bird_flock",      "chance_per_minute": 3},
+    {"name": "hot_air_balloon", "chance_per_minute": 2}
+  ],
+  "condition_overrides": {}
+}

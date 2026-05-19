@@ -1,0 +1,31 @@
+{
+  "name": "Day - Clear",
+  "description": "Clear blue sky daytime",
+  "background_type": "solid",
+  "background_color": "#000820",
+  "background_top": "#000000",
+  "background_bottom": "#000000",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090"
+  },
+  "stars_enabled": false,
+  "sun_enabled": true,
+  "moon_enabled": false,
+  "clouds_enabled": false,
+  "cloud_density": "medium",
+  "cloud_speed": "medium",
+  "precipitation": "none",
+  "cameos": [
+    {"name": "airplane",        "chance_per_minute": 3},
+    {"name": "bird_flock",      "chance_per_minute": 2},
+    {"name": "hot_air_balloon", "chance_per_minute": 1},
+    {"name": "butterfly",       "chance_per_minute": 2},
+    {"name": "tumbleweed",      "chance_per_minute": 0.5}
+  ],
+  "condition_overrides": {}
+}
