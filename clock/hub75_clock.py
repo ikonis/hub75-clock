@@ -446,28 +446,38 @@ class CameoManager:
         self._loader = loader
         self._cfg = cfg
         self._active = None
-        self._persistent = None
+        self._persistent_cloud = None
+        self._persistent_others: list = []
 
     def reset(self):
         self._active = None
 
     def setup_persistent(self, cameos: list, animator):
-        self._persistent = None
+        self._persistent_cloud = None
+        self._persistent_others = []
         for cameo_cfg in cameos:
             cls = self._loader.get(cameo_cfg.get("name", ""))
             if cls is None or not getattr(cls, "persistent", False):
                 continue
             try:
-                self._persistent = cls(animator.width, animator.height,
-                                       self._cfg, animator)
+                inst = cls(animator.width, animator.height, self._cfg, animator)
+                if getattr(cls, "name", "") == "clouds":
+                    self._persistent_cloud = inst
+                else:
+                    self._persistent_others.append(inst)
             except Exception as e:
                 print(f"[animations] warning: failed to spawn persistent {cls}: {e}")
-            break
 
     def update(self, cameos: list, fps: float, animator):
-        if self._persistent is not None:
+        if self._persistent_cloud is not None:
             try:
-                self._persistent.update()
+                self._persistent_cloud.update()
+            except Exception as e:
+                print(f"[animations] warning: persistent cloud update error: {e}")
+
+        for p in self._persistent_others:
+            try:
+                p.update()
             except Exception as e:
                 print(f"[animations] warning: persistent update error: {e}")
 
@@ -477,18 +487,20 @@ class CameoManager:
                 self._active = None
 
         if self._active is None:
+            winners = []
             for cameo_cfg in cameos:
                 cls = self._loader.get(cameo_cfg.get("name", ""))
                 if cls is None or getattr(cls, "persistent", False):
                     continue
                 prob = cameo_cfg.get("chance_per_minute", 0) / 60.0 / fps
                 if random.random() < prob:
-                    try:
-                        self._active = cls(animator.width, animator.height,
-                                           self._cfg, animator)
-                    except Exception as e:
-                        print(f"[animations] warning: failed to spawn {cls}: {e}")
-                    break
+                    winners.append(cls)
+            if winners:
+                cls = random.choice(winners)
+                try:
+                    self._active = cls(animator.width, animator.height, self._cfg, animator)
+                except Exception as e:
+                    print(f"[animations] warning: failed to spawn {cls}: {e}")
 
     def draw_celestial(self, canvas):
         if (self._active is not None and
@@ -498,10 +510,18 @@ class CameoManager:
             except Exception as e:
                 print(f"[animations] warning: draw error: {e}")
                 self._active = None
-        if (self._persistent is not None and
-                getattr(self._persistent, "layer", "foreground") == "celestial"):
+
+    def draw_clouds(self, canvas):
+        if self._persistent_cloud is not None:
             try:
-                self._persistent.draw(canvas)
+                self._persistent_cloud.draw(canvas)
+            except Exception as e:
+                print(f"[animations] warning: cloud draw error: {e}")
+
+    def draw_persistent(self, canvas):
+        for p in self._persistent_others:
+            try:
+                p.draw(canvas)
             except Exception as e:
                 print(f"[animations] warning: persistent draw error: {e}")
 
@@ -513,12 +533,6 @@ class CameoManager:
             except Exception as e:
                 print(f"[animations] warning: draw error: {e}")
                 self._active = None
-        if (self._persistent is not None and
-                getattr(self._persistent, "layer", "foreground") == "foreground"):
-            try:
-                self._persistent.draw(canvas)
-            except Exception as e:
-                print(f"[animations] warning: persistent draw error: {e}")
 
 
 class WeatherAnimator:
@@ -718,26 +732,24 @@ class WeatherAnimator:
         self._draw_background(canvas)
 
         # Stars
-        for s in self.stars:
-            phase = s.phase + (self.frame * s.speed)
-            level = (math.sin(phase) + 1.0) * 0.5
-            b = int(s.max_brightness * level)
-            if b > 5:
-                self._px(canvas, s.x, s.y, (b, b, b))
+        if self.current_theme and self.current_theme.stars_enabled:
+            for s in self.stars:
+                phase = s.phase + (self.frame * s.speed)
+                level = (math.sin(phase) + 1.0) * 0.5
+                b = int(s.max_brightness * level)
+                if b > 5:
+                    self._px(canvas, s.x, s.y, (b, b, b))
 
-        # Sun: drawn before celestial cameos so they can pass in front
-        if self.condition == "SUNNY":
-            if self.current_theme is None or getattr(self.current_theme, 'sun_enabled', True):
-                self._draw_sun(canvas)
-
-        # Moon
-        if self.current_theme is not None and getattr(self.current_theme, 'moon_enabled', False):
+        # Sun and moon — theme JSON is sole authority
+        if self.current_theme and self.current_theme.sun_enabled:
+            self._draw_sun(canvas)
+        if self.current_theme and self.current_theme.moon_enabled:
             self._draw_moon(canvas)
 
-        # Celestial cameos (shooting stars, meteors, comets, satellites) — behind weather
+        # Layered cameo draws — strict back to front
         self._cameo_manager.draw_celestial(canvas)
-
-        # Foreground cameos (clouds, ghosts, etc.) — in front of weather
+        self._cameo_manager.draw_clouds(canvas)
+        self._cameo_manager.draw_persistent(canvas)
         self._cameo_manager.draw_foreground(canvas)
 
     def _draw_moon(self, canvas):
