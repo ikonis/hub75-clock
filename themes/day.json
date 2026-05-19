@@ -11,14 +11,8 @@
   },
   "stars_enabled": false,
   "cameos": [{"name": "clouds"}],
-  "clouds_enabled": false,
   "cloud_density": "sparse",
   "cloud_speed": "slow",
-  "sun_enabled": true,
-  "condition_overrides": {
-    "RAIN": {"background_type": "solid", "background_color": "#080012"},
-    "TSTORM": {"background_type": "solid", "background_color": "#04000A"},
-    "SNOW": {"background_type": "solid", "background_color": "#060010"},
-    "ICE": {"background_type": "solid", "background_color": "#001830"}
-  }
+  "precipitation": "none",
+  "sun_enabled": true
 }

@@ -1,0 +1,17 @@
+{
+  "name": "test_sleet",
+  "description": "Test theme: sleet precipitation",
+  "background_type": "solid",
+  "background_color": "#030308",
+  "colors": {
+    "time": "#808090",
+    "condition": "#404045",
+    "cloud_day": "#60686C"
+  },
+  "stars_enabled": false,
+  "cameos": [{"name": "clouds"}],
+  "cloud_density": "medium",
+  "cloud_speed": "medium",
+  "precipitation": "sleet",
+  "sun_enabled": false
+}

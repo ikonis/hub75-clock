@@ -89,7 +89,7 @@ Animations declare their draw layer via the `layer` class attribute:
 | `"celestial"` | After stars, before weather particles | `shooting_star`, `meteor`, `comet`, `satellite` |
 | `"foreground"` | After weather particles, on top of rain/snow | `clouds`, `ghost`, `ufo`, all others |
 
-Draw order each frame: background → stars → sun → moon → celestial cameos → ICE → particles → lightning → foreground cameos.
+Draw order each frame: background → stars → sun → moon → celestial cameos → foreground cameos (including clouds and precipitation).
 
 ---
 
@@ -209,7 +209,7 @@ These animations are drawn behind weather particles so meteors appear to fall th
 
 | File | Name | Conditions | Themes | Description |
 |---|---|---|---|---|
-| `clouds.py` | `clouds` | _(any)_ | Day, Sunrise, Sunset, Late Evening | **Persistent.** Drifting clouds whose count, size, and speed are driven by the theme's `cloud_density` and `cloud_speed` fields. Runs continuously without a `chance_per_minute` roll. |
+| `clouds.py` | `clouds` | _(any)_ | Day, Sunrise, Sunset, Late Evening | **Persistent.** Drifting clouds plus optional precipitation particles. Count, size, and speed driven by `cloud_density`/`cloud_speed`. Precipitation type set by `precipitation` field (`"none"`, `"rain"`, `"heavy_rain"`, `"tstorm"`, `"snow"`, `"sleet"`). Tstorm mode adds random lightning bolts and background flash. All particles are owned by their parent cloud and wrap with it. |
 | `airplane.py` | `airplane` | _(any)_ | Day, Sunrise, Sunset | 8px fuselage + wings + windows, random left/right direction, mirrors sprite to face direction of travel. |
 | `bird_flock.py` | `bird_flock` | _(any)_ | Day | V-formation of 5–7 birds with alternating flap frames. |
 | `butterfly.py` | `butterfly` | CLEAR | Day | Open/closed wing frames every 5 ticks, sine wave vertical drift, orange. |

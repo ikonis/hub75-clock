@@ -1,0 +1,17 @@
+{
+  "name": "test_tstorm",
+  "description": "Test theme: tstorm precipitation with lightning",
+  "background_type": "solid",
+  "background_color": "#010005",
+  "colors": {
+    "time": "#606060",
+    "condition": "#303030",
+    "cloud_day": "#303040"
+  },
+  "stars_enabled": false,
+  "cameos": [{"name": "clouds"}],
+  "cloud_density": "dense",
+  "cloud_speed": "fast",
+  "precipitation": "tstorm",
+  "sun_enabled": false
+}

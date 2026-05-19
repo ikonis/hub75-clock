@@ -114,7 +114,7 @@ Example:
 
 | Name | Layer | Conditions | Themes | Description |
 |---|---|---|---|---|
-| `clouds` | foreground | _(any)_ | Day, Sunrise, Sunset, Late Evening | **Persistent** — add without `chance_per_minute`. Count and speed driven by `cloud_density` / `cloud_speed`. |
+| `clouds` | foreground | _(any)_ | Day, Sunrise, Sunset, Late Evening | **Persistent** — add without `chance_per_minute`. Handles clouds AND all precipitation (rain, tstorm with lightning, snow, sleet). Driven by `cloud_density`, `cloud_speed`, `precipitation`, and `colors.cloud_day`. |
 | `shooting_star` | celestial | CLEAR, PARTLYCLOUDY | Night, Late Evening | Fast diagonal streak with fading tail |
 | `ufo` | foreground | CLEAR, PARTLYCLOUDY | Night, Late Evening | Saucer silhouette, cycling belly lights, occasional tractor beam abduction |
 | `satellite` | celestial | CLEAR | Night | ISS-silhouette cross, diagonal slow pass |
@@ -140,16 +140,29 @@ The `layer` column shows when the animation is drawn relative to weather particl
 
 See `docs/animations.md` for the drop-in animation interface and how to write your own.
 
-### Clouds
+### Clouds and precipitation
 
-Clouds are now rendered by the persistent `clouds` cameo animation, not by the weather engine directly. To enable clouds on a theme, add `{"name": "clouds"}` to the `cameos` array. The cloud count, size, and speed are controlled by the fields below.
+All clouds and precipitation are handled by the persistent `clouds` cameo animation. To enable clouds (with or without precipitation), add `{"name": "clouds"}` to the `cameos` array. Cloud count, size, speed, and particle type are controlled by the fields below.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `cloud_density` | string | `"medium"` | How many clouds to spawn. `"sparse"` = 2, `"medium"` = 3–4, `"dense"` = 5–6. |
-| `cloud_speed` | string | `"medium"` | How fast clouds drift. `"slow"` ≈ 0.07 px/frame, `"medium"` ≈ 0.13, `"fast"` ≈ 0.21. |
+| `cloud_density` | string | `"medium"` | Number of clouds. `"sparse"` = 2, `"medium"` = 4, `"dense"` = 7. |
+| `cloud_speed` | string | `"medium"` | How fast clouds drift left. `"slow"` = 0.2 px/frame, `"medium"` = 0.4, `"fast"` = 0.7. |
+| `precipitation` | string | `"none"` | Precipitation particles to emit below clouds. See table below. |
+| `colors.cloud_day` | hex string | `"#646464"` | Cloud body color. Override per-theme for mood. |
 
-The `clouds_enabled` field is no longer used by the clock but is preserved in existing theme files for reference.
+**Precipitation modes:**
+
+| Value | Effect |
+|---|---|
+| `"none"` | Clouds only, no particles. |
+| `"rain"` | 2–4 blue rain streaks per cloud, 1.5 px/frame. |
+| `"heavy_rain"` | 4–6 darker streaks per cloud, 2.5 px/frame. |
+| `"tstorm"` | Heavy rain plus lightning bolts (8–15 s intervals) with a brief background flash. |
+| `"snow"` | 2–3 white dots per cloud, 0.3–0.5 px/frame with gentle lateral wobble. |
+| `"sleet"` | Mixed: half fast cyan-gray streaks, half slow wobbling dots. |
+
+All particles are owned by the cloud that spawned them. They fall downward and wrap back to the cloud bottom when they exit the animation zone. When the cloud wraps around to the right edge, its particles are reset.
 
 ### Sun and Moon
 
@@ -238,26 +251,22 @@ No restart required.
 
 ## Complete example
 
-`stormy_night.json`: a dark, dramatic theme for thunderstorm nights.
+`stormy_night.json`: a dark, dramatic theme for thunderstorm nights with lightning.
 
 ```json
 {
   "name": "Stormy Night",
-  "description": "Deep stormy sky, used automatically by night bucket during TSTORM",
+  "description": "Dark stormy sky with lightning",
 
   "background_type": "solid",
-  "background_color": "#020008",
-
-  "background_top": "#0A0015",
-  "background_bottom": "#04000A",
-  "background_split": 0.5,
-  "background_gradient_direction": "sunset",
+  "background_color": "#010004",
 
   "colors": {
-    "time":      "#404040",
-    "low_temp":  "#002233",
-    "high_temp": "#331A00",
-    "condition": "#1A1A1A"
+    "time":      "#383838",
+    "low_temp":  "#001C2A",
+    "high_temp": "#2A1100",
+    "condition": "#141418",
+    "cloud_day": "#1C1C24"
   },
 
   "stars_enabled": false,
@@ -265,32 +274,21 @@ No restart required.
 
   "cloud_density": "dense",
   "cloud_speed": "fast",
+  "precipitation": "tstorm",
 
-  "condition_overrides": {
-    "TSTORM": {
-      "background_type":  "solid",
-      "background_color": "#010005"
-    },
-    "RAIN": {
-      "background_type":  "solid",
-      "background_color": "#030010"
-    },
-    "SNOW": {
-      "background_type":  "solid",
-      "background_color": "#040010"
-    }
-  }
+  "sun_enabled": false,
+  "moon_enabled": false
 }
 ```
 
 **Field-by-field notes:**
 
-- `background_color: "#020008"`: nearly black with a faint purple tint. Keeps the panel very dim.
-- `background_top/bottom`: unused here since `background_type` is `"solid"`, but provided so the file is a complete reference.
-- `colors.time: "#404040"`: dark grey instead of white. At night a bright clock face is intrusive.
-- `cameos: [{"name": "clouds"}]` + `cloud_density: "dense"` + `cloud_speed: "fast"`: thick fast clouds feel stormy even before rain starts.
-- `condition_overrides.TSTORM`: deepens the background further during active thunderstorms. The rain and lightning particles are drawn on top of this.
-- `stars_enabled: false` / `cameos: []`: no stars or shooting stars; this theme is for overcast/stormy sky.
+- `background_color: "#010004"`: near-black with a faint purple tint. Keeps the panel very dim.
+- `colors.time: "#383838"`: dark grey — a bright clock face is intrusive at night.
+- `colors.cloud_day: "#1C1C24"`: very dark clouds, barely visible — storm clouds blocking all light.
+- `precipitation: "tstorm"`: heavy rain particles plus random lightning bolts with a brief background flash. Lightning interval is 8–15 seconds.
+- `cloud_density: "dense"` + `cloud_speed: "fast"`: 7 fast-moving clouds feel stormy and oppressive.
+- `stars_enabled: false`: no stars; total overcast.
 
 ---
 

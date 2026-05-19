@@ -290,46 +290,12 @@ def get_available_fonts(fonts_dir: str) -> List[str]:
 # WEATHER ANIMATOR
 # ============================================================================
 
-class Particle:
-    __slots__ = ("x", "y", "vx", "vy", "color", "length")
-    def __init__(self, x, y, vx, vy, color, length=1):
-        self.x = x; self.y = y; self.vx = vx; self.vy = vy
-        self.color = color; self.length = length
-
-
-
-# ============================================================================
-# WEATHER ANIMATOR (v2: full background, drifting clouds, sun rays, stars)
-# ============================================================================
-
-
-# ============================================================================
-# WEATHER ANIMATOR
-# ============================================================================
-
-class Cloud:
-    """A drifting cartoon cloud."""
-    __slots__ = ("x", "y", "vx", "size", "color")
-    def __init__(self, x, y, vx, size, color):
-        self.x = x; self.y = y; self.vx = vx
-        self.size = size; self.color = color
-
-
 class Star:
     """A twinkling star."""
     __slots__ = ("x", "y", "phase", "speed", "max_brightness")
     def __init__(self, x, y, phase, speed, max_brightness):
         self.x = x; self.y = y; self.phase = phase
         self.speed = speed; self.max_brightness = max_brightness
-
-
-class LightningBolt:
-    """A zigzag lightning bolt."""
-    __slots__ = ("points", "life", "max_life")
-    def __init__(self, points, life):
-        self.points = points
-        self.life = life
-        self.max_life = life
 
 
 class ShootingStar:
@@ -564,10 +530,7 @@ class WeatherAnimator:
         self.banner_bottom = layout["banner"]["bottom"]
         self.anim_top    = self.banner_bottom + 1
         self.anim_bottom = self.height - 1
-        self.particles: List[Particle] = []
         self.stars: List[Star] = []
-        self.bolts: List[LightningBolt] = []
-        self._ice_cracks = []
         self.condition = "CLEAR"
         self.current_theme: Optional[Theme] = None
         self.frame = 0
@@ -614,38 +577,12 @@ class WeatherAnimator:
     def _init_for_condition(self):
         self.condition = self._CONDITION_ALIASES.get(self.condition, self.condition)
         print(f"[animator] condition={self.condition}")
-        self.particles = []
         self.stars = []
-        self.bolts = []
         self._cameo_manager.reset()
 
         stars_ok = (self.current_theme.stars_enabled if self.current_theme else False)
-
-        if self.condition == "CLEAR":
-            if stars_ok:
-                self._init_stars()
-        elif self.condition == "SUNNY":
-            if stars_ok:
-                self._init_stars()
-        elif self.condition == "CLOUDY":
-            if stars_ok:
-                self._init_stars()
-        elif self.condition in ("PARTLYCLOUDY", "FOG"):
-            if stars_ok:
-                self._init_stars()
-        elif self.condition == "ICE":
-            self._init_ice()
-        elif self.condition == "RAIN":
-            self._init_rain(fast=False)
-        elif self.condition == "SNOW":
-            self._init_snow()
-        elif self.condition == "SLEET":
-            self._init_sleet()
-        elif self.condition == "TSTORM":
-            self._init_rain(fast=True)
-        else:
-            if stars_ok:
-                self._init_stars()
+        if stars_ok:
+            self._init_stars()
 
     def _init_stars(self):
         anim_h = self.anim_bottom - self.anim_top + 1
@@ -660,102 +597,10 @@ class WeatherAnimator:
             ))
 
 
-    def _init_rain(self, fast=False):
-        color = self._color("rain_day")
-        count = self._count("rain_count")
-        if fast:
-            count = int(count * 1.5)
-        for _ in range(count):
-            vy = random.uniform(0.9, 1.4) if fast else random.uniform(0.5, 0.8)
-            self.particles.append(Particle(
-                x=random.uniform(0, self.width),
-                y=random.uniform(self.anim_top, self.anim_bottom),
-                vx=0, vy=vy,
-                color=color,
-                length=random.randint(2, 3),
-            ))
-
-    def _init_snow(self):
-        color = self._color("snow_day")
-        for _ in range(self._count("snow_count")):
-            self.particles.append(Particle(
-                x=random.uniform(0, self.width),
-                y=random.uniform(self.anim_top, self.anim_bottom),
-                vx=random.uniform(-0.1, 0.1),
-                vy=random.uniform(0.15, 0.3),
-                color=color, length=1,
-            ))
-
-    def _init_sleet(self):
-        color = self._color("sleet_day")
-        for _ in range(self._count("sleet_count")):
-            self.particles.append(Particle(
-                x=random.uniform(0, self.width),
-                y=random.uniform(self.anim_top, self.anim_bottom),
-                vx=random.uniform(-0.05, 0.05),
-                vy=random.uniform(0.4, 0.6),
-                color=color,
-                length=random.choice([1, 2]),
-            ))
-    def _init_ice(self):
-        """ICE: light blue background with static crack lines."""
-        self._ice_cracks = self._generate_ice_cracks()
-
-    def _generate_ice_cracks(self):
-        cracks = []
-        color = self._color("ice_day")
-        count = random.randint(3, 5)
-        for _ in range(count):
-            x = random.randint(4, self.width - 4)
-            y = self.anim_top
-            points = [(x, y)]
-            while y < self.anim_bottom:
-                x += random.randint(-4, 4)
-                x = max(1, min(self.width - 2, x))
-                y += random.randint(3, 6)
-                y = min(self.anim_bottom, y)
-                points.append((x, y))
-            cracks.append((points, color))
-        return cracks
-
-
-
-    def _make_bolt(self):
-        """Generate a random zigzag lightning bolt in the animation zone."""
-        color = parse_color(self.cfg["colors"]["lightning"])
-        x = random.randint(8, self.width - 8)
-        y = self.anim_top
-        points = [(x, y)]
-        while y < self.anim_bottom - 2:
-            x += random.randint(-3, 3)
-            x = max(1, min(self.width - 2, x))
-            y += random.randint(2, 4)
-            y = min(self.anim_bottom, y)
-            points.append((x, y))
-        life = self.cfg["animation"]["tstorm_lightning_duration"] * 2
-        return LightningBolt(points=points, life=life)
 
     def update(self):
         self.frame += 1
 
-        for p in self.particles:
-            p.x += p.vx; p.y += p.vy
-            if p.y > self.anim_bottom:
-                p.y = self.anim_top
-                p.x = random.uniform(0, self.width)
-            if p.x < 0: p.x = self.width - 1
-            elif p.x >= self.width: p.x = 0
-
-        # Lightning bolts (TSTORM)
-        if self.condition == "TSTORM":
-            self.bolts = [b for b in self.bolts if b.life > 0]
-            for b in self.bolts:
-                b.life -= 1
-            if (not self.bolts and
-                    random.random() < self.cfg["animation"]["tstorm_lightning_chance"]):
-                self.bolts.append(self._make_bolt())
-
-        # Cameos (shooting stars, etc.)
         if self.current_theme and self.current_theme.cameos:
             fps = self.cfg["animation"]["fps"]
             self._cameo_manager.update(self.current_theme.cameos, fps, self)
@@ -891,38 +736,6 @@ class WeatherAnimator:
 
         # Celestial cameos (shooting stars, meteors, comets, satellites) — behind weather
         self._cameo_manager.draw_celestial(canvas)
-
-        # ICE: light blue bg + static crack lines
-        if self.condition == "ICE":
-            ice_bg = parse_color(self.cfg["colors"].get("ice_bg", "#001830"))
-            for y in range(self.anim_top, self.anim_bottom + 1):
-                for x in range(self.width):
-                    canvas.SetPixel(x, y, ice_bg[0], ice_bg[1], ice_bg[2])
-            for points, color in self._ice_cracks:
-                for i in range(len(points) - 1):
-                    x1, y1 = points[i]
-                    x2, y2 = points[i + 1]
-                    self._line(canvas, x1, y1, x2, y2, color)
-
-        # Particles (rain/snow/sleet/tstorm)
-        for p in self.particles:
-            xi, yi = int(p.x), int(p.y)
-            if p.length == 1:
-                self._px(canvas, xi, yi, p.color)
-            else:
-                for i in range(p.length):
-                    self._px(canvas, xi, yi + i, p.color)
-
-        # Lightning bolts (TSTORM)
-        for bolt in self.bolts:
-            color = parse_color(self.cfg["colors"]["lightning"])
-            max_life = bolt.max_life
-            fade = bolt.life / max_life
-            c = tuple(int(v * fade) for v in color)
-            for i in range(len(bolt.points) - 1):
-                x1, y1 = bolt.points[i]
-                x2, y2 = bolt.points[i + 1]
-                self._line(canvas, x1, y1, x2, y2, c)
 
         # Foreground cameos (clouds, ghosts, etc.) — in front of weather
         self._cameo_manager.draw_foreground(canvas)

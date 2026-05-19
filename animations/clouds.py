@@ -1,14 +1,54 @@
+import math
 import random
 
 
-# --- Appearance settings ---
-DEFAULT_COLOR = "#646464"   # fallback cloud color if theme has no cloud_day color
-# ---------------------------
+# --- Appearance settings - edit to customize ---
+COLOR_CLOUD      = "#646464"       # default cloud color (overridden by theme cloud_day color)
+COLOR_RAIN       = (22, 42, 115)   # rain drop streaks
+COLOR_HEAVY_RAIN = (10, 18, 80)    # heavy rain / tstorm streaks
+COLOR_SNOW       = (180, 180, 200) # snowflakes
+COLOR_SLEET      = (120, 160, 180) # sleet fast particles (slow ones use COLOR_SNOW)
+COLOR_LIGHTNING  = (232, 232, 64)  # lightning bolt color
+COLOR_FLASH      = (20, 20, 60)    # brief background flash during tstorm strike
+# ------------------------------------------------
 
 
 def _parse_hex(h):
     h = h.lstrip("#")
     return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+
+# Cloud shapes: list of (dx, dy, radius) circle offsets from cloud anchor point
+_CLOUD_CIRCLES = {
+    "small": [
+        (0,  0, 3),
+        (-4, 1, 2),
+        ( 4, 1, 2),
+    ],
+    "medium": [
+        ( 0,  0, 4),
+        (-5,  1, 3),
+        ( 5,  1, 3),
+        ( 0, -2, 2),
+    ],
+    "large": [
+        ( 0,  0, 5),
+        (-6,  1, 4),
+        ( 6,  1, 4),
+        (-2, -2, 3),
+        ( 3, -2, 3),
+    ],
+}
+
+# Bounding box for particle spawn: (left_offset, right_offset, height_from_anchor)
+_CLOUD_SPAN = {
+    "small":  (-5,  5, 5),
+    "medium": (-8,  8, 6),
+    "large":  (-10, 10, 8),
+}
+
+_SPEEDS = {"slow": 0.2, "medium": 0.4, "fast": 0.7}
+_COUNTS = {"sparse": 2, "medium": 4, "dense": 7}
 
 
 class Animation:
@@ -18,104 +58,261 @@ class Animation:
     layer = "foreground"
     persistent = True
 
-    _SHAPES = {
-        "small": [
-            "    XXXXXX    ",
-            "  XXXXXXXXXX  ",
-            " XXXXXXXXXXXX ",
-            "XXXXXXXXXXXXXX",
-            " XXXXXXXXXXXX ",
-            "  XXXXXXXXXX  ",
-        ],
-        "medium": [
-            "      XXXXXXXX      ",
-            "   XXXXXXXXXXXXXX   ",
-            "  XXXXXXXXXXXXXXXX  ",
-            " XXXXXXXXXXXXXXXXXXXX",
-            "XXXXXXXXXXXXXXXXXXXX",
-            " XXXXXXXXXXXXXXXXXXXX",
-            "  XXXXXXXXXXXXXXXX  ",
-            "   XXXXXXXXXXXXXX   ",
-        ],
-        "large": [
-            "       XXXXXXXXXX       ",
-            "    XXXXXXXXXXXXXXXX    ",
-            "  XXXXXXXXXXXXXXXXXXXXXX",
-            " XXXXXXXXXXXXXXXXXXXXXXX",
-            "XXXXXXXXXXXXXXXXXXXXXXXXX",
-            "XXXXXXXXXXXXXXXXXXXXXXXXX",
-            " XXXXXXXXXXXXXXXXXXXXXXX",
-            "  XXXXXXXXXXXXXXXXXXXXXX",
-            "    XXXXXXXXXXXXXXXX    ",
-            "       XXXXXXXXXX       ",
-        ],
-    }
-
     def __init__(self, width, height, cfg, animator):
         self._w = width
         self._at = animator.anim_top
         self._ab = animator.anim_bottom
         theme = getattr(animator, "current_theme", None)
 
-        density = getattr(theme, "cloud_density", "medium") if theme else "medium"
-        speed_setting = getattr(theme, "cloud_speed", "medium") if theme else "medium"
+        density      = getattr(theme, "cloud_density",  "medium") if theme else "medium"
+        speed_key    = getattr(theme, "cloud_speed",    "medium") if theme else "medium"
+        self._precip = getattr(theme, "precipitation",  "none")   if theme else "none"
+        self._fps    = cfg.get("animation", {}).get("fps", 15)
 
-        if density == "sparse":
-            count = 2
-        elif density == "dense":
-            count = random.randint(5, 6)
-        else:
-            count = random.randint(3, 4)
+        base_speed = _SPEEDS.get(speed_key, 0.4)
+        count      = _COUNTS.get(density, 4)
 
-        if speed_setting == "slow":
-            base_speed = 0.07
-        elif speed_setting == "fast":
-            base_speed = 0.21
-        else:
-            base_speed = 0.13
+        theme_color_hex = getattr(theme, "colors", {}).get("cloud_day") if theme else None
+        cloud_color = _parse_hex(theme_color_hex) if theme_color_hex else _parse_hex(COLOR_CLOUD)
 
-        # Read cloud color from theme colors, fall back to DEFAULT_COLOR
-        theme_color_hex = None
-        if theme is not None:
-            theme_color_hex = getattr(theme, "colors", {}).get("cloud_day")
-        color = _parse_hex(theme_color_hex) if theme_color_hex else _parse_hex(DEFAULT_COLOR)
+        # Lightning state
+        self._bolt          = None
+        self._bolt_branches = []
+        self._bolt_life     = 0
+        self._flash_life    = 0
+        self._next_bolt     = self._rand_bolt_interval()
 
         self._clouds = []
         for _ in range(count):
-            direction = random.choice([-1, 1])
-            speed = (base_speed + random.uniform(-0.03, 0.03)) * direction
-            size = (random.choice(["small", "medium"]) if density != "dense"
-                    else random.choice(["medium", "large"]))
+            x = random.uniform(0, width)
+            y = float(random.randint(self._at + 1, max(self._at + 1, self._ab - 12)))
+            vx = -(base_speed + random.uniform(0.0, 0.08))
+            size = self._pick_size(density)
             self._clouds.append({
-                "x": random.uniform(0, width),
-                "y": float(random.randint(self._at + 1, max(self._at + 1, self._ab - 10))),
-                "vx": speed,
+                "x":    x,
+                "y":    y,
+                "vx":   vx,
                 "size": size,
-                "color": color,
+                "color": cloud_color,
+                "particles": self._make_particles(x, y, size),
             })
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _rand_bolt_interval(self):
+        return random.randint(int(8 * self._fps), int(15 * self._fps))
+
+    def _pick_size(self, density):
+        if density == "sparse":
+            return random.choice(["small", "medium"])
+        elif density == "dense":
+            return random.choice(["medium", "large"])
+        return random.choice(["small", "medium", "medium", "large"])
+
+    def _make_particles(self, cx, cy, size):
+        """Create precipitation particles owned by a cloud at (cx, cy)."""
+        p = self._precip
+        if p == "none":
+            return []
+
+        span_l, span_r, span_h = _CLOUD_SPAN[size]
+        bottom = cy + span_h
+        particles = []
+
+        if p == "rain":
+            for _ in range(random.randint(2, 4)):
+                particles.append(self._new_particle(span_l, span_r, bottom, "rain",
+                                                    vy=1.5))
+        elif p in ("heavy_rain", "tstorm"):
+            for _ in range(random.randint(4, 6)):
+                particles.append(self._new_particle(span_l, span_r, bottom, "heavy_rain",
+                                                    vy=2.5))
+        elif p == "snow":
+            for _ in range(random.randint(2, 3)):
+                particles.append(self._new_particle(span_l, span_r, bottom, "snow",
+                                                    vy=random.uniform(0.3, 0.5)))
+        elif p == "sleet":
+            for i in range(random.randint(3, 5)):
+                if i % 2 == 0:
+                    particles.append(self._new_particle(span_l, span_r, bottom,
+                                                        "sleet_fast", vy=1.5))
+                else:
+                    particles.append(self._new_particle(span_l, span_r, bottom,
+                                                        "sleet_slow",
+                                                        vy=random.uniform(0.4, 0.6)))
+        return particles
+
+    def _new_particle(self, span_l, span_r, cloud_bottom, ptype, vy):
+        return {
+            "lx":     random.uniform(span_l, span_r),
+            "y":      random.uniform(cloud_bottom, self._ab),
+            "vy":     vy,
+            "wobble": random.uniform(0, math.pi * 2),
+            "type":   ptype,
+        }
+
+    def _respawn(self, p, cx, cy, size):
+        span_l, span_r, span_h = _CLOUD_SPAN[size]
+        p["lx"] = random.uniform(span_l, span_r)
+        p["y"]  = float(cy + span_h)
+
+    def _make_bolt(self, cx, cy, size):
+        span_l, span_r, span_h = _CLOUD_SPAN[size]
+        x = int(cx + random.uniform(span_l * 0.5, span_r * 0.5))
+        y = int(cy + span_h)
+        points = [(x, y)]
+        target_y = min(self._ab, y + random.randint(10, 16))
+        branches = []
+        while y < target_y:
+            x = max(1, min(self._w - 2, x + random.randint(-2, 2)))
+            y = min(target_y, y + random.randint(2, 3))
+            points.append((x, y))
+            if random.random() < 0.4 and len(points) > 1:
+                bx, by = x, y
+                branch = [(bx, by)]
+                for _ in range(random.randint(1, 3)):
+                    bx = max(0, min(self._w - 1, bx + random.randint(-2, 2)))
+                    by += random.randint(1, 2)
+                    if by > self._ab:
+                        break
+                    branch.append((bx, by))
+                if len(branch) > 1:
+                    branches.append(branch)
+        return points, branches
+
+    # ------------------------------------------------------------------
+    # Update / Draw
+    # ------------------------------------------------------------------
 
     def update(self):
         for c in self._clouds:
             c["x"] += c["vx"]
-            if c["vx"] > 0 and c["x"] > self._w + 25:
-                c["x"] = -25.0
-            elif c["vx"] < 0 and c["x"] < -25:
-                c["x"] = float(self._w + 25)
+            span_l, span_r, span_h = _CLOUD_SPAN[c["size"]]
+            # Wrap left-to-right
+            if c["x"] + span_r < 0:
+                c["x"] = float(self._w + abs(span_l) + 4)
+                c["y"] = float(random.randint(self._at + 1, max(self._at + 1, self._ab - 12)))
+                c["particles"] = self._make_particles(c["x"], c["y"], c["size"])
+
+            # Update particles
+            for p in c["particles"]:
+                p["wobble"] += 0.15
+                if p["type"] in ("snow", "sleet_slow"):
+                    p["lx"] += math.sin(p["wobble"]) * 0.25
+                p["y"] += p["vy"]
+                if p["y"] > self._ab:
+                    self._respawn(p, c["x"], c["y"], c["size"])
+
+        # Lightning countdown (tstorm only)
+        if self._precip == "tstorm":
+            if self._bolt_life > 0:
+                self._bolt_life -= 1
+            if self._flash_life > 0:
+                self._flash_life -= 1
+            self._next_bolt -= 1
+            if self._next_bolt <= 0 and self._clouds:
+                lc = random.choice(self._clouds)
+                self._bolt, self._bolt_branches = self._make_bolt(
+                    lc["x"], lc["y"], lc["size"])
+                self._bolt_life  = random.randint(2, 3)
+                self._flash_life = random.randint(1, 2)
+                self._next_bolt  = self._rand_bolt_interval()
 
     def draw(self, canvas):
+        # Background flash during tstorm strike
+        if self._flash_life > 0:
+            fr, fg, fb = COLOR_FLASH
+            for fy in range(self._at, self._ab + 1):
+                for fx in range(self._w):
+                    canvas.SetPixel(fx, fy, fr, fg, fb)
+
         for c in self._clouds:
-            x = int(round(c["x"]))
-            y = int(round(c["y"]))
+            cx = int(round(c["x"]))
+            cy = int(round(c["y"]))
             cr, cg, cb = c["color"]
-            for row, line in enumerate(self._SHAPES[c["size"]]):
-                py = y + row
-                if py < self._at or py > self._ab:
-                    continue
-                for col, ch in enumerate(line):
-                    if ch == "X":
-                        px = x + col
-                        if 0 <= px < self._w:
-                            canvas.SetPixel(px, py, cr, cg, cb)
+
+            # Cloud body: filled circles
+            for dx, dy, r in _CLOUD_CIRCLES[c["size"]]:
+                self._fill_circle(canvas, cx + dx, cy + dy, r, cr, cg, cb)
+
+            # Precipitation particles
+            for p in c["particles"]:
+                px = int(round(c["x"] + p["lx"]))
+                py = int(round(p["y"]))
+                t  = p["type"]
+                if t == "rain":
+                    col = COLOR_RAIN
+                    self._vline(canvas, px, py, 3, col)
+                elif t == "heavy_rain":
+                    col = COLOR_HEAVY_RAIN
+                    self._vline(canvas, px, py, 3, col)
+                elif t == "snow":
+                    col = COLOR_SNOW
+                    self._dot(canvas, px, py, col)
+                elif t == "sleet_fast":
+                    col = COLOR_SLEET
+                    self._vline(canvas, px, py, 2, col)
+                elif t == "sleet_slow":
+                    col = COLOR_SNOW
+                    self._dot(canvas, px, py, col)
+
+        # Lightning bolt
+        if self._bolt_life > 0 and self._bolt:
+            fade = self._bolt_life / 3.0
+            lc = (int(COLOR_LIGHTNING[0] * fade),
+                  int(COLOR_LIGHTNING[1] * fade),
+                  int(COLOR_LIGHTNING[2] * fade))
+            self._draw_bolt(canvas, self._bolt, lc)
+            dim = (lc[0] // 2, lc[1] // 2, lc[2] // 2)
+            for branch in self._bolt_branches:
+                self._draw_bolt(canvas, branch, dim)
+
+    # ------------------------------------------------------------------
+    # Drawing primitives
+    # ------------------------------------------------------------------
+
+    def _fill_circle(self, canvas, cx, cy, r, cr, cg, cb):
+        for dy in range(-r, r + 1):
+            for dx in range(-r, r + 1):
+                if dx * dx + dy * dy <= r * r:
+                    px, py = cx + dx, cy + dy
+                    if 0 <= px < self._w and self._at <= py <= self._ab:
+                        canvas.SetPixel(px, py, cr, cg, cb)
+
+    def _vline(self, canvas, x, y, length, col):
+        cr, cg, cb = col
+        for i in range(length):
+            py = y + i
+            if 0 <= x < self._w and self._at <= py <= self._ab:
+                canvas.SetPixel(x, py, cr, cg, cb)
+
+    def _dot(self, canvas, x, y, col):
+        if 0 <= x < self._w and self._at <= y <= self._ab:
+            canvas.SetPixel(x, y, col[0], col[1], col[2])
+
+    def _draw_bolt(self, canvas, points, color):
+        cr, cg, cb = color
+        for i in range(len(points) - 1):
+            x1, y1 = points[i]
+            x2, y2 = points[i + 1]
+            dx, dy = abs(x2 - x1), abs(y2 - y1)
+            sx = 1 if x1 < x2 else -1
+            sy = 1 if y1 < y2 else -1
+            err = dx - dy
+            while True:
+                if 0 <= x1 < self._w and self._at <= y1 <= self._ab:
+                    canvas.SetPixel(x1, y1, cr, cg, cb)
+                if x1 == x2 and y1 == y2:
+                    break
+                e2 = 2 * err
+                if e2 > -dy:
+                    err -= dy
+                    x1 += sx
+                if e2 < dx:
+                    err += dx
+                    y1 += sy
 
     def is_done(self) -> bool:
         return False

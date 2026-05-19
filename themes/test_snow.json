@@ -1,0 +1,17 @@
+{
+  "name": "test_snow",
+  "description": "Test theme: snow precipitation",
+  "background_type": "solid",
+  "background_color": "#030306",
+  "colors": {
+    "time": "#909090",
+    "condition": "#505050",
+    "cloud_day": "#708090"
+  },
+  "stars_enabled": false,
+  "cameos": [{"name": "clouds"}],
+  "cloud_density": "medium",
+  "cloud_speed": "slow",
+  "precipitation": "snow",
+  "sun_enabled": false
+}

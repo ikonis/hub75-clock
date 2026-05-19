@@ -33,6 +33,7 @@ class Theme:
     cloud_speed: str = "medium"
     sun_enabled: bool = True
     moon_enabled: bool = False
+    precipitation: str = "none"
     condition_overrides: dict = field(default_factory=dict)
 
 

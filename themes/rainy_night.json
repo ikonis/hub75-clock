@@ -1,0 +1,20 @@
+{
+  "name": "Rainy Night",
+  "description": "Dark rainy night",
+  "background_type": "solid",
+  "background_color": "#020008",
+  "colors": {
+    "time": "#404040",
+    "low_temp": "#002233",
+    "high_temp": "#331500",
+    "condition": "#181820",
+    "cloud_day": "#282830"
+  },
+  "stars_enabled": false,
+  "cameos": [{"name": "clouds"}],
+  "cloud_density": "dense",
+  "cloud_speed": "medium",
+  "precipitation": "rain",
+  "sun_enabled": false,
+  "moon_enabled": false
+}

@@ -11,13 +11,9 @@
   },
   "stars_enabled": true,
   "cameos": [{"name": "shooting_star", "chance_per_minute": 8}],
-  "clouds_enabled": false,
   "cloud_density": "sparse",
   "cloud_speed": "slow",
+  "precipitation": "none",
   "sun_enabled": false,
-  "moon_enabled": true,
-  "condition_overrides": {
-    "RAIN": {"background_type": "solid", "background_color": "#040008"},
-    "TSTORM": {"background_type": "solid", "background_color": "#020005"}
-  }
+  "moon_enabled": true
 }
