@@ -233,9 +233,14 @@ class Animation:
             cy = int(round(c["y"]))
             cr, cg, cb = c["color"]
 
-            # Cloud body: filled circles
-            for dx, dy, r in _CLOUD_CIRCLES[c["size"]]:
-                self._fill_circle(canvas, cx + dx, cy + dy, r, cr, cg, cb)
+            # Cloud body: filled circles with brightness variation by lobe size
+            circles = _CLOUD_CIRCLES[c["size"]]
+            max_r = max(r for _, _, r in circles)
+            for dx, dy, r in circles:
+                diff = max_r - r
+                scale = 1.0 if diff == 0 else (0.85 if diff == 1 else 0.70)
+                self._fill_circle(canvas, cx + dx, cy + dy, r,
+                                  int(cr * scale), int(cg * scale), int(cb * scale))
 
             # Precipitation particles
             for p in c["particles"]:
