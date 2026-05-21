@@ -23,8 +23,6 @@ fi
 echo "[update] pulling latest..."
 git -C "$REPO_DIR" pull origin $(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD)
 echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
-cp "$REPO_DIR/update.sh" "$HOME/update-clock.sh"
-
 echo "[update] copying files..."
 sudo cp "$REPO_DIR/clock/hub75_clock.py" "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/clock/theme_loader.py" "$CLOCK_DIR/"
