@@ -304,7 +304,7 @@ class Animation:
                             sdy = py - self._sun_oy
                             dist = math.sqrt(sdx * sdx + sdy * sdy)
                             if dist < self._sun_glow:
-                                t = 1.0 - dist / self._sun_glow
+                                t = min(0.35, (1.0 - dist / self._sun_glow) ** 2)
                                 sr, sg, sb = self._sun_color
                                 pr = int(pr * (1.0 - t) + sr * t)
                                 pg = int(pg * (1.0 - t) + sg * t)
