@@ -28,7 +28,6 @@ class Theme:
     stars_enabled: bool = False
     shooting_stars_enabled: bool = False
     cameos: list = field(default_factory=list)
-    clouds_enabled: bool = False
     cloud_density: str = "medium"
     cloud_speed: str = "medium"
     sun_enabled: bool = True
