@@ -298,62 +298,6 @@ class Star:
         self.speed = speed; self.max_brightness = max_brightness
 
 
-class ShootingStar:
-    """A fast-moving streak across the night sky."""
-    __slots__ = ("x", "y", "vx", "vy", "life", "max_life")
-    def __init__(self, x, y, vx, vy, life):
-        self.x = x; self.y = y; self.vx = vx; self.vy = vy
-        self.life = life; self.max_life = life
-
-
-class ShootingStarCameo:
-    """Single shooting-star event for the cameo system."""
-    layer = "celestial"
-    _ALLOWED = frozenset({"CLEAR", "PARTLYCLOUDY"})
-
-    def __init__(self, condition: str, animator):
-        self._px = animator._px
-        self._star: Optional[ShootingStar] = None
-        if condition not in self._ALLOWED:
-            return
-        anim_top    = animator.anim_top
-        anim_bottom = animator.anim_bottom
-        width       = animator.width
-        anim_third  = anim_top + (anim_bottom - anim_top + 1) // 3
-        speed = random.uniform(1.0, 2.5)
-        if random.random() < 0.5:
-            speed = -speed
-        self._star = ShootingStar(
-            x=random.uniform(0, width),
-            y=random.uniform(anim_top, anim_third),
-            vx=speed,
-            vy=random.uniform(0.8, 1.4),
-            life=random.randint(10, 16),
-        )
-
-    def update(self):
-        if self._star is None:
-            return
-        self._star.life -= 1
-        self._star.x += self._star.vx
-        self._star.y += self._star.vy
-
-    def draw(self, canvas):
-        if self._star is None:
-            return
-        ss = self._star
-        brightness = int(220 * (ss.life / ss.max_life))
-        self._px(canvas, int(ss.x), int(ss.y), (brightness, brightness, brightness))
-        for i in range(1, 6):
-            trail_b = int(brightness * (1.0 - i / 5.0))
-            if trail_b > 5:
-                self._px(canvas, int(ss.x - ss.vx * i), int(ss.y - ss.vy * i),
-                         (trail_b, trail_b, trail_b))
-
-    def is_done(self) -> bool:
-        return self._star is None or self._star.life <= 0
-
-
 try:
     from watchdog.observers import Observer as _WatchdogObserver
     from watchdog.events import FileSystemEventHandler as _WatchdogHandler
@@ -369,8 +313,6 @@ class AnimationLoader:
     def __init__(self, animations_dir: str):
         self._dir = animations_dir
         self._registry: dict = {}
-        # Built-in fallback: ShootingStarCameo registered under its own name
-        self._registry["shooting_star"] = ShootingStarCameo
         self._observer = None
         os.makedirs(animations_dir, exist_ok=True)
         self._scan()
@@ -406,7 +348,7 @@ class AnimationLoader:
             print(f"[animations] warning: failed to load {path}: {e}")
 
     def _reload(self):
-        self._registry = {"shooting_star": ShootingStarCameo}
+        self._registry = {}
         self._scan()
 
     def _start_watcher(self):
