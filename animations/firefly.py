@@ -7,6 +7,7 @@ class Animation:
     conditions = ["CLEAR"]
     themes = ["Night", "Late Evening"]
     layer = "foreground"
+    persistent = True
 
     # --- Appearance settings ---
     MAX_BRIGHTNESS  = 200   # peak glow value (0-255); brightness scales with blink phase
