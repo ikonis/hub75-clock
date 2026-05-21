@@ -1,0 +1,27 @@
+{
+  "name": "Late Evening - Clear",
+  "description": "Clear late evening with stars and moon",
+  "background_type": "solid",
+  "background_color": "#05000F",
+  "background_top": "#000000",
+  "background_bottom": "#000000",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090"
+  },
+  "stars_enabled": true,
+  "sun_enabled": false,
+  "moon_enabled": true,
+  "cloud_density": "medium",
+  "cloud_speed": "medium",
+  "precipitation": "none",
+  "cameos": [
+    {"name": "shooting_star", "chance_per_minute": 8},
+    {"name": "firefly",       "chance_per_minute": 4}
+  ],
+  "condition_overrides": {}
+}

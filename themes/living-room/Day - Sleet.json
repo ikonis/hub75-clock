@@ -1,0 +1,27 @@
+{
+  "name": "Day - Sleet",
+  "description": "Wintry mix of sleet and snow during the day",
+  "background_type": "solid",
+  "background_color": "#030310",
+  "background_top": "#000000",
+  "background_bottom": "#000000",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#C8C8D8",
+    "low_temp": "#5588AA",
+    "high_temp": "#886633",
+    "condition": "#606070",
+    "cloud_day": "#606870"
+  },
+  "stars_enabled": false,
+  "sun_enabled": false,
+  "moon_enabled": false,
+  "cloud_density": "dense",
+  "cloud_speed": "medium",
+  "precipitation": "sleet",
+  "cameos": [
+    {"name": "clouds"}
+  ],
+  "condition_overrides": {}
+}

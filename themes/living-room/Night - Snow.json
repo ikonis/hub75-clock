@@ -1,0 +1,27 @@
+{
+  "name": "Night - Snow",
+  "description": "Snow falling at night",
+  "background_type": "solid",
+  "background_color": "#020206",
+  "background_top": "#000000",
+  "background_bottom": "#000000",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#505060",
+    "low_temp": "#203040",
+    "high_temp": "#302010",
+    "condition": "#282830",
+    "cloud_day": "#404050"
+  },
+  "stars_enabled": false,
+  "sun_enabled": false,
+  "moon_enabled": true,
+  "cloud_density": "dense",
+  "cloud_speed": "slow",
+  "precipitation": "snow",
+  "cameos": [
+    {"name": "clouds"}
+  ],
+  "condition_overrides": {}
+}

@@ -1,0 +1,27 @@
+{
+  "name": "Night - Sleet",
+  "description": "Wintry sleet mix at night",
+  "background_type": "solid",
+  "background_color": "#030508",
+  "background_top": "#000000",
+  "background_bottom": "#000000",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#C0C0C0",
+    "low_temp": "#6688AA",
+    "high_temp": "#886633",
+    "condition": "#606070",
+    "cloud_day": "#484858"
+  },
+  "stars_enabled": false,
+  "sun_enabled": false,
+  "moon_enabled": false,
+  "cloud_density": "dense",
+  "cloud_speed": "slow",
+  "precipitation": "sleet",
+  "cameos": [
+    {"name": "clouds"}
+  ],
+  "condition_overrides": {}
+}
