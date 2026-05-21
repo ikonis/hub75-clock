@@ -75,6 +75,19 @@ class Animation:
         theme_color_hex = getattr(theme, "colors", {}).get("cloud_day") if theme else None
         cloud_color = _parse_hex(theme_color_hex) if theme_color_hex else _parse_hex(COLOR_CLOUD)
 
+        # Sun blend parameters — populated only when theme has sun_enabled
+        self._sun_ox    = None
+        if getattr(theme, "sun_enabled", False):
+            self._sun_ox    = width - 1
+            self._sun_oy    = animator.anim_top
+            self._sun_r     = 12
+            self._sun_glow  = 20
+            raw = getattr(theme, "colors", {}).get("sun_day")
+            if raw is None:
+                raw = animator.cfg.get("colors", {}).get("sun_day", "#DCA01E")
+            self._sun_color = (_parse_hex(raw) if isinstance(raw, str)
+                               else (int(raw[0]), int(raw[1]), int(raw[2])))
+
         # Lightning state
         self._bolt          = None
         self._bolt_branches = []
@@ -284,7 +297,20 @@ class Animation:
                 if dx * dx + dy * dy <= r * r:
                     px, py = cx + dx, cy + dy
                     if 0 <= px < self._w and self._at <= py <= self._ab:
-                        canvas.SetPixel(px, py, cr, cg, cb)
+                        pr, pg, pb = cr, cg, cb
+                        # EXPERIMENTAL: sun-cloud blending - remove from here...
+                        if self._sun_ox is not None:
+                            sdx = px - self._sun_ox
+                            sdy = py - self._sun_oy
+                            dist = math.sqrt(sdx * sdx + sdy * sdy)
+                            if dist < self._sun_glow:
+                                t = 1.0 - dist / self._sun_glow
+                                sr, sg, sb = self._sun_color
+                                pr = int(pr * (1.0 - t) + sr * t)
+                                pg = int(pg * (1.0 - t) + sg * t)
+                                pb = int(pb * (1.0 - t) + sb * t)
+                        # ...to here to disable sun-cloud blending
+                        canvas.SetPixel(px, py, pr, pg, pb)
 
     def _vline(self, canvas, x, y, length, col):
         cr, cg, cb = col
