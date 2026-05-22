@@ -86,7 +86,7 @@ class Animation:
         for _ in range(count):
             x = random.uniform(0, width)
             y = float(random.randint(self._at + 1, max(self._at + 1, self._ab - 12)))
-            vx = -(base_speed + random.uniform(0.0, 0.08))
+            vx = -(base_speed + random.uniform(0.0, 0.08)) * (30.0 / self._fps)
             size = self._pick_size(density)
             self._clouds.append({
                 "x":    x,
@@ -124,24 +124,24 @@ class Animation:
         if p == "rain":
             for _ in range(random.randint(2, 4)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "rain",
-                                                    vy=1.5))
+                                                    vy=1.5 * (15.0 / self._fps)))
         elif p in ("heavy_rain", "tstorm"):
             for _ in range(random.randint(4, 6)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "heavy_rain",
-                                                    vy=2.5))
+                                                    vy=2.5 * (15.0 / self._fps)))
         elif p == "snow":
             for _ in range(random.randint(2, 3)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "snow",
-                                                    vy=random.uniform(0.3, 0.5)))
+                                                    vy=random.uniform(0.3, 0.5) * (15.0 / self._fps)))
         elif p == "sleet":
             for i in range(random.randint(3, 5)):
                 if i % 2 == 0:
                     particles.append(self._new_particle(span_l, span_r, bottom,
-                                                        "sleet_fast", vy=1.5))
+                                                        "sleet_fast", vy=1.5 * (15.0 / self._fps)))
                 else:
                     particles.append(self._new_particle(span_l, span_r, bottom,
                                                         "sleet_slow",
-                                                        vy=random.uniform(0.4, 0.6)))
+                                                        vy=random.uniform(0.4, 0.6) * (15.0 / self._fps)))
         return particles
 
     def _new_particle(self, span_l, span_r, cloud_bottom, ptype, vy):
@@ -229,13 +229,12 @@ class Animation:
                     canvas.SetPixel(fx, fy, fr, fg, fb)
 
         for c in self._clouds:
-            cx = int(round(c["x"]))
             cy = int(round(c["y"]))
             cr, cg, cb = c["color"]
-
-            # Cloud body: filled circles with brightness variation by lobe size
             circles = _CLOUD_CIRCLES[c["size"]]
             max_r = max(r for _, _, r in circles)
+
+            cx = int(round(c["x"]))
             for dx, dy, r in circles:
                 diff = max_r - r
                 scale = 1.0 if diff == 0 else (0.85 if diff == 1 else 0.70)
