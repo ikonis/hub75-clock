@@ -36,6 +36,7 @@ file(GLOB ANIM_SOURCES src/animations/*.cpp)
 
 add_executable(hub75_clock
     src/main.cpp
+    src/Sensors.cpp
     src/WeatherAnimator.cpp
     src/ThemeLoader.cpp
     src/CameoManager.cpp

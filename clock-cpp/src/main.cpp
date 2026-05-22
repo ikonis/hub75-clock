@@ -1,5 +1,6 @@
 #include "WeatherAnimator.h"
 #include "Theme.h"
+#include "Sensors.h"
 
 #include <led-matrix.h>
 #include <graphics.h>
@@ -219,6 +220,8 @@ struct ClockState {
     std::string highTemp      = "--";
     std::string condition     = "CLEAR";
     bool        mqttConnected = false;
+    std::string bucket        = "Day";
+    std::string alertMessage;
 };
 
 // ── Color helpers ─────────────────────────────────────────────────────────────
@@ -402,6 +405,7 @@ struct MqttCtx {
     json*            cfg;
     std::mutex*      mtx;
     RGBMatrix*       matrix;
+    LD2410Sensor*    ld2410 = nullptr;
 };
 
 static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
@@ -415,55 +419,125 @@ static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
         ctx->clockState->mqttConnected = true;
     }
 
-    auto& topics = (*ctx->cfg)["mqtt"]["topics"];
-    auto sub = [&](const std::string& key) {
-        std::string t = topics.value(key, "");
+    auto& topics   = (*ctx->cfg)["mqtt"]["topics"];
+    std::string cid = (*ctx->cfg)["mqtt"].value("client_id", "hub75_clock");
+
+    auto pub = [&](const std::string& topic, const std::string& payload, bool retain) {
+        mosquitto_publish(mosq, nullptr, topic.c_str(),
+                          int(payload.size()), payload.c_str(), 0, retain ? 1 : 0);
+    };
+    auto sub = [&](const std::string& key, const std::string& fallback = "") {
+        std::string t = topics.value(key, fallback);
         if (!t.empty()) mosquitto_subscribe(mosq, nullptr, t.c_str(), 0);
     };
+
+    // Publish availability (mirrors Python: client.publish(topic_avail, "online"))
+    pub(topics.value("availability", "hub75_clock/status"), "online", true);
+
     sub("weather");
     sub("config");
     sub("alert");
     sub("theme");
-    sub("gates");
-    sub("engineering_mode");
-    sub("bucket");
+    sub("gates",            cid + "/gates");
+    sub("engineering_mode", cid + "/engineering_mode");
+    sub("bucket",           cid + "/bucket");
+
+    // Gate threshold wildcard topics: {client_id}/gate/+/move_thresh etc.
+    mosquitto_subscribe(mosq, nullptr, (cid + "/gate/+/move_thresh").c_str(),  0);
+    mosquitto_subscribe(mosq, nullptr, (cid + "/gate/+/still_thresh").c_str(), 0);
 
     // Publish available themes.
-    std::string themesAvail = topics.value("themes_available", "");
-    if (!themesAvail.empty()) {
+    {
         auto names = ctx->themeLoader->availableThemes();
-        json arr   = json::array();
+        json arr = json::array();
         for (const auto& n : names) arr.push_back(n);
-        std::string payload = arr.dump();
-        mosquitto_publish(mosq, nullptr, themesAvail.c_str(),
-                          int(payload.size()), payload.c_str(), 0, true);
+        pub(topics.value("themes_available", "hub75_clock/themes/available"), arr.dump(), true);
     }
+
+    // Publish initial brightness state.
+    {
+        int b = (*ctx->cfg)["panel"].value("brightness", 60);
+        pub(cid + "/brightness/state", std::to_string(b), true);
+    }
+
+    // Publish initial engineering mode state.
+    if (ctx->ld2410) {
+        std::string emStateTopic =
+            topics.value("engineering_mode", cid + "/engineering_mode") + "/state";
+        pub(emStateTopic, ctx->ld2410->engineeringMode() ? "on" : "off", true);
+    }
+
     std::cout << "[mqtt] connected and subscribed\n";
 }
 
-static void mqttOnMessage(mosquitto* /*mosq*/, void* obj,
+static void mqttOnMessage(mosquitto* mosq, void* obj,
                           const mosquitto_message* msg)
 {
-    auto* ctx    = static_cast<MqttCtx*>(obj);
+    auto* ctx = static_cast<MqttCtx*>(obj);
     std::lock_guard<std::mutex> lk(*ctx->mtx);
     auto& topics = (*ctx->cfg)["mqtt"]["topics"];
+    std::string cid = (*ctx->cfg)["mqtt"].value("client_id", "hub75_clock");
 
     std::string topic(msg->topic);
     std::string raw(static_cast<char*>(msg->payload),
                     static_cast<std::size_t>(msg->payloadlen));
 
+    // ── Gate threshold wildcard: {cid}/gate/{n}/move_thresh or still_thresh ──
+    // Payload is a plain numeric value, not JSON.
+    {
+        // Split topic on '/'
+        std::vector<std::string> parts;
+        {
+            std::string seg;
+            for (char c : topic) {
+                if (c == '/') { parts.push_back(seg); seg.clear(); }
+                else seg += c;
+            }
+            parts.push_back(seg);
+        }
+        if (parts.size() == 4 && parts[0] == cid && parts[1] == "gate" &&
+            (parts[3] == "move_thresh" || parts[3] == "still_thresh"))
+        {
+            if (ctx->ld2410) {
+                try {
+                    int gate  = std::stoi(parts[2]);
+                    int value = static_cast<int>(std::stod(raw));
+                    auto& gt = ctx->ld2410->gateThresholds[gate];
+                    if (parts[3] == "move_thresh") gt.move  = value;
+                    else                            gt.still = value;
+                    ctx->ld2410->writeGateConfig(gate, gt.move, gt.still);
+                    // Echo back (mirrors Python publish(msg.topic, str(value), retain=True))
+                    mosquitto_publish(mosq, nullptr, topic.c_str(),
+                                      int(raw.size()), raw.c_str(), 0, 1);
+                } catch (...) {}
+            }
+            return;
+        }
+    }
+
+    // ── Parse JSON payload (all remaining topics use JSON) ────────────────
+    json payload;
+    try {
+        payload = json::parse(raw);
+    } catch (...) {
+        // Some topics (e.g. theme) may carry a plain string.
+        payload = raw;
+    }
+
+    // ── weather ───────────────────────────────────────────────────────────
     if (topic == topics.value("weather", "")) {
+        if (!payload.is_object()) return;
         try {
-            json payload = json::parse(raw);
-            if (payload.contains("low_temp")) {
-                ctx->clockState->lowTemp = std::to_string(int(payload["low_temp"].get<double>()));
-            }
-            if (payload.contains("high_temp")) {
-                ctx->clockState->highTemp = std::to_string(int(payload["high_temp"].get<double>()));
-            }
+            if (payload.contains("low_temp"))
+                ctx->clockState->lowTemp =
+                    std::to_string(static_cast<int>(payload["low_temp"].get<double>()));
+            if (payload.contains("high_temp"))
+                ctx->clockState->highTemp =
+                    std::to_string(static_cast<int>(payload["high_temp"].get<double>()));
             if (payload.contains("condition")) {
                 std::string c = payload["condition"].get<std::string>();
-                for (auto& ch : c) ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+                for (auto& ch : c)
+                    ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
                 ctx->clockState->condition = c;
                 ctx->animator->setCondition(c);
             }
@@ -471,22 +545,29 @@ static void mqttOnMessage(mosquitto* /*mosq*/, void* obj,
             std::cerr << "[mqtt] weather parse error: " << e.what() << "\n";
         }
 
+    // ── theme ─────────────────────────────────────────────────────────────
     } else if (topic == topics.value("theme", "")) {
-        // Payload is either a plain theme name string or {"theme": "Name"}.
-        std::string name = raw;
-        try {
-            json j = json::parse(raw);
-            if (j.is_object() && j.contains("theme")) name = j["theme"].get<std::string>();
-        } catch (...) {}
-        ctx->animator->setTheme(name, *ctx->themeLoader);
+        std::string name = payload.is_string() ? payload.get<std::string>()
+                         : (payload.is_object() && payload.contains("theme"))
+                           ? payload["theme"].get<std::string>() : "";
+        if (!name.empty()) {
+            ctx->animator->setTheme(name, *ctx->themeLoader);
+            std::string stateT = topics.value("theme_state", "hub75_clock/theme/state");
+            mosquitto_publish(mosq, nullptr, stateT.c_str(),
+                              int(name.size()), name.c_str(), 0, 1);
+        }
 
+    // ── config ────────────────────────────────────────────────────────────
     } else if (topic == topics.value("config", "")) {
+        if (!payload.is_object()) return;
         try {
-            json payload = json::parse(raw);
             if (payload.contains("brightness")) {
                 int b = std::max(1, std::min(100, payload["brightness"].get<int>()));
                 (*ctx->cfg)["panel"]["brightness"] = b;
                 ctx->matrix->SetBrightness(b);
+                std::string bStr = std::to_string(b);
+                mosquitto_publish(mosq, nullptr, (cid + "/brightness/state").c_str(),
+                                  int(bStr.size()), bStr.c_str(), 0, 1);
             }
             if (payload.contains("fps")) {
                 int f = std::max(1, std::min(60, payload["fps"].get<int>()));
@@ -494,12 +575,79 @@ static void mqttOnMessage(mosquitto* /*mosq*/, void* obj,
                 g_fps.store(f);
             }
             if (payload.contains("theme")) {
-                ctx->animator->setTheme(payload["theme"].get<std::string>(), *ctx->themeLoader);
+                std::string name = payload["theme"].get<std::string>();
+                ctx->animator->setTheme(name, *ctx->themeLoader);
+                std::string stateT = topics.value("theme_state", "hub75_clock/theme/state");
+                mosquitto_publish(mosq, nullptr, stateT.c_str(),
+                                  int(name.size()), name.c_str(), 0, 1);
+            }
+            if (payload.contains("engineering_mode") && ctx->ld2410) {
+                bool em = payload["engineering_mode"].get<bool>();
+                ctx->ld2410->enableEngineeringMode(em);
+                std::string emStateT =
+                    topics.value("engineering_mode", cid + "/engineering_mode") + "/state";
+                const char* s = em ? "on" : "off";
+                mosquitto_publish(mosq, nullptr, emStateT.c_str(),
+                                  static_cast<int>(std::strlen(s)), s, 0, 1);
             }
         } catch (...) {}
 
+    // ── alert ─────────────────────────────────────────────────────────────
+    } else if (topic == topics.value("alert", "")) {
+        if (!payload.is_object()) return;
+        if (payload.value("clear", false) || !payload.contains("message")) {
+            ctx->clockState->alertMessage.clear();
+        } else {
+            ctx->clockState->alertMessage = payload.value("message", "");
+        }
+
+    // ── gates (bulk gate configuration) ───────────────────────────────────
+    } else if (topic == topics.value("gates", cid + "/gates")) {
+        if (!payload.is_object() || !ctx->ld2410) return;
+        if (payload.contains("gates")) {
+            for (const auto& g : payload["gates"]) {
+                int gate = g["gate"].get<int>();
+                int mv   = g.value("move",  50);
+                int st   = g.value("still", 30);
+                ctx->ld2410->gateThresholds[gate] = {mv, st};
+                ctx->ld2410->writeGateConfig(gate, mv, st);
+            }
+        } else if (payload.contains("gate")) {
+            int gate = payload["gate"].get<int>();
+            int mv   = payload.value("move",  50);
+            int st   = payload.value("still", 30);
+            ctx->ld2410->gateThresholds[gate] = {mv, st};
+            ctx->ld2410->writeGateConfig(gate, mv, st);
+        }
+        if (payload.contains("engineering_mode") && ctx->ld2410) {
+            bool em = payload["engineering_mode"].get<bool>();
+            ctx->ld2410->enableEngineeringMode(em);
+            std::string emStateT =
+                topics.value("engineering_mode", cid + "/engineering_mode") + "/state";
+            const char* s = em ? "on" : "off";
+            mosquitto_publish(mosq, nullptr, emStateT.c_str(),
+                              static_cast<int>(std::strlen(s)), s, 0, 1);
+        }
+
+    // ── engineering_mode ──────────────────────────────────────────────────
+    } else if (topic == topics.value("engineering_mode", cid + "/engineering_mode")) {
+        if (!payload.is_object() || !ctx->ld2410) return;
+        if (payload.contains("engineering_mode")) {
+            bool em = payload["engineering_mode"].get<bool>();
+            ctx->ld2410->enableEngineeringMode(em);
+            std::string emStateT = topic + "/state";
+            const char* s = em ? "on" : "off";
+            mosquitto_publish(mosq, nullptr, emStateT.c_str(),
+                              static_cast<int>(std::strlen(s)), s, 0, 1);
+        }
+
+    // ── bucket ────────────────────────────────────────────────────────────
+    } else if (topic == topics.value("bucket", cid + "/bucket")) {
+        if (payload.is_object() && payload.contains("bucket"))
+            ctx->clockState->bucket = payload["bucket"].get<std::string>();
+        else if (payload.is_string())
+            ctx->clockState->bucket = payload.get<std::string>();
     }
-    // TODO: handle alert, gates, engineering_mode, bucket topics.
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -573,6 +721,51 @@ int main(int argc, char* argv[]) {
         mosquitto_loop_start(mosq);
     }
 
+    // ── Sensors ───────────────────────────────────────────────────────────
+    // Publish helper: mosquitto_publish is thread-safe with loop_start.
+    auto sensorPub = [mosq](const std::string& t, const std::string& p, bool retain) {
+        mosquitto_publish(mosq, nullptr, t.c_str(),
+                          int(p.size()), p.c_str(), 0, retain ? 1 : 0);
+    };
+
+    auto& sc     = cfg["sensors"];
+    auto& topics = cfg["mqtt"]["topics"];
+
+    std::unique_ptr<VEML7700Sensor> veml;
+    if (sc.value("veml7700_enabled", true)) {
+        veml = std::make_unique<VEML7700Sensor>(
+            sensorPub,
+            topics.value("lux", "hub75_clock/lux"),
+            sc.value("lux_interval", 10.0));
+    }
+
+    std::unique_ptr<PIRSensor> pir;
+    if (sc.value("pir_enabled", true)) {
+        pir = std::make_unique<PIRSensor>(
+            sensorPub,
+            topics.value("pir", "hub75_clock/pir"),
+            sc.value("pir_gpio",          6),
+            sc.value("pir_poll_interval", 0.1),
+            sc.value("pir_invert",        false));
+    }
+
+    std::unique_ptr<LD2410Sensor> ld2410;
+    if (sc.value("ld2410_enabled", true)) {
+        ld2410 = std::make_unique<LD2410Sensor>(
+            sensorPub,
+            topics.value("presence", "hub75_clock/presence"),
+            topics.value("motion",   "hub75_clock/motion"),
+            sc.value("ld2410_port", std::string("/dev/serial0")),
+            static_cast<unsigned>(sc.value("ld2410_baud", 256000)));
+    }
+
+    // Wire LD2410 into MQTT context so gate/engineering_mode handlers work.
+    mqttCtx.ld2410 = ld2410.get();
+
+    if (veml)   veml->start();
+    if (pir)    pir->start();
+    if (ld2410) ld2410->start();
+
     // ── Signal handlers ───────────────────────────────────────────────────
     std::signal(SIGINT,  onSignal);
     std::signal(SIGTERM, onSignal);
@@ -600,6 +793,11 @@ int main(int argc, char* argv[]) {
     }
 
     // ── Cleanup ───────────────────────────────────────────────────────────
+    // Stop sensors before MQTT loop_stop to avoid publishing after disconnect.
+    if (veml)   veml->stop();
+    if (pir)    pir->stop();
+    if (ld2410) ld2410->stop();
+
     matrix->Clear();
     mosquitto_loop_stop(mosq, true);
     mosquitto_destroy(mosq);

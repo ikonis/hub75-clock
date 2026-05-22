@@ -1,0 +1,503 @@
+// Sensors.cpp — Linux userspace sensor implementations.
+// Do NOT include <termios.h> here; <asm/termios.h> is used instead for
+// termios2 / BOTHER support needed for the 256000-baud LD2410C serial port.
+
+#include "Sensors.h"
+
+#include <algorithm>
+#include <cerrno>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <fstream>
+#include <iostream>
+#include <string>
+
+// POSIX / Linux platform headers
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+
+// I2C userspace API (libi2c-dev / linux-headers)
+#include <linux/i2c-dev.h>
+#include <linux/i2c.h>
+
+// Serial: use asm/termios.h (not <termios.h>) so we get termios2 + BOTHER
+// which are needed for the non-POSIX 256000 baud rate.
+#include <asm/termios.h>
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VEML7700 lux sensor
+// ═══════════════════════════════════════════════════════════════════════════
+
+static constexpr int     VEML7700_ADDR    = 0x10;
+static constexpr uint8_t VEML7700_REG_CFG = 0x00;
+static constexpr uint8_t VEML7700_REG_ALS = 0x04;
+
+VEML7700Sensor::VEML7700Sensor(SensorPublish pub,
+                                const std::string& topic,
+                                double intervalSec)
+    : _pub(std::move(pub)), _topic(topic), _intervalSec(intervalSec)
+{
+    if (!_init())
+        std::cerr << "[veml7700] sensor not available — skipping\n";
+}
+
+VEML7700Sensor::~VEML7700Sensor() { stop(); }
+
+bool VEML7700Sensor::_init() {
+    _fd = open("/dev/i2c-1", O_RDWR);
+    if (_fd < 0) return false;
+
+    // Write config register 0x00 = 0x0000: 1x gain, 100 ms IT, ALS enabled.
+    uint8_t cfgbuf[3] = {VEML7700_REG_CFG, 0x00, 0x00};
+    struct i2c_msg wmsg;
+    wmsg.addr  = static_cast<__u16>(VEML7700_ADDR);
+    wmsg.flags = 0;
+    wmsg.len   = 3;
+    wmsg.buf   = cfgbuf;
+    struct i2c_rdwr_ioctl_data wrdwr;
+    wrdwr.msgs  = &wmsg;
+    wrdwr.nmsgs = 1;
+    if (ioctl(_fd, I2C_RDWR, &wrdwr) < 0) {
+        close(_fd);
+        _fd = -1;
+        return false;
+    }
+
+    usleep(200'000); // 200 ms sensor warmup
+    std::cout << "[veml7700] initialized on /dev/i2c-1\n";
+    return true;
+}
+
+void VEML7700Sensor::start() {
+    if (_fd < 0) return;
+    _running = true;
+    _thread  = std::thread([this] { _run(); });
+}
+
+void VEML7700Sensor::stop() {
+    _running = false;
+    if (_thread.joinable()) _thread.join();
+    if (_fd >= 0) { close(_fd); _fd = -1; }
+}
+
+double VEML7700Sensor::_readLux() {
+    // Combined write (register pointer) + read (2 bytes ALS data)
+    // using I2C_RDWR for correct repeated-start behaviour.
+    uint8_t reg = VEML7700_REG_ALS;
+    uint8_t buf[2] = {};
+
+    struct i2c_msg msgs[2];
+    msgs[0].addr  = static_cast<__u16>(VEML7700_ADDR);
+    msgs[0].flags = 0;
+    msgs[0].len   = 1;
+    msgs[0].buf   = &reg;
+    msgs[1].addr  = static_cast<__u16>(VEML7700_ADDR);
+    msgs[1].flags = I2C_M_RD;
+    msgs[1].len   = 2;
+    msgs[1].buf   = buf;
+
+    struct i2c_rdwr_ioctl_data rdwr;
+    rdwr.msgs  = msgs;
+    rdwr.nmsgs = 2;
+
+    if (ioctl(_fd, I2C_RDWR, &rdwr) < 0) return -1.0;
+
+    uint16_t raw = static_cast<uint16_t>(buf[0]) |
+                   (static_cast<uint16_t>(buf[1]) << 8);
+    double lux = raw * 0.0576; // resolution: 1x gain, 100 ms IT
+
+    // Adafruit non-linear correction for high lux values (> 1000 lx)
+    if (lux > 1000.0) {
+        lux = 6.0135e-13 * (lux * lux * lux * lux)
+            - 9.3924e-9  * (lux * lux * lux)
+            + 8.1488e-5  * (lux * lux)
+            + 1.0023     *  lux;
+    }
+    return lux;
+}
+
+void VEML7700Sensor::_run() {
+    while (_running) {
+        double lux = _readLux();
+        if (lux >= 0.0) {
+            char payload[64];
+            std::snprintf(payload, sizeof(payload), "{\"lux\": %.2f}", lux);
+            _pub(_topic, payload, true);
+        } else {
+            std::cerr << "[veml7700] read error\n";
+        }
+        // Interruptible sleep: check _running every 100 ms.
+        auto deadline = std::chrono::steady_clock::now() +
+                        std::chrono::milliseconds(static_cast<int>(_intervalSec * 1000.0));
+        while (_running && std::chrono::steady_clock::now() < deadline)
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PIR motion sensor
+// ═══════════════════════════════════════════════════════════════════════════
+
+PIRSensor::PIRSensor(SensorPublish pub, const std::string& topic,
+                     int gpioPin, double pollSec, bool invert)
+    : _pub(std::move(pub)), _topic(topic),
+      _pin(gpioPin), _pollSec(pollSec), _invert(invert)
+{
+    if (!_init())
+        std::cerr << "[pir] sensor not available on GPIO" << _pin << " — skipping\n";
+}
+
+PIRSensor::~PIRSensor() { stop(); }
+
+bool PIRSensor::_init() {
+    // Export the GPIO pin (ignore EBUSY — already exported is fine).
+    {
+        int fd = open("/sys/class/gpio/export", O_WRONLY);
+        if (fd >= 0) {
+            std::string ps = std::to_string(_pin);
+            write(fd, ps.c_str(), ps.size());
+            close(fd);
+            usleep(100'000); // wait for sysfs entry to appear
+        }
+    }
+    // Set direction to "in".
+    {
+        std::string dirPath = "/sys/class/gpio/gpio" + std::to_string(_pin) + "/direction";
+        int fd = open(dirPath.c_str(), O_WRONLY);
+        if (fd < 0) return false;
+        write(fd, "in", 2);
+        close(fd);
+    }
+    _valuePath = "/sys/class/gpio/gpio" + std::to_string(_pin) + "/value";
+    std::cout << "[pir] initialized on GPIO" << _pin << "\n";
+    return true;
+}
+
+void PIRSensor::start() {
+    if (_valuePath.empty()) return;
+    _running = true;
+    _thread  = std::thread([this] { _run(); });
+}
+
+void PIRSensor::stop() {
+    _running = false;
+    if (_thread.joinable()) _thread.join();
+}
+
+bool PIRSensor::_readPin() const {
+    int fd = open(_valuePath.c_str(), O_RDONLY);
+    if (fd < 0) return false;
+    char buf[4] = {};
+    read(fd, buf, sizeof(buf));
+    close(fd);
+    bool raw = (buf[0] == '1');
+    return _invert ? !raw : raw;
+}
+
+void PIRSensor::_run() {
+    // Mirror Python debounce logic exactly:
+    //   track raw state + timestamp of last change;
+    //   only publish when stable for >= 500 ms.
+    bool rawState  = _readPin();
+    bool lastState = rawState;
+    auto rawChangedAt = std::chrono::steady_clock::now();
+
+    while (_running) {
+        bool raw = _readPin();
+
+        if (raw != rawState) {
+            rawState     = raw;
+            rawChangedAt = std::chrono::steady_clock::now();
+        }
+
+        double stable = std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - rawChangedAt).count();
+
+        if (rawState != lastState && stable >= 0.5) {
+            lastState = rawState;
+            _pub(_topic,
+                 rawState ? "{\"motion\": true}" : "{\"motion\": false}",
+                 true);
+        }
+
+        // Interruptible poll sleep.
+        auto sleepMs = static_cast<int>(_pollSec * 1000.0);
+        auto deadline = std::chrono::steady_clock::now() +
+                        std::chrono::milliseconds(sleepMs);
+        while (_running && std::chrono::steady_clock::now() < deadline)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LD2410C mmWave radar
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Open a serial port at an arbitrary baud rate using termios2 + BOTHER.
+// This avoids the absence of B256000 in POSIX termios baud-rate constants.
+static int openSerialCustomBaud(const std::string& port, unsigned baud) {
+    int fd = open(port.c_str(), O_RDWR | O_NOCTTY);
+    if (fd < 0) return -1;
+
+    struct termios2 tty2 = {};
+    if (ioctl(fd, TCGETS2, &tty2) < 0) { close(fd); return -1; }
+
+    tty2.c_cflag &= ~CBAUD;
+    tty2.c_cflag |= BOTHER;                          // custom baud rate
+    tty2.c_cflag &= ~(PARENB | CSTOPB | CRTSCTS);
+    tty2.c_cflag |= CS8 | CREAD | CLOCAL;            // 8N1, no flow control
+    tty2.c_iflag  = 0;
+    tty2.c_oflag  = 0;
+    tty2.c_lflag  = 0;
+    tty2.c_cc[VMIN]  = 0;
+    tty2.c_cc[VTIME] = 5; // 500 ms read timeout
+    tty2.c_ispeed    = baud;
+    tty2.c_ospeed    = baud;
+
+    if (ioctl(fd, TCSETS2, &tty2) < 0) { close(fd); return -1; }
+    return fd;
+}
+
+LD2410Sensor::LD2410Sensor(SensorPublish pub,
+                            const std::string& presenceTopic,
+                            const std::string& motionTopic,
+                            const std::string& port,
+                            unsigned baud)
+    : _pub(std::move(pub))
+    , _presenceTopic(presenceTopic)
+    , _motionTopic(motionTopic)
+    , _port(port)
+    , _baud(baud)
+{
+    for (int i = 0; i < 9; ++i) gateThresholds[i] = {50, 30};
+    if (!_init())
+        std::cerr << "[ld2410] sensor not available on " << _port << " — skipping\n";
+}
+
+LD2410Sensor::~LD2410Sensor() { stop(); }
+
+bool LD2410Sensor::_init() {
+    _fd = openSerialCustomBaud(_port, _baud);
+    if (_fd < 0) return false;
+    std::cout << "[ld2410] opened " << _port << " at " << _baud << " baud\n";
+    return true;
+}
+
+void LD2410Sensor::start() {
+    if (_fd < 0) return;
+    _running = true;
+    usleep(100'000);
+    _enableEngineeringModeImpl(true); // matches Python: always start in engineering mode
+    _thread = std::thread([this] { _run(); });
+}
+
+void LD2410Sensor::stop() {
+    _running = false;
+    if (_thread.joinable()) _thread.join();
+    if (_fd >= 0) { close(_fd); _fd = -1; }
+}
+
+void LD2410Sensor::_sendCmd(const uint8_t* cmdWord, size_t cwLen,
+                             const uint8_t* data,    size_t dataLen)
+{
+    if (_fd < 0) return;
+    size_t payloadLen = cwLen + dataLen;
+    std::vector<uint8_t> frame;
+    frame.reserve(4 + 2 + payloadLen + 4);
+    frame.insert(frame.end(), CMD_HEAD, CMD_HEAD + 4);
+    frame.push_back(static_cast<uint8_t>(payloadLen & 0xFF));
+    frame.push_back(static_cast<uint8_t>((payloadLen >> 8) & 0xFF));
+    frame.insert(frame.end(), cmdWord, cmdWord + cwLen);
+    if (data && dataLen > 0) frame.insert(frame.end(), data, data + dataLen);
+    frame.insert(frame.end(), CMD_TAIL, CMD_TAIL + 4);
+    {
+        std::lock_guard<std::mutex> lk(_writeMtx);
+        write(_fd, frame.data(), frame.size());
+    }
+    usleep(50'000); // 50 ms inter-command gap
+}
+
+void LD2410Sensor::_enableEngineeringModeImpl(bool enable) {
+    static const uint8_t ENTER_CFG[] = {0xFF, 0x00};
+    static const uint8_t END_CFG[]   = {0xFE, 0x00};
+    static const uint8_t ENG_ON[]    = {0x62, 0x00};
+    static const uint8_t ENG_OFF[]   = {0x63, 0x00};
+
+    _sendCmd(ENTER_CFG, 2);
+    usleep(100'000);
+    if (enable) _sendCmd(ENG_ON,  2);
+    else        _sendCmd(ENG_OFF, 2);
+    usleep(100'000);
+    _sendCmd(END_CFG, 2);
+    _engineeringMode = enable;
+    std::cout << "[ld2410] engineering mode " << (enable ? "enabled" : "disabled") << "\n";
+}
+
+// Public API — called from MQTT thread; detached so it doesn't block.
+void LD2410Sensor::enableEngineeringMode(bool enable) {
+    std::thread([this, enable] { _enableEngineeringModeImpl(enable); }).detach();
+}
+
+void LD2410Sensor::_writeGateConfigImpl(int gate, int moveT, int stillT) {
+    static const uint8_t ENTER_CFG[] = {0xFF, 0x00};
+    static const uint8_t END_CFG[]   = {0xFE, 0x00};
+    static const uint8_t GATE_CMD[]  = {0x64, 0x00};
+
+    _sendCmd(ENTER_CFG, 2);
+    usleep(100'000);
+
+    uint8_t payload[12];
+    auto w4le = [](uint8_t* dst, int v) {
+        dst[0] =  v        & 0xFF;
+        dst[1] = (v >>  8) & 0xFF;
+        dst[2] = (v >> 16) & 0xFF;
+        dst[3] = (v >> 24) & 0xFF;
+    };
+    w4le(payload + 0, gate);
+    w4le(payload + 4, moveT);
+    w4le(payload + 8, stillT);
+
+    _sendCmd(GATE_CMD, 2, payload, 12);
+    usleep(100'000);
+    _sendCmd(END_CFG, 2);
+    std::cout << "[ld2410] gate " << gate
+              << " move=" << moveT << " still=" << stillT << "\n";
+}
+
+void LD2410Sensor::writeGateConfig(int gate, int moveThresh, int stillThresh) {
+    std::thread([this, gate, moveThresh, stillThresh] {
+        _writeGateConfigImpl(gate, moveThresh, stillThresh);
+    }).detach();
+}
+
+void LD2410Sensor::_run() {
+    std::vector<uint8_t> buf;
+    buf.reserve(512);
+
+    while (_running) {
+        uint8_t tmp[128];
+        ssize_t n = read(_fd, tmp, sizeof(tmp));
+        if (n > 0) {
+            buf.insert(buf.end(), tmp, tmp + n);
+            _process(buf);
+        } else {
+            usleep(20'000); // 20 ms idle back-off
+        }
+    }
+}
+
+void LD2410Sensor::_process(std::vector<uint8_t>& buf) {
+    while (true) {
+        // Find the 4-byte data frame header.
+        auto it = std::search(buf.begin(), buf.end(), HEAD, HEAD + 4);
+        if (it == buf.end()) {
+            if (buf.size() > 1024) buf.erase(buf.begin(), buf.end() - 4);
+            return;
+        }
+        if (it != buf.begin()) buf.erase(buf.begin(), it);
+        if (buf.size() < 10) return; // need at least head(4) + len(2) + tail(4)
+
+        size_t dl    = static_cast<size_t>(buf[4]) | (static_cast<size_t>(buf[5]) << 8);
+        size_t total = 4 + 2 + dl + 4;
+        if (buf.size() < total) return;
+
+        // Verify TAIL.
+        if (std::memcmp(buf.data() + total - 4, TAIL, 4) != 0) {
+            buf.erase(buf.begin()); // corrupt — advance one byte and re-scan
+            continue;
+        }
+
+        const uint8_t* data = buf.data() + 6;
+        if (dl > 0) {
+            if      (data[0] == 0x01) _parseEngineering(data, dl);
+            else if (data[0] == 0x02) _parseBasic(data, dl);
+        }
+        buf.erase(buf.begin(), buf.begin() + static_cast<std::ptrdiff_t>(total));
+    }
+}
+
+void LD2410Sensor::_parseBasic(const uint8_t* data, size_t len) {
+    // data[0]=0x02, data[1]=0xAA, data[2]=target, data[3:5]=move_dist,
+    // data[5]=move_e, data[6:8]=still_dist, data[8]=still_e
+    if (len < 13 || data[1] != 0xAA) return;
+
+    auto now = std::chrono::steady_clock::now();
+    if (std::chrono::duration<double>(now - _lastPub).count() < 0.5) return;
+    _lastPub = now;
+
+    uint8_t  target    = data[2];
+    uint16_t moveDist  = static_cast<uint16_t>(data[3]) | (static_cast<uint16_t>(data[4]) << 8);
+    uint8_t  moveE     = data[5];
+    uint16_t stillDist = static_cast<uint16_t>(data[6]) | (static_cast<uint16_t>(data[7]) << 8);
+    uint8_t  stillE    = data[8];
+
+    char presenceBuf[128];
+    std::snprintf(presenceBuf, sizeof(presenceBuf),
+        "{\"presence\": %s, \"target_state\": %d"
+        ", \"move_distance\": %d, \"still_distance\": %d}",
+        (target != 0x00) ? "true" : "false",
+        static_cast<int>(target),
+        static_cast<int>(moveDist),
+        static_cast<int>(stillDist));
+    _pub(_presenceTopic, presenceBuf, true);
+
+    char motionBuf[64];
+    std::snprintf(motionBuf, sizeof(motionBuf),
+        "{\"move_energy\": %d, \"still_energy\": %d}",
+        static_cast<int>(moveE), static_cast<int>(stillE));
+    _pub(_motionTopic, motionBuf, false);
+}
+
+void LD2410Sensor::_parseEngineering(const uint8_t* data, size_t len) {
+    // data[0]=0x01, data[1]=0xAA, data[2]=target, data[3:5]=move_dist,
+    // data[5]=move_e, data[6:8]=still_dist, data[8]=still_e,
+    // data[9:18]=9 move gate energies, data[18:27]=9 still gate energies
+    if (len < 27 || data[1] != 0xAA) return;
+
+    auto now = std::chrono::steady_clock::now();
+    if (std::chrono::duration<double>(now - _lastPub).count() < 0.5) return;
+    _lastPub = now;
+
+    uint8_t  target    = data[2];
+    uint16_t moveDist  = static_cast<uint16_t>(data[3]) | (static_cast<uint16_t>(data[4]) << 8);
+    uint8_t  moveE     = data[5];
+    uint16_t stillDist = static_cast<uint16_t>(data[6]) | (static_cast<uint16_t>(data[7]) << 8);
+    uint8_t  stillE    = data[8];
+    const uint8_t* moveGates  = data + 9;  // 9 bytes, gates 0-8
+    const uint8_t* stillGates = data + 18; // 9 bytes, gates 0-8
+
+    char presenceBuf[128];
+    std::snprintf(presenceBuf, sizeof(presenceBuf),
+        "{\"presence\": %s, \"target_state\": %d"
+        ", \"move_distance\": %d, \"still_distance\": %d}",
+        (target != 0x00) ? "true" : "false",
+        static_cast<int>(target),
+        static_cast<int>(moveDist),
+        static_cast<int>(stillDist));
+    _pub(_presenceTopic, presenceBuf, true);
+
+    // Build motion payload; include gate arrays only when engineering mode is active.
+    std::string motion;
+    motion.reserve(128);
+    motion  = "{\"move_energy\": ";
+    motion += std::to_string(static_cast<int>(moveE));
+    motion += ", \"still_energy\": ";
+    motion += std::to_string(static_cast<int>(stillE));
+    if (_engineeringMode.load()) {
+        motion += ", \"move_gates\": [";
+        for (int i = 0; i < 9; ++i) {
+            if (i > 0) motion += ", ";
+            motion += std::to_string(static_cast<int>(moveGates[i]));
+        }
+        motion += "], \"still_gates\": [";
+        for (int i = 0; i < 9; ++i) {
+            if (i > 0) motion += ", ";
+            motion += std::to_string(static_cast<int>(stillGates[i]));
+        }
+        motion += "]";
+    }
+    motion += "}";
+    _pub(_motionTopic, motion, false);
+}
