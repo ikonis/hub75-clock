@@ -9,8 +9,9 @@
 #include <mosquitto.h>
 
 #include <atomic>
-#include <csignal>
 #include <cstring>
+#include <ctime>
+#include <csignal>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -18,8 +19,9 @@
 #include <string>
 #include <thread>
 #include <chrono>
-using namespace rgb_matrix;
+#include <unordered_map>
 
+using namespace rgb_matrix;
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
@@ -149,6 +151,43 @@ static json defaults() {
 
 // ── Config loader ─────────────────────────────────────────────────────────────
 
+// Recursively merge overlay into base (overlay wins on conflicts).
+static json deepMerge(const json& base, const json& overlay) {
+    json out = base;
+    for (auto it = overlay.begin(); it != overlay.end(); ++it) {
+        if (out.contains(it.key()) && out[it.key()].is_object() && it.value().is_object()) {
+            out[it.key()] = deepMerge(out[it.key()], it.value());
+        } else {
+            out[it.key()] = it.value();
+        }
+    }
+    return out;
+}
+
+static json yamlToJson(const YAML::Node& node) {
+    switch (node.Type()) {
+        case YAML::NodeType::Map: {
+            json obj = json::object();
+            for (const auto& kv : node) obj[kv.first.as<std::string>()] = yamlToJson(kv.second);
+            return obj;
+        }
+        case YAML::NodeType::Sequence: {
+            json arr = json::array();
+            for (const auto& v : node) arr.push_back(yamlToJson(v));
+            return arr;
+        }
+        case YAML::NodeType::Scalar: {
+            const std::string s = node.as<std::string>();
+            // Try int, then double, then bool, then string.
+            try { return node.as<int>(); }    catch (...) {}
+            try { return node.as<double>(); } catch (...) {}
+            try { return node.as<bool>(); }   catch (...) {}
+            return s;
+        }
+        default: return nullptr;
+    }
+}
+
 static json loadConfig(const std::string& path) {
     json cfg = defaults();
     if (!fs::exists(path)) {
@@ -156,10 +195,10 @@ static json loadConfig(const std::string& path) {
         return cfg;
     }
     try {
-        YAML::Node y = YAML::LoadFile(path);
-        // Deep-merge: cfg values overridden by file values where present.
-        // TODO: implement recursive merge helper.
-        (void)y;
+        YAML::Node y    = YAML::LoadFile(path);
+        json       user = yamlToJson(y);
+        cfg = deepMerge(cfg, user);
+        std::cout << "[config] loaded " << path << "\n";
     } catch (const std::exception& e) {
         std::cerr << "[config] Failed to parse " << path << ": " << e.what() << "\n";
     }
@@ -170,8 +209,187 @@ static json loadConfig(const std::string& path) {
 
 static std::atomic<bool> g_running{true};
 
-static void onSignal(int) {
-    g_running = false;
+static void onSignal(int) { g_running = false; }
+
+// ── Clock state ───────────────────────────────────────────────────────────────
+
+struct ClockState {
+    std::string lowTemp       = "--";
+    std::string highTemp      = "--";
+    std::string condition     = "CLEAR";
+    bool        mqttConnected = false;
+};
+
+// ── Color helpers ─────────────────────────────────────────────────────────────
+
+// Mirrors Python _col(key): checks theme.colors[key], then cfg["colors"][key+"_day"],
+// then cfg["colors"][key]. The key passed in has no suffix (e.g. "time", "low_temp").
+static graphics::Color resolveTextColor(
+    const std::string& key,
+    const WeatherAnimator& animator,
+    const json& cfg)
+{
+    if (animator.currentTheme) {
+        auto it = animator.currentTheme->colors.find(key);
+        if (it != animator.currentTheme->colors.end()) {
+            auto c = resolveColor(it->second);
+            return graphics::Color(c[0], c[1], c[2]);
+        }
+    }
+    const auto& colors = cfg["colors"];
+    std::string dayKey = key + "_day";
+    if (colors.contains(dayKey)) {
+        auto c = resolveColor(parseColorValue(colors[dayKey]));
+        return graphics::Color(c[0], c[1], c[2]);
+    }
+    if (colors.contains(key)) {
+        auto c = resolveColor(parseColorValue(colors[key]));
+        return graphics::Color(c[0], c[1], c[2]);
+    }
+    return graphics::Color(200, 200, 200);
+}
+
+// ── Condition display text ────────────────────────────────────────────────────
+
+static std::string displayCondition(const std::string& cond) {
+    static const std::unordered_map<std::string, std::string> MAP = {
+        {"SUNNY",            "SUNNY"},
+        {"CLEAR",            "CLEAR"},
+        {"PARTLYCLOUDY",     "CLOUDY"},
+        {"CLOUDY",           "CLOUDY"},
+        {"FOG",              "CLOUDY"},
+        {"RAIN",             "RAIN"},
+        {"SNOW",             "SNOW"},
+        {"SLEET",            "SLEET"},
+        {"TSTORM",           "TSTORM"},
+        {"ICE",              "ICE"},
+        {"BLIZZARD",         "BLIZZARD"},
+        {"HURRICANE",        "HURRCN"},
+        {"TROPICAL_STORM",   "T-STORM"},
+        {"FLOOD",            "FLOOD"},
+        {"FREEZING_RAIN",    "FRZRAIN"},
+        {"FREEZING_DRIZZLE", "FRZDRIZ"},
+        {"DUST",             "DUSTY"},
+        {"SMOKE",            "SMOKY"},
+        {"WINDY",            "WINDY"},
+    };
+    auto it = MAP.find(cond);
+    return (it != MAP.end()) ? it->second : cond;
+}
+
+// ── Banner draw ───────────────────────────────────────────────────────────────
+
+// Layout: banner rows 1–7 (top=1, bottom=7), font 4x6 (banner_w=4, banner_h=6).
+// Baseline math: banner_top + (region_h - font_h) / 2 + font_h - 1
+//   = 1 + (7 - 6) / 2 + 6 - 1 = 6
+static void drawBanner(
+    FrameCanvas* canvas,
+    const ClockState& state,
+    const WeatherAnimator& animator,
+    const json& cfg,
+    graphics::Font& font)
+{
+    const int BANNER_TOP    = 1;
+    const int BANNER_BOTTOM = 7;
+    const int FONT_W        = cfg["fonts"].value("banner_w", 4);
+    const int FONT_H        = cfg["fonts"].value("banner_h", 6);
+    const int PANEL_W       = animator.width;
+
+    int regionH  = BANNER_BOTTOM - BANNER_TOP + 1;
+    int baseline = BANNER_TOP + (regionH - FONT_H) / 2 + FONT_H - 1;
+
+    if (!state.mqttConnected) {
+        const char* msg = "Connecting...";
+        int x = std::max(0, (PANEL_W - int(std::strlen(msg)) * FONT_W) / 2);
+        graphics::DrawText(canvas, font, x, baseline, graphics::Color(80, 80, 80), msg);
+        return;
+    }
+
+    // Degree sign: U+00B0 encoded as Latin-1 0xB0 — BDF fonts use codepoint directly.
+    std::string lowText  = state.lowTemp  + "\xB0";
+    std::string highText = state.highTemp + "\xB0";
+    std::string condText = displayCondition(state.condition);
+
+    auto colLow  = resolveTextColor("low_temp",  animator, cfg);
+    auto colHigh = resolveTextColor("high_temp", animator, cfg);
+    auto colCond = resolveTextColor("condition", animator, cfg);
+
+    // Low temp: left-aligned at x=1.
+    graphics::DrawText(canvas, font, 1, baseline, colLow, lowText.c_str());
+
+    // High temp: right-aligned.
+    int highX = PANEL_W - int(highText.size()) * FONT_W - 1;
+    graphics::DrawText(canvas, font, highX, baseline, colHigh, highText.c_str());
+
+    // Condition: centered.
+    int condX = std::max(0, (PANEL_W - int(condText.size()) * FONT_W) / 2);
+    graphics::DrawText(canvas, font, condX, baseline, colCond, condText.c_str());
+}
+
+// ── Time draw ─────────────────────────────────────────────────────────────────
+
+// Layout: time rows 8–31 (top=8, bottom=31), font 12x24 (time_w=12, time_h=24).
+// Baseline math: top + (region_h + font_h) / 2 - 4
+//   = 8 + (24 + 24) / 2 - 4 = 28
+// 1px black outline drawn to all 8 neighbours before foreground text.
+static void drawTime(
+    FrameCanvas* canvas,
+    const WeatherAnimator& animator,
+    const json& cfg,
+    graphics::Font& font)
+{
+    const int TIME_TOP    = 8;
+    const int TIME_BOTTOM = 31;
+    const int FONT_W      = cfg["fonts"].value("time_w",  12);
+    const int FONT_H      = cfg["fonts"].value("time_h",  24);
+    const int PANEL_W     = animator.width;
+    const int ZONE_LEFT   = 0;
+    const int ZONE_RIGHT  = PANEL_W - 1;
+
+    // Build time string.
+    std::time_t now_t  = std::time(nullptr);
+    std::tm*    tm_ptr = std::localtime(&now_t);
+    char buf[16];
+
+    bool use24h     = cfg["time_format"].value("use_24h",     false);
+    bool blinkColon = cfg["time_format"].value("blink_colon", false);
+
+    if (use24h) {
+        std::strftime(buf, sizeof(buf), "%H:%M", tm_ptr);
+    } else {
+        std::strftime(buf, sizeof(buf), "%I:%M", tm_ptr);
+        // Strip leading zero (mirrors Python's lstrip("0") or "12:00").
+        if (buf[0] == '0') std::memmove(buf, buf + 1, std::strlen(buf));
+    }
+    std::string timeStr(buf);
+
+    if (blinkColon && (tm_ptr->tm_sec % 2 == 1)) {
+        for (char& c : timeStr) if (c == ':') c = ' ';
+    }
+
+    // Centred horizontally in the zone.
+    int zoneW    = ZONE_RIGHT - ZONE_LEFT + 1;
+    int textW    = int(timeStr.size()) * FONT_W;
+    int x        = ZONE_LEFT + std::max(0, (zoneW - textW) / 2);
+    int regionH  = TIME_BOTTOM - TIME_TOP + 1;
+    int baseline = TIME_TOP + (regionH + FONT_H) / 2 - 4;
+
+    // 1px outline in all 8 directions.
+    auto& colors = cfg["colors"];
+    std::array<int, 3> olRgb = {0, 0, 0};
+    if (colors.contains("outline")) {
+        olRgb = resolveColor(parseColorValue(colors["outline"]));
+    }
+    graphics::Color olCol(olRgb[0], olRgb[1], olRgb[2]);
+    for (int dx : {-1, 0, 1}) {
+        for (int dy : {-1, 0, 1}) {
+            if (dx == 0 && dy == 0) continue;
+            graphics::DrawText(canvas, font, x + dx, baseline + dy, olCol, timeStr.c_str());
+        }
+    }
+
+    auto colTime = resolveTextColor("time", animator, cfg);
+    graphics::DrawText(canvas, font, x, baseline, colTime, timeStr.c_str());
 }
 
 // ── MQTT callbacks ────────────────────────────────────────────────────────────
@@ -179,23 +397,27 @@ static void onSignal(int) {
 struct MqttCtx {
     WeatherAnimator* animator;
     ThemeLoader*     themeLoader;
+    ClockState*      clockState;
     json*            cfg;
     std::mutex*      mtx;
 };
 
-static void mqttOnConnect(mosquitto* /*mosq*/, void* obj, int rc) {
+static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
     if (rc != 0) {
         std::cerr << "[mqtt] connect failed: " << mosquitto_connack_string(rc) << "\n";
         return;
     }
     auto* ctx = static_cast<MqttCtx*>(obj);
-    auto& topics = (*ctx->cfg)["mqtt"]["topics"];
+    {
+        std::lock_guard<std::mutex> lk(*ctx->mtx);
+        ctx->clockState->mqttConnected = true;
+    }
 
+    auto& topics = (*ctx->cfg)["mqtt"]["topics"];
     auto sub = [&](const std::string& key) {
-        mosquitto_subscribe(nullptr, nullptr,
-                            topics.value(key, "").c_str(), 0);
+        std::string t = topics.value(key, "");
+        if (!t.empty()) mosquitto_subscribe(mosq, nullptr, t.c_str(), 0);
     };
-    // Subscribe to inbound control topics.
     sub("weather");
     sub("config");
     sub("alert");
@@ -204,31 +426,78 @@ static void mqttOnConnect(mosquitto* /*mosq*/, void* obj, int rc) {
     sub("engineering_mode");
     sub("bucket");
 
+    // Publish available themes.
+    std::string themesAvail = topics.value("themes_available", "");
+    if (!themesAvail.empty()) {
+        auto names = ctx->themeLoader->availableThemes();
+        json arr   = json::array();
+        for (const auto& n : names) arr.push_back(n);
+        std::string payload = arr.dump();
+        mosquitto_publish(mosq, nullptr, themesAvail.c_str(),
+                          int(payload.size()), payload.c_str(), 0, true);
+    }
     std::cout << "[mqtt] connected and subscribed\n";
 }
 
-static void mqttOnMessage(mosquitto* mosq, void* obj,
-                           const mosquitto_message* msg) {
-    auto* ctx     = static_cast<MqttCtx*>(obj);
+static void mqttOnMessage(mosquitto* /*mosq*/, void* obj,
+                          const mosquitto_message* msg)
+{
+    auto* ctx    = static_cast<MqttCtx*>(obj);
     std::lock_guard<std::mutex> lk(*ctx->mtx);
-    auto& topics  = (*ctx->cfg)["mqtt"]["topics"];
+    auto& topics = (*ctx->cfg)["mqtt"]["topics"];
+
     std::string topic(msg->topic);
-    std::string payload(static_cast<char*>(msg->payload),
-                        static_cast<std::size_t>(msg->payloadlen));
+    std::string raw(static_cast<char*>(msg->payload),
+                    static_cast<std::size_t>(msg->payloadlen));
 
     if (topic == topics.value("weather", "")) {
-        // TODO: parse weather JSON, call animator->setCondition().
-        (void)mosq;
+        try {
+            json payload = json::parse(raw);
+            if (payload.contains("low_temp")) {
+                ctx->clockState->lowTemp = std::to_string(int(payload["low_temp"].get<double>()));
+            }
+            if (payload.contains("high_temp")) {
+                ctx->clockState->highTemp = std::to_string(int(payload["high_temp"].get<double>()));
+            }
+            if (payload.contains("condition")) {
+                std::string c = payload["condition"].get<std::string>();
+                for (char& ch : c) ch = char(std::toupper(unsigned char(ch)));
+                ctx->clockState->condition = c;
+                ctx->animator->setCondition(c);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[mqtt] weather parse error: " << e.what() << "\n";
+        }
+
     } else if (topic == topics.value("theme", "")) {
-        ctx->animator->setTheme(payload, *ctx->themeLoader);
+        // Payload is either a plain theme name string or {"theme": "Name"}.
+        std::string name = raw;
+        try {
+            json j = json::parse(raw);
+            if (j.is_object() && j.contains("theme")) name = j["theme"].get<std::string>();
+        } catch (...) {}
+        ctx->animator->setTheme(name, *ctx->themeLoader);
+
+    } else if (topic == topics.value("config", "")) {
+        try {
+            json payload = json::parse(raw);
+            if (payload.contains("brightness")) {
+                int b = std::max(1, std::min(100, payload["brightness"].get<int>()));
+                (*ctx->cfg)["panel"]["brightness"] = b;
+                // TODO: call matrix->SetBrightness(b) — needs matrix ptr in ctx.
+            }
+            if (payload.contains("theme")) {
+                ctx->animator->setTheme(payload["theme"].get<std::string>(), *ctx->themeLoader);
+            }
+        } catch (...) {}
+
     }
-    // TODO: handle config, alert, gates, engineering_mode, bucket topics.
+    // TODO: handle alert, gates, engineering_mode, bucket topics.
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 int main(int argc, char* argv[]) {
-    std::cout << "[init] starting..." << std::endl;
     std::string configPath = "/etc/hub75-clock/config.yaml";
     if (argc > 1) configPath = argv[1];
 
@@ -247,11 +516,23 @@ int main(int argc, char* argv[]) {
     opts.pwm_lsb_nanoseconds = cfg["panel"].value("pwm_lsb_nanoseconds", 130);
     rtopts.gpio_slowdown     = cfg["panel"].value("gpio_slowdown", 2);
     rtopts.drop_privileges   = 1;
+
     auto* matrix = CreateMatrixFromOptions(opts, rtopts);
     if (!matrix) {
         std::cerr << "[init] Failed to create RGB matrix\n";
         return 1;
     }
+
+    // ── Font loading ──────────────────────────────────────────────────────
+    std::string fontsDir   = cfg["fonts"].value("fonts_dir",   "/home/pi/rpi-rgb-led-matrix/fonts");
+    std::string bannerPath = fontsDir + "/" + cfg["fonts"].value("banner_name", "4x6.bdf");
+    std::string timePath   = fontsDir + "/" + cfg["fonts"].value("time_name",   "spleen-12x24.bdf");
+
+    graphics::Font fontBanner, fontTime;
+    if (!fontBanner.LoadFont(bannerPath.c_str()))
+        std::cerr << "[init] Failed to load banner font: " << bannerPath << "\n";
+    if (!fontTime.LoadFont(timePath.c_str()))
+        std::cerr << "[init] Failed to load time font: " << timePath << "\n";
 
     // ── Theme loader ──────────────────────────────────────────────────────
     std::string themesDir = cfg["themes"].value("themes_dir", "/etc/hub75-clock/themes");
@@ -264,10 +545,13 @@ int main(int argc, char* argv[]) {
     animator.setTheme(defaultTheme, themeLoader);
     animator.setCondition("CLEAR");
 
+    // ── Clock display state ───────────────────────────────────────────────
+    ClockState clockState;
+
     // ── MQTT ──────────────────────────────────────────────────────────────
     mosquitto_lib_init();
     std::mutex animMtx;
-    MqttCtx mqttCtx{&animator, &themeLoader, &cfg, &animMtx};
+    MqttCtx mqttCtx{&animator, &themeLoader, &clockState, &cfg, &animMtx};
 
     std::string clientId = cfg["mqtt"].value("client_id", "hub75_clock");
     auto* mosq = mosquitto_new(clientId.c_str(), true, &mqttCtx);
@@ -286,9 +570,9 @@ int main(int argc, char* argv[]) {
     std::signal(SIGTERM, onSignal);
 
     // ── Render loop ───────────────────────────────────────────────────────
-    auto* canvas = matrix->CreateFrameCanvas();
-    int fps    = cfg["animation"].value("fps", 15);
-    auto frame_us = std::chrono::microseconds(1'000'000 / fps);
+    auto* canvas   = matrix->CreateFrameCanvas();
+    int   fps      = cfg["animation"].value("fps", 15);
+    auto  frameUs  = std::chrono::microseconds(1'000'000 / fps);
 
     while (g_running) {
         auto t0 = std::chrono::steady_clock::now();
@@ -298,13 +582,13 @@ int main(int argc, char* argv[]) {
             std::lock_guard<std::mutex> lk(animMtx);
             animator.update();
             animator.draw(canvas);
+            drawBanner(canvas, clockState, animator, cfg, fontBanner);
+            drawTime(canvas, animator, cfg, fontTime);
         }
         canvas = matrix->SwapOnVSync(canvas);
 
         auto elapsed = std::chrono::steady_clock::now() - t0;
-        if (elapsed < frame_us) {
-            std::this_thread::sleep_for(frame_us - elapsed);
-        }
+        if (elapsed < frameUs) std::this_thread::sleep_for(frameUs - elapsed);
     }
 
     // ── Cleanup ───────────────────────────────────────────────────────────
