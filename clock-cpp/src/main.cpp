@@ -208,6 +208,7 @@ static json loadConfig(const std::string& path) {
 // ── Signal handling ───────────────────────────────────────────────────────────
 
 static std::atomic<bool> g_running{true};
+static std::atomic<int>  g_fps{15};
 
 static void onSignal(int) { g_running = false; }
 
@@ -400,6 +401,7 @@ struct MqttCtx {
     ClockState*      clockState;
     json*            cfg;
     std::mutex*      mtx;
+    RGBMatrix*       matrix;
 };
 
 static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
@@ -484,7 +486,12 @@ static void mqttOnMessage(mosquitto* /*mosq*/, void* obj,
             if (payload.contains("brightness")) {
                 int b = std::max(1, std::min(100, payload["brightness"].get<int>()));
                 (*ctx->cfg)["panel"]["brightness"] = b;
-                // TODO: call matrix->SetBrightness(b) — needs matrix ptr in ctx.
+                ctx->matrix->SetBrightness(b);
+            }
+            if (payload.contains("fps")) {
+                int f = std::max(1, std::min(60, payload["fps"].get<int>()));
+                (*ctx->cfg)["animation"]["fps"] = f;
+                g_fps.store(f);
             }
             if (payload.contains("theme")) {
                 ctx->animator->setTheme(payload["theme"].get<std::string>(), *ctx->themeLoader);
@@ -552,7 +559,7 @@ int main(int argc, char* argv[]) {
     // ── MQTT ──────────────────────────────────────────────────────────────
     mosquitto_lib_init();
     std::mutex animMtx;
-    MqttCtx mqttCtx{&animator, &themeLoader, &clockState, &cfg, &animMtx};
+    MqttCtx mqttCtx{&animator, &themeLoader, &clockState, &cfg, &animMtx, matrix};
 
     std::string clientId = cfg["mqtt"].value("client_id", "hub75_clock");
     auto* mosq = mosquitto_new(clientId.c_str(), true, &mqttCtx);
@@ -571,12 +578,12 @@ int main(int argc, char* argv[]) {
     std::signal(SIGTERM, onSignal);
 
     // ── Render loop ───────────────────────────────────────────────────────
-    auto* canvas   = matrix->CreateFrameCanvas();
-    int   fps      = cfg["animation"].value("fps", 15);
-    auto  frameUs  = std::chrono::microseconds(1'000'000 / fps);
+    auto* canvas = matrix->CreateFrameCanvas();
+    g_fps.store(cfg["animation"].value("fps", 15));
 
     while (g_running) {
-        auto t0 = std::chrono::steady_clock::now();
+        auto t0      = std::chrono::steady_clock::now();
+        auto frameUs = std::chrono::microseconds(1'000'000 / g_fps.load());
 
         canvas->Clear();
         {

@@ -5,6 +5,14 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
+#include <vector>
+
+struct Star {
+    int   x, y;
+    float phase;          // current phase offset (radians)
+    float speed;          // phase increment per frame
+    int   maxBrightness;  // peak brightness [0,255]
+};
 
 // WeatherAnimator drives all per-condition rendering:
 //   • background (sky gradient / solid fill)
@@ -30,14 +38,12 @@ public:
     int                     animBottom;  // last  pixel row used by animations
     std::string             condition;   // current weather condition string
     std::optional<Theme>    currentTheme;
-    bool                    nightMode = false;
     int                     frame     = 0;
     nlohmann::json          cfg;        // full config tree
 
     // ── Mutators called from MQTT callbacks ───────────────────────────────
     void setCondition(const std::string& cond);
     void setTheme(const std::string& themeName, const ThemeLoader& loader);
-    void setNightMode(bool night);
 
     // ── Frame loop ────────────────────────────────────────────────────────
     void update();
@@ -52,7 +58,9 @@ private:
     void _drawSun(rgb_matrix::FrameCanvas* canvas);
     void _drawMoon(rgb_matrix::FrameCanvas* canvas);
     void _drawStars(rgb_matrix::FrameCanvas* canvas);
+    void _initStars();
 
-    std::array<int, 3> _resolveColor(const std::string& dayKey,
-                                     const std::string& nightKey) const;
+    std::vector<Star>   _stars;
+
+    std::array<int, 3> _resolveColor(const std::string& key) const;
 };
