@@ -22,7 +22,7 @@ private:
     WeatherAnimator* _animator;
 };
 
-extern "C" std::unique_ptr<Animation> createAnimation(
+extern "C" std::unique_ptr<Animation> create_hot_air_balloon(
     int w, int h, const nlohmann::json& cfg, WeatherAnimator* a)
 {
     return std::make_unique<HotAirBalloonAnimation>(w, h, cfg, a);

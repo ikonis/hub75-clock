@@ -18,6 +18,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+using namespace rgb_matrix;
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -227,28 +228,26 @@ static void mqttOnMessage(mosquitto* mosq, void* obj,
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 int main(int argc, char* argv[]) {
+    std::cout << "[init] starting..." << std::endl;
     std::string configPath = "/etc/hub75-clock/config.yaml";
     if (argc > 1) configPath = argv[1];
 
     json cfg = loadConfig(configPath);
 
     // ── Matrix init ───────────────────────────────────────────────────────
-    rgb_matrix::RGBMatrixOptions opts;
-    opts.hardware_mapping   = "regular";
-    opts.rows               = 32;
-    opts.cols               = 64;
-    opts.chain_length       = 1;
-    opts.parallel           = 1;
-    opts.gpio_slowdown      = cfg["panel"].value("gpio_slowdown", 2);
-    opts.brightness         = cfg["panel"].value("brightness", 60);
-    opts.pwm_bits           = cfg["panel"].value("pwm_bits", 11);
+    RGBMatrix::Options opts;
+    RuntimeOptions rtopts;
+    opts.hardware_mapping    = "regular";
+    opts.rows                = 32;
+    opts.cols                = 64;
+    opts.chain_length        = 1;
+    opts.parallel            = 1;
+    opts.brightness          = cfg["panel"].value("brightness", 60);
+    opts.pwm_bits            = cfg["panel"].value("pwm_bits", 11);
     opts.pwm_lsb_nanoseconds = cfg["panel"].value("pwm_lsb_nanoseconds", 130);
-
-    rgb_matrix::RuntimeOptions rtopts;
-    rtopts.gpio_slowdown    = opts.gpio_slowdown;
-    rtopts.drop_privileges  = 1;
-
-    auto* matrix = rgb_matrix::CreateMatrixFromOptions(opts, rtopts);
+    rtopts.gpio_slowdown     = cfg["panel"].value("gpio_slowdown", 2);
+    rtopts.drop_privileges   = 1;
+    auto* matrix = CreateMatrixFromOptions(opts, rtopts);
     if (!matrix) {
         std::cerr << "[init] Failed to create RGB matrix\n";
         return 1;

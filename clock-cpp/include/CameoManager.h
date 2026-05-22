@@ -1,9 +1,11 @@
 #pragma once
+#include <nlohmann/json.hpp>
 
 #include "Animation.h"
 #include <led-matrix.h>
 #include <memory>
 #include <string>
+#include <functional>
 #include <unordered_map>
 #include <vector>
 
