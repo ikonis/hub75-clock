@@ -224,7 +224,7 @@ struct ClockState {
 
 // Mirrors Python _col(key): checks theme.colors[key], then cfg["colors"][key+"_day"],
 // then cfg["colors"][key]. The key passed in has no suffix (e.g. "time", "low_temp").
-static graphics::Color resolveTextColor(
+static rgb_matrix::Color resolveTextColor(
     const std::string& key,
     const WeatherAnimator& animator,
     const json& cfg)
@@ -233,20 +233,20 @@ static graphics::Color resolveTextColor(
         auto it = animator.currentTheme->colors.find(key);
         if (it != animator.currentTheme->colors.end()) {
             auto c = resolveColor(it->second);
-            return graphics::Color(c[0], c[1], c[2]);
+            return rgb_matrix::Color(c[0], c[1], c[2]);
         }
     }
     const auto& colors = cfg["colors"];
     std::string dayKey = key + "_day";
     if (colors.contains(dayKey)) {
         auto c = resolveColor(parseColorValue(colors[dayKey]));
-        return graphics::Color(c[0], c[1], c[2]);
+        return rgb_matrix::Color(c[0], c[1], c[2]);
     }
     if (colors.contains(key)) {
         auto c = resolveColor(parseColorValue(colors[key]));
-        return graphics::Color(c[0], c[1], c[2]);
+        return rgb_matrix::Color(c[0], c[1], c[2]);
     }
-    return graphics::Color(200, 200, 200);
+    return rgb_matrix::Color(200, 200, 200);
 }
 
 // ── Condition display text ────────────────────────────────────────────────────
@@ -287,7 +287,7 @@ static void drawBanner(
     const ClockState& state,
     const WeatherAnimator& animator,
     const json& cfg,
-    graphics::Font& font)
+    rgb_matrix::Font& font)
 {
     const int BANNER_TOP    = 1;
     const int BANNER_BOTTOM = 7;
@@ -301,13 +301,13 @@ static void drawBanner(
     if (!state.mqttConnected) {
         const char* msg = "Connecting...";
         int x = std::max(0, (PANEL_W - int(std::strlen(msg)) * FONT_W) / 2);
-        graphics::DrawText(canvas, font, x, baseline, graphics::Color(80, 80, 80), msg);
+        rgb_matrix::DrawText(canvas, font, x, baseline, rgb_matrix::Color(80, 80, 80), msg);
         return;
     }
 
     // Degree sign: U+00B0 encoded as Latin-1 0xB0 — BDF fonts use codepoint directly.
-    std::string lowText  = state.lowTemp  + "\xB0";
-    std::string highText = state.highTemp + "\xB0";
+    std::string lowText  = state.lowTemp  + "\xC2\xB0";
+    std::string highText = state.highTemp + "\xC2\xB0";
     std::string condText = displayCondition(state.condition);
 
     auto colLow  = resolveTextColor("low_temp",  animator, cfg);
@@ -315,15 +315,15 @@ static void drawBanner(
     auto colCond = resolveTextColor("condition", animator, cfg);
 
     // Low temp: left-aligned at x=1.
-    graphics::DrawText(canvas, font, 1, baseline, colLow, lowText.c_str());
+    rgb_matrix::DrawText(canvas, font, 1, baseline, colLow, lowText.c_str());
 
     // High temp: right-aligned.
-    int highX = PANEL_W - int(highText.size()) * FONT_W - 1;
-    graphics::DrawText(canvas, font, highX, baseline, colHigh, highText.c_str());
+    int highX = PANEL_W - (int(highText.size()) - 1) * FONT_W - 2;
+    rgb_matrix::DrawText(canvas, font, highX, baseline, colHigh, highText.c_str());
 
     // Condition: centered.
     int condX = std::max(0, (PANEL_W - int(condText.size()) * FONT_W) / 2);
-    graphics::DrawText(canvas, font, condX, baseline, colCond, condText.c_str());
+    rgb_matrix::DrawText(canvas, font, condX, baseline, colCond, condText.c_str());
 }
 
 // ── Time draw ─────────────────────────────────────────────────────────────────
@@ -336,7 +336,7 @@ static void drawTime(
     FrameCanvas* canvas,
     const WeatherAnimator& animator,
     const json& cfg,
-    graphics::Font& font)
+    rgb_matrix::Font& font)
 {
     const int TIME_TOP    = 8;
     const int TIME_BOTTOM = 31;
@@ -380,16 +380,16 @@ static void drawTime(
     if (colors.contains("outline")) {
         olRgb = resolveColor(parseColorValue(colors["outline"]));
     }
-    graphics::Color olCol(olRgb[0], olRgb[1], olRgb[2]);
+    rgb_matrix::Color olCol(olRgb[0], olRgb[1], olRgb[2]);
     for (int dx : {-1, 0, 1}) {
         for (int dy : {-1, 0, 1}) {
             if (dx == 0 && dy == 0) continue;
-            graphics::DrawText(canvas, font, x + dx, baseline + dy, olCol, timeStr.c_str());
+            rgb_matrix::DrawText(canvas, font, x + dx, baseline + dy, olCol, timeStr.c_str());
         }
     }
 
     auto colTime = resolveTextColor("time", animator, cfg);
-    graphics::DrawText(canvas, font, x, baseline, colTime, timeStr.c_str());
+    rgb_matrix::DrawText(canvas, font, x, baseline, colTime, timeStr.c_str());
 }
 
 // ── MQTT callbacks ────────────────────────────────────────────────────────────
@@ -461,7 +461,7 @@ static void mqttOnMessage(mosquitto* /*mosq*/, void* obj,
             }
             if (payload.contains("condition")) {
                 std::string c = payload["condition"].get<std::string>();
-                for (char& ch : c) ch = char(std::toupper(unsigned char(ch)));
+                for (auto& ch : c) ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
                 ctx->clockState->condition = c;
                 ctx->animator->setCondition(c);
             }
@@ -515,6 +515,7 @@ int main(int argc, char* argv[]) {
     opts.pwm_bits            = cfg["panel"].value("pwm_bits", 11);
     opts.pwm_lsb_nanoseconds = cfg["panel"].value("pwm_lsb_nanoseconds", 130);
     rtopts.gpio_slowdown     = cfg["panel"].value("gpio_slowdown", 2);
+    opts.led_rgb_sequence    = cfg["panel"].value("led_rgb_sequence", std::string("RBG")).c_str();
     rtopts.drop_privileges   = 1;
 
     auto* matrix = CreateMatrixFromOptions(opts, rtopts);
@@ -528,7 +529,7 @@ int main(int argc, char* argv[]) {
     std::string bannerPath = fontsDir + "/" + cfg["fonts"].value("banner_name", "4x6.bdf");
     std::string timePath   = fontsDir + "/" + cfg["fonts"].value("time_name",   "spleen-12x24.bdf");
 
-    graphics::Font fontBanner, fontTime;
+    rgb_matrix::Font fontBanner, fontTime;
     if (!fontBanner.LoadFont(bannerPath.c_str()))
         std::cerr << "[init] Failed to load banner font: " << bannerPath << "\n";
     if (!fontTime.LoadFont(timePath.c_str()))
