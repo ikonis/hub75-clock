@@ -1,6 +1,31 @@
 #include "CameoManager.h"
 #include "WeatherAnimator.h"
 #include <iostream>
+#include <memory>
+#include <nlohmann/json.hpp>
+
+// Forward-declare every statically-linked animation factory.
+extern "C" std::unique_ptr<Animation> create_airplane(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_bird_flock(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_butterfly(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_clouds(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_comet(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_easter_egg(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_firefly(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_fireworks(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_ghost(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_hot_air_balloon(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_jack_o_lantern(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_meteor(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_rainbow(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_rocket(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_santa(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_satellite(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_shooting_star(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_snowman(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_submarine(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_tumbleweed(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_ufo(int, int, const nlohmann::json&, WeatherAnimator*);
 
 CameoManager::CameoManager(WeatherAnimator* animator)
     : _animator(animator) {}
@@ -10,9 +35,35 @@ void CameoManager::registerFactory(const std::string& name, Factory factory) {
 }
 
 void CameoManager::loadPlugins() {
-    // TODO: dynamically load animation shared-libraries from an animations/
-    // directory, calling dlopen() + dlsym("createAnimation") for each .so.
-    // For now, factories must be registered manually or statically linked.
+    // Register all statically-linked animation factories by name.
+    // Each entry maps the animation name string (matching theme JSON cameo names)
+    // to the corresponding extern "C" factory function.
+    struct Entry { const char* name; Factory fn; };
+    Entry entries[] = {
+        { "airplane",        create_airplane        },
+        { "bird_flock",      create_bird_flock      },
+        { "butterfly",       create_butterfly       },
+        { "clouds",          create_clouds          },
+        { "comet",           create_comet           },
+        { "easter_egg",      create_easter_egg      },
+        { "firefly",         create_firefly         },
+        { "fireworks",       create_fireworks       },
+        { "ghost",           create_ghost           },
+        { "hot_air_balloon", create_hot_air_balloon },
+        { "jack_o_lantern",  create_jack_o_lantern  },
+        { "meteor",          create_meteor          },
+        { "rainbow",         create_rainbow         },
+        { "rocket",          create_rocket          },
+        { "santa",           create_santa           },
+        { "satellite",       create_satellite       },
+        { "shooting_star",   create_shooting_star   },
+        { "snowman",         create_snowman         },
+        { "submarine",       create_submarine       },
+        { "tumbleweed",      create_tumbleweed      },
+        { "ufo",             create_ufo             },
+    };
+    for (auto& e : entries)
+        _registry[e.name] = e.fn;
 }
 
 void CameoManager::reset() {

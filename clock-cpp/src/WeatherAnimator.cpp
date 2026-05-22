@@ -57,6 +57,7 @@ void WeatherAnimator::draw(rgb_matrix::FrameCanvas* canvas) {
     if (currentTheme && currentTheme->moonEnabled) _drawMoon(canvas);
     _cameos->drawCelestial(canvas);
     _cameos->drawClouds(canvas);
+    _drawCondition(canvas);
     _cameos->drawForeground(canvas);
 }
 
@@ -143,10 +144,53 @@ void WeatherAnimator::_drawBackground(rgb_matrix::FrameCanvas* canvas) {
 }
 
 // ── Condition dispatch ────────────────────────────────────────────────────────
+//
+// Precipitation particles (rain, snow, sleet) are owned by the clouds
+// animation plugin, which handles them as part of its draw() call.
+// _drawCondition() handles standalone condition overlays that aren't
+// attached to cloud bodies — currently ICE crack lines.
 
 void WeatherAnimator::_drawCondition(rgb_matrix::FrameCanvas* canvas) {
-    // TODO: per-condition overlays (ICE tint, etc.)
-    (void)canvas;
+    if (condition == "ICE") {
+        // Render ice crack lines seeded deterministically from the frame
+        // counter so they appear static (re-init would jitter every frame).
+        // Use a fixed seed so the pattern is stable across frames.
+        std::mt19937 rng(42);
+        std::uniform_int_distribution<int> distX(0, width - 1);
+        std::uniform_int_distribution<int> distY(animTop, animBottom);
+        std::uniform_int_distribution<int> distLen(3, 8);
+        std::uniform_int_distribution<int> distDir(-2, 2);
+
+        auto col = _resolveColor("ice_day");
+        int  cr = col[0], cg = col[1], cb = col[2];
+
+        // Draw ~12 short crack segments
+        for (int i = 0; i < 12; ++i) {
+            int x1 = distX(rng);
+            int y1 = distY(rng);
+            int len = distLen(rng);
+            int dx = distDir(rng);
+            int dy = distDir(rng);
+            if (dx == 0 && dy == 0) dy = 1;
+
+            // Bresenham line
+            int x2 = x1 + dx * len;
+            int y2 = y1 + dy * len;
+            int adx = std::abs(x2 - x1), ady = std::abs(y2 - y1);
+            int sx  = (x1 < x2) ? 1 : -1;
+            int sy  = (y1 < y2) ? 1 : -1;
+            int err = adx - ady;
+            int cx_ = x1, cy_ = y1;
+            while (true) {
+                if (cx_ >= 0 && cx_ < width && cy_ >= animTop && cy_ <= animBottom)
+                    canvas->SetPixel(cx_, cy_, cr, cg, cb);
+                if (cx_ == x2 && cy_ == y2) break;
+                int e2 = 2 * err;
+                if (e2 > -ady) { err -= ady; cx_ += sx; }
+                if (e2 <  adx) { err += adx; cy_ += sy; }
+            }
+        }
+    }
 }
 
 // ── Sun ───────────────────────────────────────────────────────────────────────
