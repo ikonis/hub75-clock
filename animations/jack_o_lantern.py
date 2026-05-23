@@ -7,6 +7,7 @@ class Animation:
     conditions = []
     themes = ["Night", "Late Evening"]
     layer = "foreground"
+    speed = 1.0
 
     # Orange oval pumpkin (9 wide, 7 tall)
     _BODY = [

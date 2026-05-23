@@ -7,6 +7,7 @@ class Animation:
     conditions = []
     themes = ["Day"]
     layer = "foreground"
+    speed = 1.0
 
     # Oval egg: 6 wide, 8 tall with stripe pattern
     _STRIPES = [
@@ -35,7 +36,7 @@ class Animation:
         self._ab = animator.anim_bottom
         self.x = float(-8)
         self._base_y = float(self._ab - 8)
-        self._vx = 0.3 + random.random() * 0.15
+        self._vx = (0.3 + random.random() * 0.15) * self.speed
         self._bounce = 0.0
 
     def update(self):

@@ -10,7 +10,6 @@
     "condition": "#8888A0",
     "cloud_day": "#8090A0"
   },
-  "stars_enabled": false,
   "cameos": [{"name": "clouds"}],
   "cloud_density": "dense",
   "cloud_speed": "slow",

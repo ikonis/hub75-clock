@@ -7,6 +7,7 @@ class Animation:
     conditions = ["CLEAR"]
     themes = ["Night"]
     layer = "celestial"
+    speed = 0.8
 
     # --- Appearance settings ---
     # Edit colors directly in _SPRITE below.
@@ -33,11 +34,30 @@ class Animation:
         self._w = width
         self._at = animator.anim_top
         self._ab = animator.anim_bottom
-        # Spawn top-right, move diagonally down-left
-        self.x = float(width - 2)
-        self.y = float(self._at)
-        self._vx = -(0.4 + random.random() * 0.2)
-        self._vy = 0.12 + random.random() * 0.06
+        zone_h = self._ab - self._at
+        direction = random.choice(["right_to_left", "left_to_right", "top_to_bottom", "bottom_to_top"])
+        drift = (0.12 + random.random() * 0.06) * self.speed
+        speed = (0.4 + random.random() * 0.2) * self.speed
+        if direction == "right_to_left":
+            self.x  = float(width - 2)
+            self.y  = float(self._at + random.randint(0, zone_h - 4))
+            self._vx = -speed
+            self._vy =  drift
+        elif direction == "left_to_right":
+            self.x  = float(-10)
+            self.y  = float(self._at + random.randint(0, zone_h - 4))
+            self._vx =  speed
+            self._vy =  drift
+        elif direction == "top_to_bottom":
+            self.x  = float(random.randint(2, width - 12))
+            self.y  = float(self._at)
+            self._vx = (random.random() - 0.5) * drift
+            self._vy =  speed
+        else:  # bottom_to_top
+            self.x  = float(random.randint(2, width - 12))
+            self.y  = float(self._ab)
+            self._vx = (random.random() - 0.5) * drift
+            self._vy = -speed
 
     def update(self):
         self.x += self._vx
@@ -53,4 +73,5 @@ class Animation:
                 canvas.SetPixel(px, py, r, g, b)
 
     def is_done(self) -> bool:
-        return self.x < -12 or self.y > self._ab
+        return (self.x < -12 or self.x > self._w + 12 or
+                self.y < self._at - 4 or self.y > self._ab + 4)

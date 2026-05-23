@@ -7,6 +7,7 @@ class Animation:
     conditions = []
     themes = []
     layer = "foreground"
+    speed = 1.0
 
     # --- Appearance settings (body colors are in _BODY sprite list below) ---
     FLAME_CORE_R = 255   # flame center red channel
@@ -36,11 +37,12 @@ class Animation:
         self._ab = animator.anim_bottom
         self.x = float(random.randint(4, width - 5))
         self.y = float(self._ab - 2)
-        self._vy = -(0.5 + random.random() * 0.3)
+        self._vy = -(0.5 + random.random() * 0.3) * 0.25 * self.speed
+        self._accel = 0.01 * self.speed
         self._frame = 0
 
     def update(self):
-        self._vy -= 0.04   # accelerate upward
+        self._vy -= self._accel   # accelerate upward
         self.y += self._vy
         self._frame += 1
 

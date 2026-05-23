@@ -7,6 +7,7 @@ class Animation:
     conditions = ["CLEAR", "PARTLYCLOUDY"]
     themes = ["Day", "Sunrise"]
     layer = "foreground"
+    speed = 1.0
 
     # --- Appearance settings ---
     # Edit colors directly in _BALLOON, _ROPES, _BASKET below.
@@ -48,13 +49,14 @@ class Animation:
         self._ab = animator.anim_bottom
         self.x = float(random.randint(5, width - 12))
         self.y = float(self._ab - 9)     # start near bottom
-        self._vx = (random.random() - 0.5) * 0.15
-        self._vy = -0.08                 # drifts upward
+        self._vx = (random.random() - 0.5) * 0.075 * self.speed
+        self._vy = -0.04 * self.speed    # drifts upward
         self._sway = random.random() * math.pi * 2
+        self._sway_speed = 0.04 * self.speed
 
     def update(self):
-        self._sway += 0.04
-        self.x += self._vx + math.sin(self._sway) * 0.04
+        self._sway += self._sway_speed
+        self.x += self._vx + math.sin(self._sway) * 0.02 * self.speed
         self.y += self._vy
 
     def draw(self, canvas):

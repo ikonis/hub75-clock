@@ -1,6 +1,6 @@
 {
   "name": "Away",
-  "description": "Nobody home — minimal display",
+  "description": "Nobody home â€” minimal display",
   "background_type": "solid",
   "background_color": "#010002",
   "colors": {
@@ -9,7 +9,6 @@
     "high_temp": "#200F00",
     "condition": "#101010"
   },
-  "stars_enabled": false,
   "cloud_density": "sparse",
   "cloud_speed": "slow",
   "sun_enabled": false,

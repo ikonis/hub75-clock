@@ -7,6 +7,7 @@ class Animation:
     conditions = []
     themes = ["Day"]
     layer = "foreground"
+    speed = 0.75
 
     # --- Appearance settings ---
     COLOR_BODY = (30, 30, 30)   # bird body center pixel
@@ -20,7 +21,7 @@ class Animation:
         count = random.randint(5, 7)
         # V formation: leader at (0,0), followers spread behind and to sides
         self._birds = []
-        row_y = self._at + random.randint(2, 6)
+        row_y = self._at + random.randint(5, 13)
         for i in range(count):
             if i == 0:
                 bx, by = 0.0, 0.0
@@ -30,7 +31,7 @@ class Animation:
                 bx = -rank * 3.5
                 by = rank * 1.5 * side
             self._birds.append([bx, by])
-        self._vx = 0.35 + random.random() * 0.15
+        self._vx = (0.35 + random.random() * 0.15) * self.speed
         self._ox = float(-8)
         self._oy = float(row_y)
         self._flap = 0

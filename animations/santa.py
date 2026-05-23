@@ -7,6 +7,7 @@ class Animation:
     conditions = []
     themes = ["Night", "Late Evening"]
     layer = "foreground"
+    speed = 1.0
 
     # --- Appearance settings ---
     # Edit colors directly in _SPRITE below.
@@ -51,12 +52,13 @@ class Animation:
         self._ab = animator.anim_bottom
         self.x = float(width + 2)  # start off right edge
         self.y = float(self._at + random.randint(1, 5))
-        self._vx = -(0.4 + random.random() * 0.2)
+        self._vx = -(0.4 + random.random() * 0.2) * 0.5 * self.speed
         self._wave = random.random() * math.pi * 2
+        self._wave_speed = 0.06 * self.speed
 
     def update(self):
         self.x += self._vx
-        self._wave += 0.06
+        self._wave += self._wave_speed
 
     def draw(self, canvas):
         ox = int(round(self.x))

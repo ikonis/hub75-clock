@@ -9,8 +9,7 @@
     "high_temp": "#441E00",
     "condition": "#202020"
   },
-  "stars_enabled": true,
-  "cameos": [{"name": "shooting_star", "chance_per_minute": 8}],
+  "cameos": [{"name": "stars"}, {"name": "shooting_star", "chance_per_minute": 8}],
   "cloud_density": "sparse",
   "cloud_speed": "slow",
   "precipitation": "none",

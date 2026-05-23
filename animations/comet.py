@@ -7,6 +7,7 @@ class Animation:
     conditions = ["CLEAR"]
     themes = ["Night"]
     layer = "celestial"
+    speed = 1.0
 
     # --- Appearance settings ---
     COLOR_HEAD      = (220, 240, 255)   # bright blue-white leading pixel
@@ -22,8 +23,8 @@ class Animation:
         self._ab = animator.anim_bottom
         self._tail_len = random.randint(10, 14)
         # Random diagonal: down-left or down-right
-        speed = 0.35 + random.random() * 0.25
-        steep = 0.20 + random.random() * 0.15
+        speed = (0.35 + random.random() * 0.25) * self.speed
+        steep = (0.20 + random.random() * 0.15) * self.speed
         if random.choice([True, False]):
             self._vx = speed
             self.x = float(-self._tail_len - 2)

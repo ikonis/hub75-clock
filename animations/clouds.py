@@ -57,6 +57,7 @@ class Animation:
     themes = []
     layer = "foreground"
     persistent = True
+    speed = 1.0
 
     def __init__(self, width, height, cfg, animator):
         self._w = width
@@ -69,11 +70,24 @@ class Animation:
         self._precip = getattr(theme, "precipitation",  "none")   if theme else "none"
         self._fps    = cfg.get("animation", {}).get("fps", 15)
 
-        base_speed = _SPEEDS.get(speed_key, 0.4)
+        base_speed = _SPEEDS.get(speed_key, 0.4) * self.speed
         count      = _COUNTS.get(density, 4)
 
         theme_color_hex = getattr(theme, "colors", {}).get("cloud_day") if theme else None
         cloud_color = _parse_hex(theme_color_hex) if theme_color_hex else _parse_hex(COLOR_CLOUD)
+
+        # Sun blend parameters — populated only when theme has sun_enabled
+        self._sun_ox    = None
+        if getattr(theme, "sun_enabled", False):
+            self._sun_ox    = width - 1
+            self._sun_oy    = animator.anim_top
+            self._sun_r     = 12
+            self._sun_glow  = 20
+            raw = getattr(theme, "colors", {}).get("sun_day")
+            if raw is None:
+                raw = animator.cfg.get("colors", {}).get("sun_day", "#DCA01E")
+            self._sun_color = (_parse_hex(raw) if isinstance(raw, str)
+                               else (int(raw[0]), int(raw[1]), int(raw[2])))
 
         # Lightning state
         self._bolt          = None
@@ -86,7 +100,7 @@ class Animation:
         for _ in range(count):
             x = random.uniform(0, width)
             y = float(random.randint(self._at + 1, max(self._at + 1, self._ab - 12)))
-            vx = -(base_speed + random.uniform(0.0, 0.08))
+            vx = -(base_speed + random.uniform(0.0, 0.08)) * (30.0 / self._fps)
             size = self._pick_size(density)
             self._clouds.append({
                 "x":    x,
@@ -124,24 +138,24 @@ class Animation:
         if p == "rain":
             for _ in range(random.randint(2, 4)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "rain",
-                                                    vy=1.5))
+                                                    vy=1.5 * (15.0 / self._fps) * self.speed))
         elif p in ("heavy_rain", "tstorm"):
             for _ in range(random.randint(4, 6)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "heavy_rain",
-                                                    vy=2.5))
+                                                    vy=2.5 * (15.0 / self._fps) * self.speed))
         elif p == "snow":
             for _ in range(random.randint(2, 3)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "snow",
-                                                    vy=random.uniform(0.3, 0.5)))
+                                                    vy=random.uniform(0.3, 0.5) * (15.0 / self._fps) * self.speed))
         elif p == "sleet":
             for i in range(random.randint(3, 5)):
                 if i % 2 == 0:
                     particles.append(self._new_particle(span_l, span_r, bottom,
-                                                        "sleet_fast", vy=1.5))
+                                                        "sleet_fast", vy=1.5 * (15.0 / self._fps) * self.speed))
                 else:
                     particles.append(self._new_particle(span_l, span_r, bottom,
                                                         "sleet_slow",
-                                                        vy=random.uniform(0.4, 0.6)))
+                                                        vy=random.uniform(0.4, 0.6) * (15.0 / self._fps) * self.speed))
         return particles
 
     def _new_particle(self, span_l, span_r, cloud_bottom, ptype, vy):
@@ -198,9 +212,9 @@ class Animation:
 
             # Update particles
             for p in c["particles"]:
-                p["wobble"] += 0.15
+                p["wobble"] += 0.15 * self.speed
                 if p["type"] in ("snow", "sleet_slow"):
-                    p["lx"] += math.sin(p["wobble"]) * 0.25
+                    p["lx"] += math.sin(p["wobble"]) * 0.25 * self.speed
                 p["y"] += p["vy"]
                 if p["y"] > self._ab:
                     self._respawn(p, c["x"], c["y"], c["size"])
@@ -229,13 +243,12 @@ class Animation:
                     canvas.SetPixel(fx, fy, fr, fg, fb)
 
         for c in self._clouds:
-            cx = int(round(c["x"]))
             cy = int(round(c["y"]))
             cr, cg, cb = c["color"]
-
-            # Cloud body: filled circles with brightness variation by lobe size
             circles = _CLOUD_CIRCLES[c["size"]]
             max_r = max(r for _, _, r in circles)
+
+            cx = int(round(c["x"]))
             for dx, dy, r in circles:
                 diff = max_r - r
                 scale = 1.0 if diff == 0 else (0.85 if diff == 1 else 0.70)
@@ -284,7 +297,20 @@ class Animation:
                 if dx * dx + dy * dy <= r * r:
                     px, py = cx + dx, cy + dy
                     if 0 <= px < self._w and self._at <= py <= self._ab:
-                        canvas.SetPixel(px, py, cr, cg, cb)
+                        pr, pg, pb = cr, cg, cb
+                        # EXPERIMENTAL: sun-cloud blending - remove from here...
+                        if self._sun_ox is not None:
+                            sdx = px - self._sun_ox
+                            sdy = py - self._sun_oy
+                            dist = math.sqrt(sdx * sdx + sdy * sdy)
+                            if dist < self._sun_glow:
+                                t = min(0.35, (1.0 - dist / self._sun_glow) ** 2)
+                                sr, sg, sb = self._sun_color
+                                pr = int(pr * (1.0 - t) + sr * t)
+                                pg = int(pg * (1.0 - t) + sg * t)
+                                pb = int(pb * (1.0 - t) + sb * t)
+                        # ...to here to disable sun-cloud blending
+                        canvas.SetPixel(px, py, pr, pg, pb)
 
     def _vline(self, canvas, x, y, length, col):
         cr, cg, cb = col

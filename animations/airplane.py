@@ -7,6 +7,7 @@ class Animation:
     conditions = []
     themes = ["Day", "Sunrise", "Sunset"]
     layer = "foreground"
+    speed = 0.8
 
     # --- Appearance settings ---
     # Edit colors directly in _SPRITE_R below.
@@ -40,15 +41,29 @@ class Animation:
         self._at = animator.anim_top
         self._ab = animator.anim_bottom
         self._right = random.choice([True, False])
-        self.y = float(self._at + random.randint(2, 8))
+        self._trail = []
+        self._trail_max = 18
+        self.y = float(self._at + random.randint(5, 11))
         if self._right:
             self.x = float(-10)
-            self._vx = 0.45 + random.random() * 0.2
+            self._vx = (0.45 + random.random() * 0.2) * self.speed
         else:
             self.x = float(width + 1)
-            self._vx = -(0.45 + random.random() * 0.2)
+            self._vx = -(0.45 + random.random() * 0.2) * self.speed
 
     def draw(self, canvas):
+        for i, (tx, ty) in enumerate(self._trail):
+            fade = (i + 1) / len(self._trail)
+            b = int(85 * fade)
+            if b <= 4:
+                continue
+            px, py = int(round(tx)), int(round(ty))
+            if 0 <= px < self._w and self._at <= py <= self._ab:
+                canvas.SetPixel(px, py, b, b, b)
+                if i % 3 == 0 and self._at <= py + 1 <= self._ab:
+                    dim = b // 2
+                    canvas.SetPixel(px, py + 1, dim, dim, dim)
+
         ox = int(round(self.x))
         oy = int(round(self.y))
         for dx, dy, r, g, b in self._SPRITE_R:
@@ -59,6 +74,11 @@ class Animation:
                 canvas.SetPixel(px, py, r, g, b)
 
     def update(self):
+        trail_x = self.x - 2 if self._right else self.x + 10
+        trail_y = self.y + 1
+        self._trail.append((trail_x, trail_y))
+        if len(self._trail) > self._trail_max:
+            self._trail.pop(0)
         self.x += self._vx
 
     def is_done(self) -> bool:

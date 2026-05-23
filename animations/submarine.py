@@ -7,6 +7,7 @@ class Animation:
     conditions = []
     themes = ["Day"]
     layer = "foreground"
+    speed = 1.0
 
     # --- Appearance settings ---
     # Edit colors directly in _HULL and _SCOPE below.
@@ -50,12 +51,13 @@ class Animation:
         mid = (self._at + self._ab) // 2
         self._base_y = float(mid - 2)
         self.x = float(-20)
-        self._vx = 0.25 + random.random() * 0.15
+        self._vx = (0.25 + random.random() * 0.15) * self.speed
         self._wave = random.random() * math.pi * 2
+        self._wave_speed = 0.04 * self.speed
 
     def update(self):
         self.x += self._vx
-        self._wave += 0.04
+        self._wave += self._wave_speed
 
     def draw(self, canvas):
         ox = int(round(self.x))

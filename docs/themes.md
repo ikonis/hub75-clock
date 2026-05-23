@@ -80,31 +80,26 @@ All values are hex color strings (`"#RRGGBB"`). When a key is present in the the
 | `colors.high_temp` | hex string | from config | High temperature value in the banner. |
 | `colors.condition` | hex string | from config | Weather condition word in the banner (e.g. `RAIN`, `CLEAR`). |
 
-### Stars
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `stars_enabled` | bool | `false` | Show twinkling stars in the animation zone. Use for night themes where the condition is CLEAR, SUNNY, or PARTLYCLOUDY. |
-
 ### Cameos
 
-One-shot animated events that fire at a configurable rate. Only one cameo runs at a time; if one is already playing, rolls for new ones are skipped until it finishes.
+Animations are configured through the `cameos` array. One-shot cameos fire at a configurable rate. Persistent cameos, such as `stars` and `clouds`, start when the theme is applied and run every frame without a rate.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `cameos` | array | `[]` | List of cameo objects. Each has `name` (string) and `chance_per_minute` (float). |
+| `cameos` | array | `[]` | List of cameo objects. Each has `name` (string). One-shot cameos also use `chance_per_minute` (float). |
 
 **Cameo object fields:**
 
 | Field | Type | Description |
 |---|---|---|
 | `name` | string | Which animation to spawn. Must match the `name` attribute of an animation file in `/etc/hub75-clock/animations/`. |
-| `chance_per_minute` | float | Expected spawns per minute on average. The roll is evaluated every frame at runtime FPS. |
+| `chance_per_minute` | float | Expected spawns per minute on average for one-shot cameos. Omit for persistent animations. |
 
 Example:
 
 ```json
 "cameos": [
+  {"name": "stars"},
   {"name": "shooting_star", "chance_per_minute": 8},
   {"name": "ufo", "chance_per_minute": 2}
 ]
@@ -114,6 +109,7 @@ Example:
 
 | Name | Layer | Conditions | Themes | Description |
 |---|---|---|---|---|
+| `stars` | celestial | CLEAR, PARTLYCLOUDY | Night, Late Evening | **Persistent** - add without `chance_per_minute`. Twinkling star field rendered before the sun/moon layer. |
 | `clouds` | foreground | _(any)_ | Day, Sunrise, Sunset, Late Evening | **Persistent** — add without `chance_per_minute`. Handles clouds AND all precipitation (rain, tstorm with lightning, snow, sleet). Driven by `cloud_density`, `cloud_speed`, `precipitation`, and `colors.cloud_day`. |
 | `shooting_star` | celestial | CLEAR, PARTLYCLOUDY | Night, Late Evening | Fast diagonal streak with fading tail |
 | `ufo` | foreground | CLEAR, PARTLYCLOUDY | Night, Late Evening | Saucer silhouette, cycling belly lights, occasional tractor beam abduction |
@@ -123,6 +119,7 @@ Example:
 | `airplane` | foreground | _(any)_ | Day, Sunrise, Sunset | Fuselage + wings + windows, mirrors to face direction of travel |
 | `bird_flock` | foreground | _(any)_ | Day | V-formation of 5–7 birds with alternating flap frames |
 | `butterfly` | foreground | CLEAR | Day | Open/closed wing frames, sine wave vertical drift, orange |
+| `flutterflies` | foreground | CLEAR | Day | **Persistent** - add without `chance_per_minute`. Small pastel butterfly group with gentle wandering motion |
 | `hot_air_balloon` | foreground | CLEAR, PARTLYCLOUDY | Day, Sunrise | 7×10px balloon with ROYGBIV stripes, drifts upward |
 | `tumbleweed` | foreground | _(any)_ | Day | Rolling circle with rotation transform, slight bounce |
 | `rainbow` | foreground | CLEAR, PARTLYCLOUDY | Day | ROYGBIV arc, 2px thick bands, fade in/hold/fade out |
@@ -136,7 +133,7 @@ Example:
 | `submarine` | foreground | _(any)_ | Day | Long hull + conning tower + periscope, slow left-to-right |
 | `ghost` | foreground | _(any)_ | Night, Late Evening | Pac-Man ghost (Blinky/Pinky/Inky/Clyde colors), directional pupils, sine float |
 
-The `layer` column shows when the animation is drawn relative to weather particles. `celestial` renders behind rain and snow; `foreground` renders in front. See `docs/animations.md` for details.
+The `layer` column shows when the animation is drawn relative to sun/moon and weather particles. `celestial` renders before sun/moon and clouds; `foreground` renders after clouds. See `docs/animations.md` for details.
 
 See `docs/animations.md` for the drop-in animation interface and how to write your own.
 
@@ -175,7 +172,7 @@ All particles are owned by the cloud that spawned them. They fall downward and w
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `condition_overrides` | object | `{}` | Per-condition background overrides. Keys are condition strings (see below). Values are objects containing any subset of the background fields (`background_type`, `background_color`, `background_top`, `background_bottom`, `background_split`, `background_gradient_direction`). Text colors, `stars_enabled`, `cameos`, and `sun_enabled` cannot be overridden per-condition. |
+| `condition_overrides` | object | `{}` | Per-condition background overrides. Keys are condition strings (see below). Values are objects containing any subset of the background fields (`background_type`, `background_color`, `background_top`, `background_bottom`, `background_split`, `background_gradient_direction`). Text colors, `cameos`, `sun_enabled`, and `moon_enabled` cannot be overridden per-condition. |
 
 Example:
 
@@ -269,7 +266,6 @@ No restart required.
     "cloud_day": "#1C1C24"
   },
 
-  "stars_enabled": false,
   "cameos": [{"name": "clouds"}],
 
   "cloud_density": "dense",
@@ -288,7 +284,7 @@ No restart required.
 - `colors.cloud_day: "#1C1C24"`: very dark clouds, barely visible — storm clouds blocking all light.
 - `precipitation: "tstorm"`: heavy rain particles plus random lightning bolts with a brief background flash. Lightning interval is 8–15 seconds.
 - `cloud_density: "dense"` + `cloud_speed: "fast"`: 7 fast-moving clouds feel stormy and oppressive.
-- `stars_enabled: false`: no stars; total overcast.
+- No `stars` cameo: no stars; total overcast.
 
 ---
 

@@ -295,18 +295,6 @@ def get_available_fonts(fonts_dir: str) -> List[str]:
         return []
 
 
-# ============================================================================
-# WEATHER ANIMATOR
-# ============================================================================
-
-class Star:
-    """A twinkling star."""
-    __slots__ = ("x", "y", "phase", "speed", "max_brightness")
-    def __init__(self, x, y, phase, speed, max_brightness):
-        self.x = x; self.y = y; self.phase = phase
-        self.speed = speed; self.max_brightness = max_brightness
-
-
 try:
     from watchdog.observers import Observer as _WatchdogObserver
     from watchdog.events import FileSystemEventHandler as _WatchdogHandler
@@ -457,7 +445,23 @@ class CameoManager:
                 except Exception as e:
                     print(f"[animations] warning: failed to spawn {cls}: {e}")
 
+    def _draw_persistent_layer(self, canvas, layer: str):
+        failed = []
+        for p in self._persistent_others:
+            if getattr(p, "layer", "foreground") != layer:
+                continue
+            try:
+                p.draw(canvas)
+            except Exception as e:
+                print(f"[animations] warning: persistent draw error: {e}")
+                failed.append(p)
+        if failed:
+            self._persistent_others = [
+                p for p in self._persistent_others if p not in failed
+            ]
+
     def draw_celestial(self, canvas):
+        self._draw_persistent_layer(canvas, "celestial")
         if (self._active is not None and
                 getattr(self._active, "layer", "foreground") == "celestial"):
             try:
@@ -474,20 +478,8 @@ class CameoManager:
                 print(f"[animations] warning: cloud draw error: {e}")
                 self._persistent_cloud = None
 
-    def draw_persistent(self, canvas):
-        failed = []
-        for p in self._persistent_others:
-            try:
-                p.draw(canvas)
-            except Exception as e:
-                print(f"[animations] warning: persistent draw error: {e}")
-                failed.append(p)
-        if failed:
-            self._persistent_others = [
-                p for p in self._persistent_others if p not in failed
-            ]
-
     def draw_foreground(self, canvas):
+        self._draw_persistent_layer(canvas, "foreground")
         if (self._active is not None and
                 getattr(self._active, "layer", "foreground") == "foreground"):
             try:
@@ -506,10 +498,10 @@ class WeatherAnimator:
         self.banner_bottom = layout["banner"]["bottom"]
         self.anim_top    = self.banner_bottom + 1
         self.anim_bottom = self.height - 1
-        self.stars: List[Star] = []
         self.condition = "CLEAR"
         self.current_theme: Optional[Theme] = None
         self.frame = 0
+        self._fps = cfg.get("animation", {}).get("fps", 15)
         _loader = animation_loader or AnimationLoader(
             cfg.get("animations", {}).get("animations_dir", "/etc/hub75-clock/animations")
         )
@@ -553,26 +545,7 @@ class WeatherAnimator:
     def _init_for_condition(self):
         self.condition = self._CONDITION_ALIASES.get(self.condition, self.condition)
         print(f"[animator] condition={self.condition}")
-        self.stars = []
         self._cameo_manager.reset()
-
-        stars_ok = (self.current_theme.stars_enabled if self.current_theme else False)
-        if stars_ok:
-            self._init_stars()
-
-    def _init_stars(self):
-        anim_h = self.anim_bottom - self.anim_top + 1
-        count = max(8, (self.width * anim_h) // 30)
-        for _ in range(count):
-            self.stars.append(Star(
-                x=random.randint(0, self.width - 1),
-                y=random.randint(self.anim_top, self.anim_bottom),
-                phase=random.random() * 6.28,
-                speed=random.uniform(0.05, 0.15),
-                max_brightness=random.choice([60, 80, 100, 140, 200]),
-            ))
-
-
 
     def update(self):
         self.frame += 1
@@ -693,14 +666,8 @@ class WeatherAnimator:
 
         self._draw_background(canvas)
 
-        # Stars
-        if self.current_theme and self.current_theme.stars_enabled:
-            for s in self.stars:
-                phase = s.phase + (self.frame * s.speed)
-                level = (math.sin(phase) + 1.0) * 0.5
-                b = int(s.max_brightness * level)
-                if b > 5:
-                    self._px(canvas, s.x, s.y, (b, b, b))
+        # Celestial cameos: stars, shooting stars, meteor, comet
+        self._cameo_manager.draw_celestial(canvas)
 
         # Sun and moon — theme JSON is sole authority
         if self.current_theme and self.current_theme.sun_enabled:
@@ -709,9 +676,7 @@ class WeatherAnimator:
             self._draw_moon(canvas)
 
         # Layered cameo draws — strict back to front
-        self._cameo_manager.draw_celestial(canvas)
         self._cameo_manager.draw_clouds(canvas)
-        self._cameo_manager.draw_persistent(canvas)
         self._cameo_manager.draw_foreground(canvas)
 
     def _draw_moon(self, canvas):

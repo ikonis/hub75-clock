@@ -16,6 +16,7 @@ class Animation:
     themes     = []
     layer      = "celestial"
     persistent = False
+    speed = 0.75
 
     _ALLOWED = frozenset({"CLEAR", "PARTLYCLOUDY"})
 
@@ -29,14 +30,14 @@ class Animation:
             return
 
         anim_third = self._at + (self._ab - self._at + 1) // 3
-        speed = random.uniform(1.0, 2.5)
+        speed = random.uniform(1.0, 2.5) * self.speed
         if random.random() < 0.5:
             speed = -speed
         self._star = _Star(
             x=random.uniform(0, width),
             y=random.uniform(self._at, anim_third),
             vx=speed,
-            vy=random.uniform(0.8, 1.4),
+            vy=random.uniform(0.8, 1.4) * self.speed,
             life=random.randint(10, 16),
         )
 

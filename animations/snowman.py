@@ -7,6 +7,7 @@ class Animation:
     conditions = ["SNOW"]
     themes = []
     layer = "foreground"
+    speed = 1.0
 
     # --- Appearance settings ---
     # Edit colors directly in _SPRITE below.

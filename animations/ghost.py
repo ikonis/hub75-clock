@@ -7,6 +7,7 @@ class Animation:
     conditions = []
     themes = ["Night", "Late Evening"]
     layer = "foreground"
+    speed = 1.0
 
     # Pac-Man style ghost: 7 wide x 8 tall
     # Body pixels (excluding eye area), drawn in ghost color
@@ -50,17 +51,18 @@ class Animation:
         self._right = random.choice([True, False])
         if self._right:
             self.x = float(-8)
-            self._vx = 0.28 + random.random() * 0.12
+            self._vx = (0.28 + random.random() * 0.12) * self.speed
         else:
             self.x = float(width + 2)
-            self._vx = -(0.28 + random.random() * 0.12)
+            self._vx = -(0.28 + random.random() * 0.12) * self.speed
         mid = (self._at + self._ab) // 2
         self._base_y = float(mid - 4 + random.randint(0, 4))
         self._bob = random.random() * math.pi * 2
+        self._bob_speed = 0.06 * self.speed
 
     def update(self):
         self.x += self._vx
-        self._bob += 0.06
+        self._bob += self._bob_speed
 
     def draw(self, canvas):
         ox = int(round(self.x))

@@ -9,7 +9,6 @@
     "high_temp": "#FF8C00",
     "condition": "#909090"
   },
-  "stars_enabled": false,
   "cameos": [{"name": "clouds"}],
   "cloud_density": "sparse",
   "cloud_speed": "slow",
