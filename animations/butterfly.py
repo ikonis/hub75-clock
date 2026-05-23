@@ -7,6 +7,7 @@ class Animation:
     conditions = ["CLEAR"]
     themes = ["Day"]
     layer = "foreground"
+    speed = 1.0
 
     _PASTEL_COLORS = [
         (100, 160, 255),  # soft blue
@@ -58,7 +59,7 @@ class Animation:
             else:
                 x = float(width + 8 + i * 18)
             y   = float(self._at + random.randint(3, 12))
-            vx  = (0.25 + random.random() * 0.2) * (1 if right else -1)
+            vx  = (0.25 + random.random() * 0.2) * (1 if right else -1) * self.speed
             self._butterflies.append({
                 'x':           x,
                 'y':           y,
@@ -67,11 +68,12 @@ class Animation:
                 'flap_offset': random.randint(0, 9),
                 'color':       color,
             })
+        self._wave_speed = 0.12 * self.speed
 
     def update(self):
         self._frame += 1
         for b in self._butterflies:
-            b['wave'] += 0.12
+            b['wave'] += self._wave_speed
             b['x']   += b['vx']
             b['y']   += math.sin(b['wave']) * 0.4
 

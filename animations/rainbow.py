@@ -6,6 +6,7 @@ class Animation:
     conditions = ["CLEAR", "PARTLYCLOUDY"]
     themes = ["Day"]
     layer = "foreground"
+    speed = 1.0
 
     # --- Appearance settings ---
     _BANDS = [

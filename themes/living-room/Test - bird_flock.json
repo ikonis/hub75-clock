@@ -9,7 +9,6 @@
     "high_temp": "#FF8C00",
     "condition": "#909090"
   },
-  "stars_enabled": false,
   "sun_enabled": false,
   "moon_enabled": false,
   "cloud_density": "none",

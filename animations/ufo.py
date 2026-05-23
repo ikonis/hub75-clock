@@ -7,6 +7,7 @@ class Animation:
     conditions = ["CLEAR", "PARTLYCLOUDY"]
     themes = ["Night", "Late Evening"]
     layer = "foreground"
+    speed = 1.0
 
     # Saucer sprite (9 wide, 5 tall), row by row, (dx, dy, r, g, b)
     _BODY = [
@@ -49,8 +50,9 @@ class Animation:
         self._ab = animator.anim_bottom
         self.x = float(width)
         self.y = float(self._at + random.randint(2, 8))
-        self._vx = -(0.25 + random.random() * 0.2)
+        self._vx = -(0.25 + random.random() * 0.2) * self.speed
         self._wobble = random.random() * math.pi * 2
+        self._wobble_speed = 0.08 * self.speed
         self._light_phase = 0
         # Tractor beam state
         self._mode = "fly"   # fly | beam_in | abduct | beam_out
@@ -62,7 +64,7 @@ class Animation:
         return int(round(self.x)) + 4   # center of UFO hull
 
     def update(self):
-        self._wobble += 0.08
+        self._wobble += self._wobble_speed
         self._light_phase = (self._light_phase + 1) % (len(self._LIGHTS) * 6)
 
         if self._mode == "fly":
@@ -81,7 +83,7 @@ class Animation:
                 self._mode = "abduct"
                 self._beam_frame = 0
         elif self._mode == "abduct":
-            self._figure_y -= 0.225   # float upward
+            self._figure_y -= 0.225 * self.speed   # float upward
             self._beam_frame += 1
             if self._figure_y < self.y + 6:   # absorbed into UFO
                 self._mode = "beam_out"

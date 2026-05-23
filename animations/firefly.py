@@ -8,6 +8,8 @@ class Animation:
     themes = ["Night", "Late Evening"]
     layer = "foreground"
     persistent = True
+    # Speed multiplier — edit this value to tune animation speed without touching logic
+    speed = 1.0
 
     # --- Appearance settings ---
     MAX_BRIGHTNESS  = 200   # peak glow value (0-255); brightness scales with blink phase
@@ -19,7 +21,7 @@ class Animation:
         self._at = animator.anim_top
         self._ab = animator.anim_bottom
         self._fps = cfg.get("animation", {}).get("fps", 15)
-        _drift = 0.06 * (15.0 / self._fps)
+        _drift = 0.06 * (15.0 / self._fps) * self.speed
         count = random.randint(6, 8)
         self._flies = []
         for _ in range(count):
@@ -42,7 +44,7 @@ class Animation:
             fly[1] = max(float(self._at + 1), min(float(self._ab - 1), fly[1]))
             # Occasionally change drift direction
             if random.random() < 0.01 * (15.0 / self._fps):
-                _drift = 0.06 * (15.0 / self._fps)
+                _drift = 0.06 * (15.0 / self._fps) * self.speed
                 fly[4] = (random.random() - 0.5) * _drift
                 fly[5] = (random.random() - 0.5) * _drift
 

@@ -7,6 +7,7 @@ class Animation:
     conditions = []
     themes = []
     layer = "foreground"
+    speed = 1.0
 
     # --- Appearance settings ---
     _COLORS = [
@@ -25,7 +26,7 @@ class Animation:
         self._w = width
         self._at = animator.anim_top
         self._ab = animator.anim_bottom
-        self._scale   = 15.0 / cfg.get("animation", {}).get("fps", 15)
+        self._scale   = (15.0 / cfg.get("animation", {}).get("fps", 15)) * self.speed
         self._gravity = self._GRAVITY * self._scale
 
         # 1–3 rockets, each with a staggered launch delay
@@ -83,7 +84,7 @@ class Animation:
             elif rk["phase"] == "explode":
                 alive = False
                 for sp in rk["sparks"]:
-                    sp["vy"] += self._GRAVITY
+                    sp["vy"] += self._gravity
                     sp["x"]  += sp["vx"]
                     sp["y"]  += sp["vy"]
                     sp["life"] -= 1

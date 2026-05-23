@@ -57,6 +57,7 @@ class Animation:
     themes = []
     layer = "foreground"
     persistent = True
+    speed = 1.0
 
     def __init__(self, width, height, cfg, animator):
         self._w = width
@@ -69,7 +70,7 @@ class Animation:
         self._precip = getattr(theme, "precipitation",  "none")   if theme else "none"
         self._fps    = cfg.get("animation", {}).get("fps", 15)
 
-        base_speed = _SPEEDS.get(speed_key, 0.4)
+        base_speed = _SPEEDS.get(speed_key, 0.4) * self.speed
         count      = _COUNTS.get(density, 4)
 
         theme_color_hex = getattr(theme, "colors", {}).get("cloud_day") if theme else None
@@ -137,24 +138,24 @@ class Animation:
         if p == "rain":
             for _ in range(random.randint(2, 4)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "rain",
-                                                    vy=1.5 * (15.0 / self._fps)))
+                                                    vy=1.5 * (15.0 / self._fps) * self.speed))
         elif p in ("heavy_rain", "tstorm"):
             for _ in range(random.randint(4, 6)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "heavy_rain",
-                                                    vy=2.5 * (15.0 / self._fps)))
+                                                    vy=2.5 * (15.0 / self._fps) * self.speed))
         elif p == "snow":
             for _ in range(random.randint(2, 3)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "snow",
-                                                    vy=random.uniform(0.3, 0.5) * (15.0 / self._fps)))
+                                                    vy=random.uniform(0.3, 0.5) * (15.0 / self._fps) * self.speed))
         elif p == "sleet":
             for i in range(random.randint(3, 5)):
                 if i % 2 == 0:
                     particles.append(self._new_particle(span_l, span_r, bottom,
-                                                        "sleet_fast", vy=1.5 * (15.0 / self._fps)))
+                                                        "sleet_fast", vy=1.5 * (15.0 / self._fps) * self.speed))
                 else:
                     particles.append(self._new_particle(span_l, span_r, bottom,
                                                         "sleet_slow",
-                                                        vy=random.uniform(0.4, 0.6) * (15.0 / self._fps)))
+                                                        vy=random.uniform(0.4, 0.6) * (15.0 / self._fps) * self.speed))
         return particles
 
     def _new_particle(self, span_l, span_r, cloud_bottom, ptype, vy):
@@ -211,9 +212,9 @@ class Animation:
 
             # Update particles
             for p in c["particles"]:
-                p["wobble"] += 0.15
+                p["wobble"] += 0.15 * self.speed
                 if p["type"] in ("snow", "sleet_slow"):
-                    p["lx"] += math.sin(p["wobble"]) * 0.25
+                    p["lx"] += math.sin(p["wobble"]) * 0.25 * self.speed
                 p["y"] += p["vy"]
                 if p["y"] > self._ab:
                     self._respawn(p, c["x"], c["y"], c["size"])

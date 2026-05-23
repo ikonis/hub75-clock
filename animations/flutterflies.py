@@ -8,6 +8,7 @@ class Animation:
     themes = ["Day"]
     layer = "foreground"
     persistent = True
+    speed = 1.0
 
     _PASTEL_COLORS = [
         (100, 160, 255),  # soft blue
@@ -36,17 +37,18 @@ class Animation:
                 'x':           float(random.randint(2, width - 2)),
                 'y':           float(random.randint(self._at + 2, self._ab - 2)),
                 'angle':       random.random() * math.pi * 2,
-                'speed':       0.18 + random.random() * 0.12,
-                'turn':        0.08 + random.random() * 0.06,
+                'speed':       (0.18 + random.random() * 0.12) * self.speed,
+                'turn':        (0.08 + random.random() * 0.06) * self.speed,
                 'wave':        random.random() * math.pi * 2,
                 'flap_offset': random.randint(0, 11),
                 'color':       color,
             })
+        self._wave_speed = 0.10 * self.speed
 
     def update(self):
         self._frame += 1
         for f in self._flutterflies:
-            f['wave']  += 0.10
+            f['wave']  += self._wave_speed
             f['angle'] += f['turn'] * math.sin(f['wave'])
             f['x']     += f['speed'] * math.cos(f['angle'])
             f['y']     += f['speed'] * math.sin(f['angle']) * 0.5

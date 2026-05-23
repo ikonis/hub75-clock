@@ -7,6 +7,7 @@ class Animation:
     conditions = []
     themes = ["Day", "Sunrise", "Sunset"]
     layer = "foreground"
+    speed = 1.0
 
     # --- Appearance settings ---
     # Edit colors directly in _SPRITE_R below.
@@ -43,10 +44,10 @@ class Animation:
         self.y = float(self._at + random.randint(5, 11))
         if self._right:
             self.x = float(-10)
-            self._vx = 0.45 + random.random() * 0.2
+            self._vx = (0.45 + random.random() * 0.2) * self.speed
         else:
             self.x = float(width + 1)
-            self._vx = -(0.45 + random.random() * 0.2)
+            self._vx = -(0.45 + random.random() * 0.2) * self.speed
 
     def draw(self, canvas):
         ox = int(round(self.x))

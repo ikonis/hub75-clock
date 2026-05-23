@@ -7,6 +7,7 @@ class Animation:
     conditions = ["CLEAR"]
     themes = ["Night"]
     layer = "celestial"
+    speed = 1.0
 
     # --- Appearance settings ---
     # Edit colors directly in _SPRITE below.
@@ -35,8 +36,8 @@ class Animation:
         self._ab = animator.anim_bottom
         zone_h = self._ab - self._at
         direction = random.choice(["right_to_left", "left_to_right", "top_to_bottom", "bottom_to_top"])
-        drift = 0.12 + random.random() * 0.06
-        speed = 0.4 + random.random() * 0.2
+        drift = (0.12 + random.random() * 0.06) * self.speed
+        speed = (0.4 + random.random() * 0.2) * self.speed
         if direction == "right_to_left":
             self.x  = float(width - 2)
             self.y  = float(self._at + random.randint(0, zone_h - 4))
