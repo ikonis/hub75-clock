@@ -28,17 +28,13 @@ WeatherAnimator::~WeatherAnimator() {
 
 void WeatherAnimator::setCondition(const std::string& cond) {
     condition = cond;
-    _stars.clear();
     _cameos->reset();
-    if (currentTheme && currentTheme->starsEnabled) _initStars();
     _cameos->setupPersistent();
 }
 
 void WeatherAnimator::setTheme(const std::string& themeName, const ThemeLoader& loader) {
     currentTheme = loader.getTheme(themeName);
-    _stars.clear();
     _cameos->reset();
-    if (currentTheme && currentTheme->starsEnabled) _initStars();
     _cameos->setupPersistent();
 }
 
@@ -51,11 +47,9 @@ void WeatherAnimator::update() {
 
 void WeatherAnimator::draw(rgb_matrix::FrameCanvas* canvas) {
     _drawBackground(canvas);
-    _cameos->drawBackground(canvas);
-    _drawStars(canvas);
+    _cameos->drawCelestial(canvas);
     if (currentTheme && currentTheme->sunEnabled)  _drawSun(canvas);
     if (currentTheme && currentTheme->moonEnabled) _drawMoon(canvas);
-    _cameos->drawCelestial(canvas);
     _cameos->drawClouds(canvas);
     _drawCondition(canvas);
     _cameos->drawForeground(canvas);
@@ -273,56 +267,6 @@ void WeatherAnimator::_drawMoon(rgb_matrix::FrameCanvas* canvas) {
         }
     }
 }
-
-// ── Stars ─────────────────────────────────────────────────────────────────────
-
-void WeatherAnimator::_initStars() {
-    // Mirrors Python _init_stars():
-    //   count = max(8, (width * anim_h) // 30)
-    //   each star: random x/y in animation zone, phase in [0, 2π),
-    //   speed in [0.05, 0.15], max_brightness from {60,80,100,140,200}
-    static std::mt19937 rng{std::random_device{}()};
-    std::uniform_int_distribution<int>  distX(0, width - 1);
-    std::uniform_int_distribution<int>  distY(animTop, animBottom);
-    std::uniform_real_distribution<float> distPhase(0.0f, 6.2832f);
-    std::uniform_real_distribution<float> distSpeed(0.05f, 0.15f);
-    static const int BRIGHTNESS_CHOICES[] = {60, 80, 100, 140, 200};
-    std::uniform_int_distribution<int> distBIdx(0, 4);
-
-    int animH = animBottom - animTop + 1;
-    int count = std::max(8, (width * animH) / 30);
-
-    _stars.reserve(count);
-    for (int i = 0; i < count; ++i) {
-        _stars.push_back({
-            distX(rng),
-            distY(rng),
-            distPhase(rng),
-            distSpeed(rng),
-            BRIGHTNESS_CHOICES[distBIdx(rng)],
-        });
-    }
-}
-
-void WeatherAnimator::_drawStars(rgb_matrix::FrameCanvas* canvas) {
-    if (!currentTheme || !currentTheme->starsEnabled || _stars.empty()) return;
-
-    // Mirrors Python draw() star loop:
-    //   phase = s.phase + (frame * s.speed)
-    //   level = (sin(phase) + 1.0) * 0.5
-    //   b = int(s.max_brightness * level)
-    //   if b > 5: draw white pixel
-    for (const auto& s : _stars) {
-        float phase = s.phase + float(frame) * s.speed;
-        float level = (std::sin(phase) + 1.0f) * 0.5f;
-        int   b     = int(float(s.maxBrightness) * level);
-        if (b > 5 && s.x >= 0 && s.x < width && s.y >= animTop && s.y <= animBottom) {
-            canvas->SetPixel(s.x, s.y, b, b, b);
-        }
-    }
-}
-
-// ── Color resolver ────────────────────────────────────────────────────────────
 
 std::array<int, 3> WeatherAnimator::_resolveColor(const std::string& key) const {
     if (currentTheme) {

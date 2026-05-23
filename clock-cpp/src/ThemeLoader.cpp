@@ -1,4 +1,5 @@
 #include "Theme.h"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -46,6 +47,16 @@ Theme themeFromJson(const nlohmann::json& j) {
         }
         if (!hasEntry) {
             t.cameos.push_back({"shooting_star", 8});
+        }
+    }
+
+    if (t.starsEnabled) {
+        bool hasEntry = false;
+        for (const auto& c : t.cameos) {
+            if (c.name == "stars") { hasEntry = true; break; }
+        }
+        if (!hasEntry) {
+            t.cameos.insert(t.cameos.begin(), {"stars", 0});
         }
     }
 

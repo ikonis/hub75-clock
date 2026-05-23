@@ -273,6 +273,13 @@ void LD2410Sensor::start() {
 void LD2410Sensor::stop() {
     _running = false;
     if (_thread.joinable()) _thread.join();
+    {
+        std::lock_guard<std::mutex> lk(_commandThreadsMtx);
+        for (auto& t : _commandThreads) {
+            if (t.joinable()) t.join();
+        }
+        _commandThreads.clear();
+    }
     if (_fd >= 0) { close(_fd); _fd = -1; }
 }
 
@@ -312,9 +319,18 @@ void LD2410Sensor::_enableEngineeringModeImpl(bool enable) {
     std::cout << "[ld2410] engineering mode " << (enable ? "enabled" : "disabled") << "\n";
 }
 
-// Public API — called from MQTT thread; detached so it doesn't block.
 void LD2410Sensor::enableEngineeringMode(bool enable) {
-    std::thread([this, enable] { _enableEngineeringModeImpl(enable); }).detach();
+    bool expected = false;
+    if (!_engineeringCommandRunning.compare_exchange_strong(expected, true)) return;
+
+    std::lock_guard<std::mutex> lk(_commandThreadsMtx);
+    _commandThreads.emplace_back([this, enable] {
+        try {
+            _enableEngineeringModeImpl(enable);
+        } catch (...) {
+        }
+        _engineeringCommandRunning = false;
+    });
 }
 
 void LD2410Sensor::_writeGateConfigImpl(int gate, int moveT, int stillT) {
@@ -344,9 +360,10 @@ void LD2410Sensor::_writeGateConfigImpl(int gate, int moveT, int stillT) {
 }
 
 void LD2410Sensor::writeGateConfig(int gate, int moveThresh, int stillThresh) {
-    std::thread([this, gate, moveThresh, stillThresh] {
+    std::lock_guard<std::mutex> lk(_commandThreadsMtx);
+    _commandThreads.emplace_back([this, gate, moveThresh, stillThresh] {
         _writeGateConfigImpl(gate, moveThresh, stillThresh);
-    }).detach();
+    });
 }
 
 void LD2410Sensor::_run() {
@@ -377,6 +394,10 @@ void LD2410Sensor::_process(std::vector<uint8_t>& buf) {
         if (buf.size() < 10) return; // need at least head(4) + len(2) + tail(4)
 
         size_t dl    = static_cast<size_t>(buf[4]) | (static_cast<size_t>(buf[5]) << 8);
+        if (dl > 512) {
+            buf.clear();
+            return;
+        }
         size_t total = 4 + 2 + dl + 4;
         if (buf.size() < total) return;
 

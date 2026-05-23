@@ -88,7 +88,7 @@ public:
     void start();
     void stop();
 
-    // Thread-safe: spawns a detached thread so the MQTT callback doesn't block.
+    // Thread-safe: runs command writes off the MQTT callback thread.
     void enableEngineeringMode(bool enable);
     void writeGateConfig(int gate, int moveThresh, int stillThresh);
 
@@ -105,8 +105,11 @@ private:
     int               _fd = -1;
     std::atomic<bool> _running{false};
     std::atomic<bool> _engineeringMode{false};
+    std::atomic<bool> _engineeringCommandRunning{false};
     std::thread       _thread;
+    std::vector<std::thread> _commandThreads;
     std::mutex        _writeMtx;
+    std::mutex        _commandThreadsMtx;
     std::chrono::steady_clock::time_point _lastPub{};
 
     // Frame magic bytes (Python HEAD/TAIL/CMD_HEAD/CMD_TAIL)

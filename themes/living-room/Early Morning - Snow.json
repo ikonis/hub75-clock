@@ -14,7 +14,6 @@
     "condition": "#909090",
     "cloud_day": "#607080"
   },
-  "stars_enabled": false,
   "sun_enabled": false,
   "moon_enabled": false,
   "cloud_density": "dense",

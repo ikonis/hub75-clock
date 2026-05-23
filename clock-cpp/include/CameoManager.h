@@ -48,7 +48,14 @@ public:
 private:
     WeatherAnimator* _animator;
 
+    struct AnimationInfo {
+        Factory factory;
+        std::string layer;
+        bool persistent;
+    };
+
     std::unordered_map<std::string, Factory> _registry;
+    std::unordered_map<std::string, AnimationInfo> _info;
 
     // Persistent (clouds): always running while condition matches.
     std::vector<std::unique_ptr<Animation>> _persistent;
@@ -62,4 +69,6 @@ private:
     void _trySpawnCelestial();
     void _trySpawnForeground();
     void _drawLayer(rgb_matrix::FrameCanvas* canvas, const std::string& layer);
+    void _registerAnimation(const std::string& name, const std::string& layer,
+                            bool persistent, Factory factory);
 };

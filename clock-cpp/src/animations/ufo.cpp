@@ -102,7 +102,7 @@ public:
                     if (by > _ab) break;
                     int br = int(float(intensity) * BEAM_AF[row]);
                     for (int bx = cx - BEAM_HW[row]; bx <= cx + BEAM_HW[row]; ++bx) {
-                        if (bx >= 0 && bx < _w)
+                        if (bx >= 0 && bx < _w && by >= _at && by <= _ab)
                             canvas->SetPixel(bx, by, 0, br, br / 2);
                     }
                 }
@@ -146,7 +146,7 @@ public:
             for (int i = 1; i < 5; ++i) {
                 int gx = ox + 9 + i;
                 int gb = std::max(0, 20 - i * 5);
-                if (gx >= 0 && gx < _w)
+                if (gx >= 0 && gx < _w && oy + 2 >= _at && oy + 2 <= _ab)
                     canvas->SetPixel(gx, oy + 2, 0, gb, gb / 2);
             }
         }

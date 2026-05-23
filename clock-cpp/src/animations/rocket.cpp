@@ -62,10 +62,13 @@ public:
             float fade = 1.0f - float(fi) / 4.0f;
             int   fr   = int(255 * fade);
             int   fg   = int(120 * fade * (1.0f - fi * 0.2f));
-            canvas->SetPixel(ox + 1, fy, fr, fg, 0);
+            if (ox + 1 >= 0 && ox + 1 < _w)
+                canvas->SetPixel(ox + 1, fy, fr, fg, 0);
             if (fi < 2) {
-                canvas->SetPixel(ox,     fy, int(fr*0.6f), int(fg*0.4f), 0);
-                canvas->SetPixel(ox + 2, fy, int(fr*0.6f), int(fg*0.4f), 0);
+                if (ox >= 0 && ox < _w)
+                    canvas->SetPixel(ox, fy, int(fr*0.6f), int(fg*0.4f), 0);
+                if (ox + 2 >= 0 && ox + 2 < _w)
+                    canvas->SetPixel(ox + 2, fy, int(fr*0.6f), int(fg*0.4f), 0);
             }
         }
     }

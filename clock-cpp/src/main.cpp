@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 #include <mosquitto.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstring>
 #include <ctime>
@@ -193,6 +194,9 @@ static json loadConfig(const std::string& path) {
     json cfg = defaults();
     if (!fs::exists(path)) {
         std::cerr << "[config] " << path << " not found — using defaults\n";
+        cfg["animation"]["fps"] = std::max(1, cfg["animation"].value("fps", 15));
+        if (cfg["animation"].contains("fps_night"))
+            cfg["animation"]["fps_night"] = std::max(1, cfg["animation"].value("fps_night", 15));
         return cfg;
     }
     try {
@@ -203,6 +207,9 @@ static json loadConfig(const std::string& path) {
     } catch (const std::exception& e) {
         std::cerr << "[config] Failed to parse " << path << ": " << e.what() << "\n";
     }
+    cfg["animation"]["fps"] = std::max(1, cfg["animation"].value("fps", 15));
+    if (cfg["animation"].contains("fps_night"))
+        cfg["animation"]["fps_night"] = std::max(1, cfg["animation"].value("fps_night", 15));
     return cfg;
 }
 
@@ -687,7 +694,8 @@ int main(int argc, char* argv[]) {
     opts.pwm_bits            = cfg["panel"].value("pwm_bits", 11);
     opts.pwm_lsb_nanoseconds = cfg["panel"].value("pwm_lsb_nanoseconds", 130);
     rtopts.gpio_slowdown     = cfg["panel"].value("gpio_slowdown", 2);
-    opts.led_rgb_sequence    = cfg["panel"].value("led_rgb_sequence", std::string("RBG")).c_str();
+    std::string ledRgbSequence = cfg["panel"].value("led_rgb_sequence", std::string("RBG"));
+    opts.led_rgb_sequence    = ledRgbSequence.c_str();
     rtopts.drop_privileges   = 1;
 
     auto* matrix = CreateMatrixFromOptions(opts, rtopts);
@@ -728,6 +736,12 @@ int main(int argc, char* argv[]) {
 
     std::string clientId = cfg["mqtt"].value("client_id", "hub75_clock");
     auto* mosq = mosquitto_new(clientId.c_str(), true, &mqttCtx);
+    if (!mosq) {
+        std::cerr << "[mqtt] failed to create client\n";
+        delete matrix;
+        mosquitto_lib_cleanup();
+        return 1;
+    }
     mosquitto_connect_callback_set(mosq, mqttOnConnect);
     mosquitto_message_callback_set(mosq, mqttOnMessage);
 
@@ -789,11 +803,11 @@ int main(int argc, char* argv[]) {
 
     // ── Render loop ───────────────────────────────────────────────────────
     auto* canvas = matrix->CreateFrameCanvas();
-    g_fps.store(cfg["animation"].value("fps", 15));
+    g_fps.store(std::max(1, cfg["animation"].value("fps", 15)));
 
     while (g_running) {
         auto t0      = std::chrono::steady_clock::now();
-        auto frameUs = std::chrono::microseconds(1'000'000 / g_fps.load());
+        auto frameUs = std::chrono::microseconds(1'000'000 / std::max(1, g_fps.load()));
 
         canvas->Clear();
         {
