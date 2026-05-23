@@ -77,18 +77,18 @@ class Animation:
                 self._figure_y = float(self._ab - 3)
         elif self._mode == "beam_in":
             self._beam_frame += 1
-            if self._beam_frame >= 18:
+            if self._beam_frame >= 36:
                 self._mode = "abduct"
                 self._beam_frame = 0
         elif self._mode == "abduct":
-            self._figure_y -= 0.45   # float upward
+            self._figure_y -= 0.225   # float upward
             self._beam_frame += 1
             if self._figure_y < self.y + 6:   # absorbed into UFO
                 self._mode = "beam_out"
                 self._beam_frame = 0
         elif self._mode == "beam_out":
             self._beam_frame += 1
-            if self._beam_frame >= 15:
+            if self._beam_frame >= 30:
                 self._mode = "fly"   # resume flight
 
     def _draw_beam(self, canvas, intensity):

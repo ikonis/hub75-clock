@@ -31,7 +31,7 @@ class Animation:
         self.x = float(-6)
         self._base_y = float(self._ab - 4)
         self._roll = 0.0
-        self._vx = 0.35 + random.random() * 0.2
+        self._vx = (0.35 + random.random() * 0.2) * 0.5
 
     def update(self):
         self.x += self._vx

@@ -40,7 +40,7 @@ class Animation:
         self._at = animator.anim_top
         self._ab = animator.anim_bottom
         self._right = random.choice([True, False])
-        self.y = float(self._at + random.randint(2, 8))
+        self.y = float(self._at + random.randint(5, 11))
         if self._right:
             self.x = float(-10)
             self._vx = 0.45 + random.random() * 0.2

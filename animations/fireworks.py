@@ -25,6 +25,8 @@ class Animation:
         self._w = width
         self._at = animator.anim_top
         self._ab = animator.anim_bottom
+        self._scale   = 15.0 / cfg.get("animation", {}).get("fps", 15)
+        self._gravity = self._GRAVITY * self._scale
 
         # 1–3 rockets, each with a staggered launch delay
         n = random.randint(1, 3)
@@ -38,7 +40,7 @@ class Animation:
         zone = self._ab - self._at
         target_y = self._at + random.randint(1, zone // 3)
         dist = float(self._ab - target_y)
-        vy0 = -math.sqrt(2.0 * self._GRAVITY * max(dist, 1.0))
+        vy0 = -math.sqrt(2.0 * self._gravity * max(dist, 1.0))
         return {
             "phase": "wait",
             "delay": delay,
@@ -53,7 +55,7 @@ class Animation:
         n = random.randint(16, 20)
         for i in range(n):
             angle = (2.0 * math.pi * i / n) + random.uniform(-0.3, 0.3)
-            speed = 0.8 + random.random() * 1.6
+            speed = (0.8 + random.random() * 1.6) * self._scale
             color = random.choice(self._COLORS)   # each spark picks its own color
             life = 30 + random.randint(0, 12)
             rk["sparks"].append({
@@ -72,7 +74,7 @@ class Animation:
                     rk["phase"] = "launch"
 
             elif rk["phase"] == "launch":
-                rk["vy"] += self._GRAVITY
+                rk["vy"] += self._gravity
                 rk["y"]  += rk["vy"]
                 if rk["vy"] >= 0 or rk["y"] <= self._at:
                     rk["y"] = max(rk["y"], float(self._at + 1))

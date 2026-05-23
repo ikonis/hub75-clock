@@ -48,13 +48,13 @@ class Animation:
         self._ab = animator.anim_bottom
         self.x = float(random.randint(5, width - 12))
         self.y = float(self._ab - 9)     # start near bottom
-        self._vx = (random.random() - 0.5) * 0.15
-        self._vy = -0.08                 # drifts upward
+        self._vx = (random.random() - 0.5) * 0.075
+        self._vy = -0.04                 # drifts upward
         self._sway = random.random() * math.pi * 2
 
     def update(self):
         self._sway += 0.04
-        self.x += self._vx + math.sin(self._sway) * 0.04
+        self.x += self._vx + math.sin(self._sway) * 0.02
         self.y += self._vy
 
     def draw(self, canvas):

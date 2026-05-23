@@ -20,7 +20,7 @@ class Animation:
         count = random.randint(5, 7)
         # V formation: leader at (0,0), followers spread behind and to sides
         self._birds = []
-        row_y = self._at + random.randint(2, 6)
+        row_y = self._at + random.randint(5, 13)
         for i in range(count):
             if i == 0:
                 bx, by = 0.0, 0.0

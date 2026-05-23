@@ -51,7 +51,7 @@ class Animation:
         self._ab = animator.anim_bottom
         self.x = float(width + 2)  # start off right edge
         self.y = float(self._at + random.randint(1, 5))
-        self._vx = -(0.4 + random.random() * 0.2)
+        self._vx = -(0.4 + random.random() * 0.2) * 0.5
         self._wave = random.random() * math.pi * 2
 
     def update(self):

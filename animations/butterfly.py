@@ -8,67 +8,92 @@ class Animation:
     themes = ["Day"]
     layer = "foreground"
 
-    # --- Appearance settings ---
-    # Edit colors directly in _OPEN and _CLOSED below.
-    # Key areas: upper wings (orange ~255,140,40), lower wings (dark orange ~210,70,15),
-    #            body (dark brown ~45,22,11)
-    # ---------------------------
+    _PASTEL_COLORS = [
+        (100, 160, 255),  # soft blue
+        (255, 240, 100),  # soft yellow
+        (255, 130, 180),  # soft pink
+        (130, 230, 140),  # soft green
+        (255, 170,  80),  # soft orange
+    ]
 
-    # Two frames: wings open and wings closed
-    # Body center at (3, 2), wings span ±4
-    # Frame 0: wings open
+    # Wing pixels as (dx, dy, brightness 0..1) — body drawn separately in dark brown.
+    # Sprite is symmetric; used for both left-to-right and right-to-left flight.
     _OPEN = [
-        # Left wing (upper)
-        (0, 0, 255, 120, 30), (1, 0, 255, 160, 50), (2, 0, 255, 200, 80),
-        (0, 1, 255, 140, 40), (1, 1, 255, 180, 60), (2, 1, 255, 210, 90),
-        # Right wing (upper)
-        (4, 0, 255, 120, 30), (5, 0, 255, 160, 50), (6, 0, 255, 200, 80),
-        (4, 1, 255, 140, 40), (5, 1, 255, 180, 60), (6, 1, 255, 210, 90),
-        # Left wing (lower)
-        (0, 3, 220, 80, 20), (1, 3, 240, 120, 40),
-        (0, 4, 200, 60, 10), (1, 4, 220, 100, 30),
-        # Right wing (lower)
-        (5, 3, 220, 80, 20), (6, 3, 240, 120, 40),
-        (5, 4, 200, 60, 10), (6, 4, 220, 100, 30),
-        # Body
-        (3, 1, 40, 20, 10), (3, 2, 50, 25, 12), (3, 3, 40, 20, 10),
+        # Left upper wing
+        (0, 0, 0.85), (1, 0, 1.00), (2, 0, 0.85),
+        (0, 1, 0.90), (1, 1, 1.00), (2, 1, 0.95),
+        # Right upper wing
+        (4, 0, 0.85), (5, 0, 1.00), (6, 0, 0.85),
+        (4, 1, 0.90), (5, 1, 1.00), (6, 1, 0.95),
+        # Left lower wing
+        (0, 3, 0.70), (1, 3, 0.80),
+        (0, 4, 0.60), (1, 4, 0.70),
+        # Right lower wing
+        (5, 3, 0.70), (6, 3, 0.80),
+        (5, 4, 0.60), (6, 4, 0.70),
     ]
-    # Frame 1: wings angled (closed-ish)
     _CLOSED = [
-        # Left wing (folded up)
-        (1, 0, 255, 140, 40), (2, 0, 255, 190, 70),
-        (1, 1, 255, 120, 30), (2, 1, 255, 170, 60),
-        # Right wing (folded up)
-        (4, 0, 255, 140, 40), (5, 0, 255, 190, 70),
-        (4, 1, 255, 120, 30), (5, 1, 255, 170, 60),
-        # Body
-        (3, 1, 40, 20, 10), (3, 2, 50, 25, 12), (3, 3, 40, 20, 10),
+        # Left wing folded
+        (1, 0, 0.90), (2, 0, 0.85),
+        (1, 1, 0.85), (2, 1, 0.90),
+        # Right wing folded
+        (4, 0, 0.90), (5, 0, 0.85),
+        (4, 1, 0.85), (5, 1, 0.90),
     ]
+    _BODY_PIXELS = [(3, 1), (3, 2), (3, 3)]
+    _BODY_COLOR  = (45, 22, 11)
 
     def __init__(self, width, height, cfg, animator):
-        self._w = width
-        self._at = animator.anim_top
-        self._ab = animator.anim_bottom
-        self.x = float(-8)
-        self.y = float(self._at + random.randint(3, 12))
-        self._vx = 0.3 + random.random() * 0.2
+        self._w     = width
+        self._at    = animator.anim_top
+        self._ab    = animator.anim_bottom
         self._frame = 0
-        self._wave = random.random() * math.pi * 2
+
+        colors = random.sample(self._PASTEL_COLORS, 3)
+        self._butterflies = []
+        for i, color in enumerate(colors):
+            right = random.random() < 0.5
+            if right:
+                x = float(-8 - i * 18)
+            else:
+                x = float(width + 8 + i * 18)
+            y   = float(self._at + random.randint(3, 12))
+            vx  = (0.25 + random.random() * 0.2) * (1 if right else -1)
+            self._butterflies.append({
+                'x':           x,
+                'y':           y,
+                'vx':          vx,
+                'wave':        random.random() * math.pi * 2,
+                'flap_offset': random.randint(0, 9),
+                'color':       color,
+            })
 
     def update(self):
         self._frame += 1
-        self._wave += 0.12
-        self.x += self._vx
-        self.y += math.sin(self._wave) * 0.4
+        for b in self._butterflies:
+            b['wave'] += 0.12
+            b['x']   += b['vx']
+            b['y']   += math.sin(b['wave']) * 0.4
 
     def draw(self, canvas):
-        ox = int(round(self.x))
-        oy = int(round(self.y))
-        sprite = self._OPEN if (self._frame // 5) % 2 == 0 else self._CLOSED
-        for dx, dy, r, g, b in sprite:
-            px, py = ox + dx, oy + dy
-            if 0 <= px < self._w and self._at <= py <= self._ab:
-                canvas.SetPixel(px, py, r, g, b)
+        for b in self._butterflies:
+            flap   = (self._frame + b['flap_offset']) // 5
+            sprite = self._OPEN if flap % 2 == 0 else self._CLOSED
+            ox     = int(round(b['x']))
+            oy     = int(round(b['y']))
+            cr, cg, cb = b['color']
+            for dx, dy, brt in sprite:
+                px, py = ox + dx, oy + dy
+                if 0 <= px < self._w and self._at <= py <= self._ab:
+                    canvas.SetPixel(px, py,
+                                    int(cr * brt), int(cg * brt), int(cb * brt))
+            for dx, dy in self._BODY_PIXELS:
+                px, py = ox + dx, oy + dy
+                if 0 <= px < self._w and self._at <= py <= self._ab:
+                    canvas.SetPixel(px, py, *self._BODY_COLOR)
 
     def is_done(self) -> bool:
-        return self.x > self._w + 10
+        for b in self._butterflies:
+            if -20 < b['x'] < self._w + 20:
+                return False
+        return True

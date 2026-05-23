@@ -36,11 +36,11 @@ class Animation:
         self._ab = animator.anim_bottom
         self.x = float(random.randint(4, width - 5))
         self.y = float(self._ab - 2)
-        self._vy = -(0.5 + random.random() * 0.3)
+        self._vy = -(0.5 + random.random() * 0.3) * 0.25
         self._frame = 0
 
     def update(self):
-        self._vy -= 0.04   # accelerate upward
+        self._vy -= 0.01   # accelerate upward
         self.y += self._vy
         self._frame += 1
 
