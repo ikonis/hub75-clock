@@ -1,6 +1,10 @@
 file(REMOVE_RECURSE
   "CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o"
   "CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o.d"
+  "CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o"
+  "CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o.d"
+  "CMakeFiles/hub75_clock.dir/src/Serial.cpp.o"
+  "CMakeFiles/hub75_clock.dir/src/Serial.cpp.o.d"
   "CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o"
   "CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o.d"
   "CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o"

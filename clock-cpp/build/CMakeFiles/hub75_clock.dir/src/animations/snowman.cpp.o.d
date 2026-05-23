@@ -103,6 +103,7 @@ CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.o: \
  /usr/include/arm-linux-gnueabihf/bits/struct_mutex.h \
  /usr/include/arm-linux-gnueabihf/bits/struct_rwlock.h \
  /usr/include/alloca.h \
+ /usr/include/arm-linux-gnueabihf/bits/stdlib-bsearch.h \
  /usr/include/arm-linux-gnueabihf/bits/stdlib-float.h \
  /usr/include/c++/12/bits/std_abs.h /usr/include/c++/12/cstdio \
  /usr/include/stdio.h \
@@ -111,10 +112,10 @@ CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.o: \
  /usr/include/arm-linux-gnueabihf/bits/types/struct_FILE.h \
  /usr/include/arm-linux-gnueabihf/bits/types/cookie_io_functions_t.h \
  /usr/include/arm-linux-gnueabihf/bits/stdio_lim.h \
- /usr/include/c++/12/cerrno /usr/include/errno.h \
- /usr/include/arm-linux-gnueabihf/bits/errno.h /usr/include/linux/errno.h \
- /usr/lib/linux/uapi/arm/asm/errno.h /usr/include/asm-generic/errno.h \
- /usr/include/asm-generic/errno-base.h \
+ /usr/include/arm-linux-gnueabihf/bits/stdio.h /usr/include/c++/12/cerrno \
+ /usr/include/errno.h /usr/include/arm-linux-gnueabihf/bits/errno.h \
+ /usr/include/linux/errno.h /usr/lib/linux/uapi/arm/asm/errno.h \
+ /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  /usr/include/arm-linux-gnueabihf/bits/types/error_t.h \
  /usr/include/c++/12/bits/charconv.h \
  /usr/include/c++/12/bits/basic_string.tcc \

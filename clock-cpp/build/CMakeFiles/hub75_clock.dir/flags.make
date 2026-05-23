@@ -6,5 +6,5 @@ CXX_DEFINES =
 
 CXX_INCLUDES = -I/home/ikonis/hub75-clock/clock-cpp/include -isystem /home/ikonis/rpi-rgb-led-matrix/include
 
-CXX_FLAGS = -Wall -Wextra -Wpedantic -std=c++17
+CXX_FLAGS = -O3 -DNDEBUG -Wall -Wextra -Wpedantic -std=c++17
 

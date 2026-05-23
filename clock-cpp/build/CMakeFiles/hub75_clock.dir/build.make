@@ -83,10 +83,38 @@ CMakeFiles/hub75_clock.dir/src/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/hub75_clock.dir/src/main.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ikonis/hub75-clock/clock-cpp/src/main.cpp -o CMakeFiles/hub75_clock.dir/src/main.cpp.s
 
+CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
+CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/Sensors.cpp
+CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o -MF CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/Sensors.cpp
+
+CMakeFiles/hub75_clock.dir/src/Sensors.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/hub75_clock.dir/src/Sensors.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ikonis/hub75-clock/clock-cpp/src/Sensors.cpp > CMakeFiles/hub75_clock.dir/src/Sensors.cpp.i
+
+CMakeFiles/hub75_clock.dir/src/Sensors.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/hub75_clock.dir/src/Sensors.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ikonis/hub75-clock/clock-cpp/src/Sensors.cpp -o CMakeFiles/hub75_clock.dir/src/Sensors.cpp.s
+
+CMakeFiles/hub75_clock.dir/src/Serial.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
+CMakeFiles/hub75_clock.dir/src/Serial.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/Serial.cpp
+CMakeFiles/hub75_clock.dir/src/Serial.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/hub75_clock.dir/src/Serial.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/Serial.cpp.o -MF CMakeFiles/hub75_clock.dir/src/Serial.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/Serial.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/Serial.cpp
+
+CMakeFiles/hub75_clock.dir/src/Serial.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/hub75_clock.dir/src/Serial.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ikonis/hub75-clock/clock-cpp/src/Serial.cpp > CMakeFiles/hub75_clock.dir/src/Serial.cpp.i
+
+CMakeFiles/hub75_clock.dir/src/Serial.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/hub75_clock.dir/src/Serial.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ikonis/hub75-clock/clock-cpp/src/Serial.cpp -o CMakeFiles/hub75_clock.dir/src/Serial.cpp.s
+
 CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/WeatherAnimator.cpp
 CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o -MF CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/WeatherAnimator.cpp
 
 CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.i: cmake_force
@@ -100,7 +128,7 @@ CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/ThemeLoader.cpp
 CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o -MF CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/ThemeLoader.cpp
 
 CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.i: cmake_force
@@ -114,7 +142,7 @@ CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/CameoManager.cpp
 CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o -MF CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/CameoManager.cpp
 
 CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.i: cmake_force
@@ -128,7 +156,7 @@ CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/airplane.cpp
 CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/airplane.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.i: cmake_force
@@ -142,7 +170,7 @@ CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/bird_flock.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/bird_flock.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/bird_flock.cpp
 CMakeFiles/hub75_clock.dir/src/animations/bird_flock.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/bird_flock.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/bird_flock.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/bird_flock.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/bird_flock.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/bird_flock.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/bird_flock.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/bird_flock.cpp.i: cmake_force
@@ -156,7 +184,7 @@ CMakeFiles/hub75_clock.dir/src/animations/bird_flock.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/butterfly.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/butterfly.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/butterfly.cpp
 CMakeFiles/hub75_clock.dir/src/animations/butterfly.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/butterfly.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/butterfly.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/butterfly.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/butterfly.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/butterfly.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/butterfly.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/butterfly.cpp.i: cmake_force
@@ -170,7 +198,7 @@ CMakeFiles/hub75_clock.dir/src/animations/butterfly.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/clouds.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/clouds.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/clouds.cpp
 CMakeFiles/hub75_clock.dir/src/animations/clouds.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/clouds.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/clouds.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/clouds.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/clouds.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/clouds.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/clouds.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/clouds.cpp.i: cmake_force
@@ -184,7 +212,7 @@ CMakeFiles/hub75_clock.dir/src/animations/clouds.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/comet.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/comet.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/comet.cpp
 CMakeFiles/hub75_clock.dir/src/animations/comet.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/comet.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/comet.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/comet.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/comet.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/comet.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/comet.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/comet.cpp.i: cmake_force
@@ -198,7 +226,7 @@ CMakeFiles/hub75_clock.dir/src/animations/comet.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/easter_egg.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/easter_egg.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/easter_egg.cpp
 CMakeFiles/hub75_clock.dir/src/animations/easter_egg.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/easter_egg.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/easter_egg.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/easter_egg.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/easter_egg.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/easter_egg.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/easter_egg.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/easter_egg.cpp.i: cmake_force
@@ -212,7 +240,7 @@ CMakeFiles/hub75_clock.dir/src/animations/easter_egg.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/firefly.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/firefly.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/firefly.cpp
 CMakeFiles/hub75_clock.dir/src/animations/firefly.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/firefly.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/firefly.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/firefly.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/firefly.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/firefly.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/firefly.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/firefly.cpp.i: cmake_force
@@ -226,7 +254,7 @@ CMakeFiles/hub75_clock.dir/src/animations/firefly.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/fireworks.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/fireworks.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/fireworks.cpp
 CMakeFiles/hub75_clock.dir/src/animations/fireworks.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/fireworks.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/fireworks.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/fireworks.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/fireworks.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/fireworks.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/fireworks.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/fireworks.cpp.i: cmake_force
@@ -240,7 +268,7 @@ CMakeFiles/hub75_clock.dir/src/animations/fireworks.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/ghost.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/ghost.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/ghost.cpp
 CMakeFiles/hub75_clock.dir/src/animations/ghost.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/ghost.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/ghost.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/ghost.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/ghost.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/ghost.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/ghost.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/ghost.cpp.i: cmake_force
@@ -254,7 +282,7 @@ CMakeFiles/hub75_clock.dir/src/animations/ghost.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/hot_air_balloon.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/hot_air_balloon.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/hot_air_balloon.cpp
 CMakeFiles/hub75_clock.dir/src/animations/hot_air_balloon.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/hot_air_balloon.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/hot_air_balloon.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/hot_air_balloon.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/hot_air_balloon.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/hot_air_balloon.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/hot_air_balloon.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/hot_air_balloon.cpp.i: cmake_force
@@ -268,7 +296,7 @@ CMakeFiles/hub75_clock.dir/src/animations/hot_air_balloon.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/jack_o_lantern.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/jack_o_lantern.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/jack_o_lantern.cpp
 CMakeFiles/hub75_clock.dir/src/animations/jack_o_lantern.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/jack_o_lantern.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/jack_o_lantern.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/jack_o_lantern.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/jack_o_lantern.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/jack_o_lantern.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/jack_o_lantern.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/jack_o_lantern.cpp.i: cmake_force
@@ -282,7 +310,7 @@ CMakeFiles/hub75_clock.dir/src/animations/jack_o_lantern.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/meteor.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/meteor.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/meteor.cpp
 CMakeFiles/hub75_clock.dir/src/animations/meteor.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/meteor.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/meteor.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/meteor.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/meteor.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/meteor.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/meteor.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/meteor.cpp.i: cmake_force
@@ -296,7 +324,7 @@ CMakeFiles/hub75_clock.dir/src/animations/meteor.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/rainbow.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/rainbow.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/rainbow.cpp
 CMakeFiles/hub75_clock.dir/src/animations/rainbow.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/rainbow.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/rainbow.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/rainbow.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/rainbow.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/rainbow.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/rainbow.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/rainbow.cpp.i: cmake_force
@@ -310,7 +338,7 @@ CMakeFiles/hub75_clock.dir/src/animations/rainbow.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/rocket.cpp
 CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/rocket.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.i: cmake_force
@@ -324,7 +352,7 @@ CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/santa.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/santa.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/santa.cpp
 CMakeFiles/hub75_clock.dir/src/animations/santa.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/santa.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/santa.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/santa.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/santa.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/santa.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/santa.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/santa.cpp.i: cmake_force
@@ -338,7 +366,7 @@ CMakeFiles/hub75_clock.dir/src/animations/santa.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/satellite.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/satellite.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/satellite.cpp
 CMakeFiles/hub75_clock.dir/src/animations/satellite.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/satellite.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/satellite.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/satellite.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/satellite.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/satellite.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/satellite.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/satellite.cpp.i: cmake_force
@@ -352,7 +380,7 @@ CMakeFiles/hub75_clock.dir/src/animations/satellite.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/shooting_star.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/shooting_star.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/shooting_star.cpp
 CMakeFiles/hub75_clock.dir/src/animations/shooting_star.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/shooting_star.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/shooting_star.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/shooting_star.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/shooting_star.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/shooting_star.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/shooting_star.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/shooting_star.cpp.i: cmake_force
@@ -366,7 +394,7 @@ CMakeFiles/hub75_clock.dir/src/animations/shooting_star.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/snowman.cpp
 CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_24) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/snowman.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.i: cmake_force
@@ -380,7 +408,7 @@ CMakeFiles/hub75_clock.dir/src/animations/snowman.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/submarine.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/submarine.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/submarine.cpp
 CMakeFiles/hub75_clock.dir/src/animations/submarine.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/submarine.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_25) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/submarine.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/submarine.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/submarine.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/submarine.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/submarine.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/submarine.cpp.i: cmake_force
@@ -394,7 +422,7 @@ CMakeFiles/hub75_clock.dir/src/animations/submarine.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/tumbleweed.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/tumbleweed.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/tumbleweed.cpp
 CMakeFiles/hub75_clock.dir/src/animations/tumbleweed.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_24) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/tumbleweed.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_26) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/tumbleweed.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/tumbleweed.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/tumbleweed.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/tumbleweed.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/tumbleweed.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/tumbleweed.cpp.i: cmake_force
@@ -408,7 +436,7 @@ CMakeFiles/hub75_clock.dir/src/animations/tumbleweed.cpp.s: cmake_force
 CMakeFiles/hub75_clock.dir/src/animations/ufo.cpp.o: CMakeFiles/hub75_clock.dir/flags.make
 CMakeFiles/hub75_clock.dir/src/animations/ufo.cpp.o: /home/ikonis/hub75-clock/clock-cpp/src/animations/ufo.cpp
 CMakeFiles/hub75_clock.dir/src/animations/ufo.cpp.o: CMakeFiles/hub75_clock.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_25) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/ufo.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_27) "Building CXX object CMakeFiles/hub75_clock.dir/src/animations/ufo.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/hub75_clock.dir/src/animations/ufo.cpp.o -MF CMakeFiles/hub75_clock.dir/src/animations/ufo.cpp.o.d -o CMakeFiles/hub75_clock.dir/src/animations/ufo.cpp.o -c /home/ikonis/hub75-clock/clock-cpp/src/animations/ufo.cpp
 
 CMakeFiles/hub75_clock.dir/src/animations/ufo.cpp.i: cmake_force
@@ -422,6 +450,8 @@ CMakeFiles/hub75_clock.dir/src/animations/ufo.cpp.s: cmake_force
 # Object files for target hub75_clock
 hub75_clock_OBJECTS = \
 "CMakeFiles/hub75_clock.dir/src/main.cpp.o" \
+"CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o" \
+"CMakeFiles/hub75_clock.dir/src/Serial.cpp.o" \
 "CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o" \
 "CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o" \
 "CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o" \
@@ -451,6 +481,8 @@ hub75_clock_OBJECTS = \
 hub75_clock_EXTERNAL_OBJECTS =
 
 hub75_clock: CMakeFiles/hub75_clock.dir/src/main.cpp.o
+hub75_clock: CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o
+hub75_clock: CMakeFiles/hub75_clock.dir/src/Serial.cpp.o
 hub75_clock: CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o
 hub75_clock: CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o
 hub75_clock: CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o
@@ -478,7 +510,7 @@ hub75_clock: CMakeFiles/hub75_clock.dir/src/animations/ufo.cpp.o
 hub75_clock: CMakeFiles/hub75_clock.dir/build.make
 hub75_clock: /home/ikonis/rpi-rgb-led-matrix/lib/librgbmatrix.a
 hub75_clock: CMakeFiles/hub75_clock.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_26) "Linking CXX executable hub75_clock"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_28) "Linking CXX executable hub75_clock"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/hub75_clock.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

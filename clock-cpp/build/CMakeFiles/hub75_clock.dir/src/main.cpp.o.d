@@ -109,6 +109,7 @@ CMakeFiles/hub75_clock.dir/src/main.cpp.o: \
  /usr/include/arm-linux-gnueabihf/bits/struct_mutex.h \
  /usr/include/arm-linux-gnueabihf/bits/struct_rwlock.h \
  /usr/include/alloca.h \
+ /usr/include/arm-linux-gnueabihf/bits/stdlib-bsearch.h \
  /usr/include/arm-linux-gnueabihf/bits/stdlib-float.h \
  /usr/include/c++/12/bits/std_abs.h /usr/include/c++/12/cstdio \
  /usr/include/stdio.h \
@@ -117,10 +118,10 @@ CMakeFiles/hub75_clock.dir/src/main.cpp.o: \
  /usr/include/arm-linux-gnueabihf/bits/types/struct_FILE.h \
  /usr/include/arm-linux-gnueabihf/bits/types/cookie_io_functions_t.h \
  /usr/include/arm-linux-gnueabihf/bits/stdio_lim.h \
- /usr/include/c++/12/cerrno /usr/include/errno.h \
- /usr/include/arm-linux-gnueabihf/bits/errno.h /usr/include/linux/errno.h \
- /usr/lib/linux/uapi/arm/asm/errno.h /usr/include/asm-generic/errno.h \
- /usr/include/asm-generic/errno-base.h \
+ /usr/include/arm-linux-gnueabihf/bits/stdio.h /usr/include/c++/12/cerrno \
+ /usr/include/errno.h /usr/include/arm-linux-gnueabihf/bits/errno.h \
+ /usr/include/linux/errno.h /usr/lib/linux/uapi/arm/asm/errno.h \
+ /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  /usr/include/arm-linux-gnueabihf/bits/types/error_t.h \
  /usr/include/c++/12/bits/charconv.h \
  /usr/include/c++/12/bits/basic_string.tcc /usr/include/c++/12/vector \
@@ -292,6 +293,12 @@ CMakeFiles/hub75_clock.dir/src/main.cpp.o: \
  /home/ikonis/rpi-rgb-led-matrix/include/thread.h \
  /home/ikonis/rpi-rgb-led-matrix/include/pixel-mapper.h \
  /home/ikonis/rpi-rgb-led-matrix/include/graphics.h \
+ /home/ikonis/hub75-clock/clock-cpp/include/Sensors.h \
+ /usr/include/c++/12/atomic /usr/include/c++/12/chrono \
+ /usr/include/c++/12/mutex /usr/include/c++/12/bits/std_mutex.h \
+ /usr/include/c++/12/bits/unique_lock.h /usr/include/c++/12/thread \
+ /usr/include/c++/12/bits/std_thread.h \
+ /usr/include/c++/12/bits/this_thread_sleep.h \
  /home/ikonis/rpi-rgb-led-matrix/include/graphics.h \
  /usr/include/yaml-cpp/yaml.h /usr/include/yaml-cpp/parser.h \
  /usr/include/yaml-cpp/dll.h /usr/include/yaml-cpp/emitter.h \
@@ -315,7 +322,7 @@ CMakeFiles/hub75_clock.dir/src/main.cpp.o: \
  /usr/include/yaml-cpp/node/detail/node_data.h \
  /usr/include/yaml-cpp/node/detail/node_iterator.h \
  /usr/include/yaml-cpp/node/iterator.h \
- /usr/include/yaml-cpp/node/detail/iterator.h /usr/include/c++/12/atomic \
+ /usr/include/yaml-cpp/node/detail/iterator.h \
  /usr/include/yaml-cpp/node/convert.h \
  /usr/include/yaml-cpp/node/detail/impl.h \
  /usr/include/yaml-cpp/node/parse.h /usr/include/yaml-cpp/node/emit.h \
@@ -353,8 +360,4 @@ CMakeFiles/hub75_clock.dir/src/main.cpp.o: \
  /usr/include/c++/12/fstream \
  /usr/include/arm-linux-gnueabihf/c++/12/bits/basic_file.h \
  /usr/include/arm-linux-gnueabihf/c++/12/bits/c++io.h \
- /usr/include/c++/12/bits/fstream.tcc /usr/include/c++/12/iostream \
- /usr/include/c++/12/mutex /usr/include/c++/12/bits/std_mutex.h \
- /usr/include/c++/12/bits/unique_lock.h /usr/include/c++/12/thread \
- /usr/include/c++/12/bits/std_thread.h \
- /usr/include/c++/12/bits/this_thread_sleep.h /usr/include/c++/12/chrono
+ /usr/include/c++/12/bits/fstream.tcc /usr/include/c++/12/iostream

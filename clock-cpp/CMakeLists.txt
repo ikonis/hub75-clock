@@ -37,6 +37,7 @@ file(GLOB ANIM_SOURCES src/animations/*.cpp)
 add_executable(hub75_clock
     src/main.cpp
     src/Sensors.cpp
+    src/Serial.cpp
     src/WeatherAnimator.cpp
     src/ThemeLoader.cpp
     src/CameoManager.cpp
@@ -55,6 +56,7 @@ target_link_libraries(hub75_clock PRIVATE
     ${MOSQUITTO_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
     pthread
+    gpiod
 )
 
 target_compile_options(hub75_clock PRIVATE

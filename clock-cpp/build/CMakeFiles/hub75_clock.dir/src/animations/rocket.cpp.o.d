@@ -103,6 +103,7 @@ CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.o: \
  /usr/include/arm-linux-gnueabihf/bits/struct_mutex.h \
  /usr/include/arm-linux-gnueabihf/bits/struct_rwlock.h \
  /usr/include/alloca.h \
+ /usr/include/arm-linux-gnueabihf/bits/stdlib-bsearch.h \
  /usr/include/arm-linux-gnueabihf/bits/stdlib-float.h \
  /usr/include/c++/12/bits/std_abs.h /usr/include/c++/12/cstdio \
  /usr/include/stdio.h \
@@ -111,10 +112,10 @@ CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.o: \
  /usr/include/arm-linux-gnueabihf/bits/types/struct_FILE.h \
  /usr/include/arm-linux-gnueabihf/bits/types/cookie_io_functions_t.h \
  /usr/include/arm-linux-gnueabihf/bits/stdio_lim.h \
- /usr/include/c++/12/cerrno /usr/include/errno.h \
- /usr/include/arm-linux-gnueabihf/bits/errno.h /usr/include/linux/errno.h \
- /usr/lib/linux/uapi/arm/asm/errno.h /usr/include/asm-generic/errno.h \
- /usr/include/asm-generic/errno-base.h \
+ /usr/include/arm-linux-gnueabihf/bits/stdio.h /usr/include/c++/12/cerrno \
+ /usr/include/errno.h /usr/include/arm-linux-gnueabihf/bits/errno.h \
+ /usr/include/linux/errno.h /usr/lib/linux/uapi/arm/asm/errno.h \
+ /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  /usr/include/arm-linux-gnueabihf/bits/types/error_t.h \
  /usr/include/c++/12/bits/charconv.h \
  /usr/include/c++/12/bits/basic_string.tcc \
@@ -294,4 +295,7 @@ CMakeFiles/hub75_clock.dir/src/animations/rocket.cpp.o: \
  /usr/include/nlohmann/detail/conversions/to_chars.hpp \
  /usr/include/nlohmann/ordered_map.hpp /usr/include/c++/12/any \
  /usr/include/nlohmann/detail/macro_unscope.hpp \
- /usr/include/nlohmann/thirdparty/hedley/hedley_undef.hpp
+ /usr/include/nlohmann/thirdparty/hedley/hedley_undef.hpp \
+ /usr/include/c++/12/random /usr/include/c++/12/bits/random.h \
+ /usr/include/arm-linux-gnueabihf/c++/12/bits/opt_random.h \
+ /usr/include/c++/12/bits/random.tcc

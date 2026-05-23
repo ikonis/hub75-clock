@@ -9,6 +9,8 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/ikonis/hub75-clock/clock-cpp/src/CameoManager.cpp" "CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o" "gcc" "CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.o.d"
+  "/home/ikonis/hub75-clock/clock-cpp/src/Sensors.cpp" "CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o" "gcc" "CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o.d"
+  "/home/ikonis/hub75-clock/clock-cpp/src/Serial.cpp" "CMakeFiles/hub75_clock.dir/src/Serial.cpp.o" "gcc" "CMakeFiles/hub75_clock.dir/src/Serial.cpp.o.d"
   "/home/ikonis/hub75-clock/clock-cpp/src/ThemeLoader.cpp" "CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o" "gcc" "CMakeFiles/hub75_clock.dir/src/ThemeLoader.cpp.o.d"
   "/home/ikonis/hub75-clock/clock-cpp/src/WeatherAnimator.cpp" "CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o" "gcc" "CMakeFiles/hub75_clock.dir/src/WeatherAnimator.cpp.o.d"
   "/home/ikonis/hub75-clock/clock-cpp/src/animations/airplane.cpp" "CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.o" "gcc" "CMakeFiles/hub75_clock.dir/src/animations/airplane.cpp.o.d"

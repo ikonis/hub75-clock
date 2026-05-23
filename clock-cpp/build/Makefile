@@ -198,6 +198,54 @@ src/CameoManager.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/hub75_clock.dir/build.make CMakeFiles/hub75_clock.dir/src/CameoManager.cpp.s
 .PHONY : src/CameoManager.cpp.s
 
+src/Sensors.o: src/Sensors.cpp.o
+.PHONY : src/Sensors.o
+
+# target to build an object file
+src/Sensors.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hub75_clock.dir/build.make CMakeFiles/hub75_clock.dir/src/Sensors.cpp.o
+.PHONY : src/Sensors.cpp.o
+
+src/Sensors.i: src/Sensors.cpp.i
+.PHONY : src/Sensors.i
+
+# target to preprocess a source file
+src/Sensors.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hub75_clock.dir/build.make CMakeFiles/hub75_clock.dir/src/Sensors.cpp.i
+.PHONY : src/Sensors.cpp.i
+
+src/Sensors.s: src/Sensors.cpp.s
+.PHONY : src/Sensors.s
+
+# target to generate assembly for a file
+src/Sensors.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hub75_clock.dir/build.make CMakeFiles/hub75_clock.dir/src/Sensors.cpp.s
+.PHONY : src/Sensors.cpp.s
+
+src/Serial.o: src/Serial.cpp.o
+.PHONY : src/Serial.o
+
+# target to build an object file
+src/Serial.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hub75_clock.dir/build.make CMakeFiles/hub75_clock.dir/src/Serial.cpp.o
+.PHONY : src/Serial.cpp.o
+
+src/Serial.i: src/Serial.cpp.i
+.PHONY : src/Serial.i
+
+# target to preprocess a source file
+src/Serial.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hub75_clock.dir/build.make CMakeFiles/hub75_clock.dir/src/Serial.cpp.i
+.PHONY : src/Serial.cpp.i
+
+src/Serial.s: src/Serial.cpp.s
+.PHONY : src/Serial.s
+
+# target to generate assembly for a file
+src/Serial.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hub75_clock.dir/build.make CMakeFiles/hub75_clock.dir/src/Serial.cpp.s
+.PHONY : src/Serial.cpp.s
+
 src/ThemeLoader.o: src/ThemeLoader.cpp.o
 .PHONY : src/ThemeLoader.o
 
@@ -790,6 +838,12 @@ help:
 	@echo "... src/CameoManager.o"
 	@echo "... src/CameoManager.i"
 	@echo "... src/CameoManager.s"
+	@echo "... src/Sensors.o"
+	@echo "... src/Sensors.i"
+	@echo "... src/Sensors.s"
+	@echo "... src/Serial.o"
+	@echo "... src/Serial.i"
+	@echo "... src/Serial.s"
 	@echo "... src/ThemeLoader.o"
 	@echo "... src/ThemeLoader.i"
 	@echo "... src/ThemeLoader.s"

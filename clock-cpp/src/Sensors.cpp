@@ -1,7 +1,4 @@
 // Sensors.cpp — Linux userspace sensor implementations.
-// Do NOT include <termios.h> here; <asm/termios.h> is used instead for
-// termios2 / BOTHER support needed for the 256000-baud LD2410C serial port.
-
 #include "Sensors.h"
 
 #include <algorithm>
@@ -21,10 +18,12 @@
 // I2C userspace API (libi2c-dev / linux-headers)
 #include <linux/i2c-dev.h>
 #include <linux/i2c.h>
+#include <gpiod.h>
 
-// Serial: use asm/termios.h (not <termios.h>) so we get termios2 + BOTHER
+// Defined in Serial.cpp
+int openSerialPort(const char* port, unsigned baud);
+
 // which are needed for the non-POSIX 256000 baud rate.
-#include <asm/termios.h>
 
 // ═══════════════════════════════════════════════════════════════════════════
 // VEML7700 lux sensor
@@ -152,31 +151,30 @@ PIRSensor::PIRSensor(SensorPublish pub, const std::string& topic,
 PIRSensor::~PIRSensor() { stop(); }
 
 bool PIRSensor::_init() {
-    // Export the GPIO pin (ignore EBUSY — already exported is fine).
-    {
-        int fd = open("/sys/class/gpio/export", O_WRONLY);
-        if (fd >= 0) {
-            std::string ps = std::to_string(_pin);
-            write(fd, ps.c_str(), ps.size());
-            close(fd);
-            usleep(100'000); // wait for sysfs entry to appear
-        }
+    struct gpiod_chip* chip = gpiod_chip_open_by_name("gpiochip0");
+    if (!chip) {
+        std::cerr << "[pir] failed to open gpiochip0\n";
+        return false;
     }
-    // Set direction to "in".
-    {
-        std::string dirPath = "/sys/class/gpio/gpio" + std::to_string(_pin) + "/direction";
-        int fd = open(dirPath.c_str(), O_WRONLY);
-        if (fd < 0) return false;
-        write(fd, "in", 2);
-        close(fd);
+    struct gpiod_line* line = gpiod_chip_get_line(chip, _pin);
+    if (!line) {
+        std::cerr << "[pir] failed to get GPIO line " << _pin << "\n";
+        gpiod_chip_close(chip);
+        return false;
     }
-    _valuePath = "/sys/class/gpio/gpio" + std::to_string(_pin) + "/value";
+    if (gpiod_line_request_input(line, "hub75_clock") < 0) {
+        std::cerr << "[pir] failed to request GPIO" << _pin << " as input\n";
+        gpiod_chip_close(chip);
+        return false;
+    }
+    _chip = chip;
+    _line = line;
     std::cout << "[pir] initialized on GPIO" << _pin << "\n";
     return true;
 }
 
 void PIRSensor::start() {
-    if (_valuePath.empty()) return;
+    if (!_line) return;
     _running = true;
     _thread  = std::thread([this] { _run(); });
 }
@@ -187,12 +185,10 @@ void PIRSensor::stop() {
 }
 
 bool PIRSensor::_readPin() const {
-    int fd = open(_valuePath.c_str(), O_RDONLY);
-    if (fd < 0) return false;
-    char buf[4] = {};
-    read(fd, buf, sizeof(buf));
-    close(fd);
-    bool raw = (buf[0] == '1');
+    if (!_line) return false;
+    int val = gpiod_line_get_value(static_cast<struct gpiod_line*>(_line));
+    if (val < 0) return false;
+    bool raw = (val == 1);
     return _invert ? !raw : raw;
 }
 
@@ -238,26 +234,7 @@ void PIRSensor::_run() {
 // Open a serial port at an arbitrary baud rate using termios2 + BOTHER.
 // This avoids the absence of B256000 in POSIX termios baud-rate constants.
 static int openSerialCustomBaud(const std::string& port, unsigned baud) {
-    int fd = open(port.c_str(), O_RDWR | O_NOCTTY);
-    if (fd < 0) return -1;
-
-    struct termios2 tty2 = {};
-    if (ioctl(fd, TCGETS2, &tty2) < 0) { close(fd); return -1; }
-
-    tty2.c_cflag &= ~CBAUD;
-    tty2.c_cflag |= BOTHER;                          // custom baud rate
-    tty2.c_cflag &= ~(PARENB | CSTOPB | CRTSCTS);
-    tty2.c_cflag |= CS8 | CREAD | CLOCAL;            // 8N1, no flow control
-    tty2.c_iflag  = 0;
-    tty2.c_oflag  = 0;
-    tty2.c_lflag  = 0;
-    tty2.c_cc[VMIN]  = 0;
-    tty2.c_cc[VTIME] = 5; // 500 ms read timeout
-    tty2.c_ispeed    = baud;
-    tty2.c_ospeed    = baud;
-
-    if (ioctl(fd, TCSETS2, &tty2) < 0) { close(fd); return -1; }
-    return fd;
+    return openSerialPort(port.c_str(), baud);
 }
 
 LD2410Sensor::LD2410Sensor(SensorPublish pub,

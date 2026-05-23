@@ -59,7 +59,7 @@ public:
         _at = animator->animTop;
         _ab = animator->animBottom;
 
-        auto* theme = animator->currentTheme;
+        auto* theme = animator->currentTheme.has_value() ? &animator->currentTheme.value() : nullptr;
         std::string density   = theme ? theme->cloudDensity  : "medium";
         std::string speedKey  = theme ? theme->cloudSpeed    : "medium";
         _precip               = theme ? theme->precipitation  : "none";
@@ -256,7 +256,10 @@ private:
         std::uniform_real_distribution<float> rndLX(float(spanL), float(spanR));
         std::uniform_real_distribution<float> rndY(cloudBottom, float(_ab));
         std::uniform_real_distribution<float> rndW(0.0f, 6.2832f);
-        return { rndLX(rng), rndY(rng), vy, rndW(rng), ptype };
+        float lx = std::uniform_real_distribution<float>(float(spanL), float(spanR))(rng);
+        float py  = std::uniform_real_distribution<float>(cloudBottom, float(_ab))(rng);
+        float w  = std::uniform_real_distribution<float>(0.0f, 6.2832f)(rng);
+        return { lx, py, vy, w, ptype };
     }
 
     std::vector<Particle> _makeParticles(float cx, float cy, const std::string& size, std::mt19937& rng) {

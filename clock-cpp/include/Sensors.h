@@ -60,7 +60,8 @@ private:
     int               _pin;
     double            _pollSec;
     bool              _invert;
-    std::string       _valuePath;
+    void*             _chip = nullptr;
+    void*             _line = nullptr;
     std::atomic<bool> _running{false};
     std::thread       _thread;
 

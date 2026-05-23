@@ -63,8 +63,9 @@ public:
             {1,2},{2,2},{4,2},{5,2},
             {1,3},{2,3},{4,3},{5,3},
         };
-        static const struct { int dx, dy; } PUPILS_R[] = {{2,2},{5,2}};
-        static const struct { int dx, dy; } PUPILS_L[] = {{1,2},{4,2}};
+        struct Pt { int dx, dy; };
+        static const Pt PUPILS_R[] = {{2,2},{5,2}};
+        static const Pt PUPILS_L[] = {{1,2},{4,2}};
 
         int ox = int(std::round(_x));
         int oy = int(std::round(_baseY + std::sin(_bob) * 2.0f));
