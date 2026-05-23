@@ -658,6 +658,23 @@ int main(int argc, char* argv[]) {
 
     json cfg = loadConfig(configPath);
 
+    // Load per-animation speed settings from a separate YAML file.
+    {
+        const std::string animPath = "/etc/hub75-clock/animations.yaml";
+        if (fs::exists(animPath)) {
+            try {
+                YAML::Node ay = YAML::LoadFile(animPath);
+                cfg["animation_settings"] = yamlToJson(ay);
+                std::cout << "[config] loaded " << animPath << "\n";
+            } catch (const std::exception& e) {
+                std::cerr << "[config] Failed to parse " << animPath << ": " << e.what() << "\n";
+                cfg["animation_settings"] = json::object();
+            }
+        } else {
+            cfg["animation_settings"] = json::object();
+        }
+    }
+
     // ── Matrix init ───────────────────────────────────────────────────────
     RGBMatrix::Options opts;
     RuntimeOptions rtopts;

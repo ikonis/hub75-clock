@@ -16,16 +16,22 @@ public:
 
         _at   = animator->animTop;
         _ab   = animator->animBottom;
+
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("hot_air_balloon"))
+            _speedMult = cfg["animation_settings"]["hot_air_balloon"].value("speed", 1.0f);
+
         _x    = float(rndX(rng));
         _y    = float(_ab - 9);
-        _vx   = (rnd01(rng) - 0.5f) * 0.15f;
-        _vy   = -0.08f;
+        _vx   = (rnd01(rng) - 0.5f) * 0.15f * _speedMult;
+        _vy   = -0.08f * _speedMult;
         _sway = rnd01(rng) * float(M_PI) * 2.0f;
+        _swayScale = 0.04f * _speedMult;
     }
 
     void update() override {
         _sway += 0.04f;
-        _x    += _vx + std::sin(_sway) * 0.04f;
+        _x    += _vx + std::sin(_sway) * _swayScale;
         _y    += _vy;
     }
 
@@ -74,7 +80,7 @@ private:
     int              _w, _h, _at, _ab;
     nlohmann::json   _cfg;
     WeatherAnimator* _animator;
-    float _x = 0.0f, _y = 0.0f, _vx = 0.0f, _vy = 0.0f, _sway = 0.0f;
+    float _x = 0.0f, _y = 0.0f, _vx = 0.0f, _vy = 0.0f, _sway = 0.0f, _swayScale = 0.04f;
 };
 
 extern "C" std::unique_ptr<Animation> create_hot_air_balloon(

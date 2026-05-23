@@ -1,0 +1,25 @@
+# Per-animation speed multipliers.
+# Values are applied once at spawn time to all velocity/movement fields.
+# Default is 1.0 if an animation is not listed.
+#
+# Install to /etc/hub75-clock/animations.yaml
+
+rocket:
+  speed: 0.25    # rockets accelerate fast — 0.25x keeps them on-screen longer
+
+meteor:
+  speed: 0.30    # meteors are very fast by default
+
+hot_air_balloon:
+  speed: 0.5
+
+santa:
+  speed: 0.5
+
+tumbleweed:
+  speed: 0.5
+
+fireworks:
+  speed: 1.0
+
+# All other animations use speed: 1.0 when not listed here.

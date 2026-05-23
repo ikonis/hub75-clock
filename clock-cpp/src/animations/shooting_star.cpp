@@ -23,14 +23,19 @@ public:
         if (cond != "CLEAR" && cond != "PARTLYCLOUDY") return;
 
         _valid = true;
+
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("shooting_star"))
+            _speedMult = cfg["animation_settings"]["shooting_star"].value("speed", 1.0f);
+
         int anim_third = _at + (_ab - _at + 1) / 3;
-        float speed = rnd01(rng) * 1.5f + 1.0f;
+        float speed = (rnd01(rng) * 1.5f + 1.0f) * _speedMult;
         if (rnd01(rng) < 0.5f) speed = -speed;
 
         _x  = rnd01(rng) * float(width);
         _y  = float(_at) + rnd01(rng) * float(anim_third - _at);
         _vx = speed;
-        _vy = rnd01(rng) * 0.6f + 0.8f;
+        _vy = (rnd01(rng) * 0.6f + 0.8f) * _speedMult;
         _life    = rndLife(rng);
         _maxLife = _life;
     }

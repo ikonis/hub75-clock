@@ -17,9 +17,14 @@ public:
 
         _at            = animator->animTop;
         _ab            = animator->animBottom;
+
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("ufo"))
+            _speedMult = cfg["animation_settings"]["ufo"].value("speed", 1.0f);
+
         _x             = float(width);
         _y             = float(_at + rndY(rng));
-        _vx            = -(0.25f + rnd01(rng) * 0.2f);
+        _vx            = -(0.25f + rnd01(rng) * 0.2f) * _speedMult;
         _wobble        = rnd01(rng) * float(M_PI) * 2.0f;
         _lightPhase    = 0;
         _mode          = Mode::Fly;
@@ -47,19 +52,19 @@ public:
                 _figureY       = float(_ab - 3);
             }
         } else if (_mode == Mode::BeamIn) {
-            if (++_beamFrame >= 18) {
+            if (++_beamFrame >= 36) {
                 _mode      = Mode::Abduct;
                 _beamFrame = 0;
             }
         } else if (_mode == Mode::Abduct) {
-            _figureY -= 0.45f;
+            _figureY -= 0.225f;
             ++_beamFrame;
             if (_figureY < _y + 6.0f) {
                 _mode      = Mode::BeamOut;
                 _beamFrame = 0;
             }
         } else if (_mode == Mode::BeamOut) {
-            if (++_beamFrame >= 15)
+            if (++_beamFrame >= 30)
                 _mode = Mode::Fly;
         }
     }

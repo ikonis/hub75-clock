@@ -20,7 +20,11 @@ public:
         _at = animator->animTop;
         _ab = animator->animBottom;
 
-        float speed = 3.5f + rnd01(rng) * 1.5f;
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("meteor"))
+            _speedMult = cfg["animation_settings"]["meteor"].value("speed", 1.0f);
+
+        float speed = (3.5f + rnd01(rng) * 1.5f) * _speedMult;
         if (rnd01(rng) < 0.5f) {
             _vx = speed;
             _x  = -2.0f;

@@ -6,7 +6,7 @@
 #include <vector>
 #include <algorithm>
 
-static constexpr float FW_GRAVITY = 0.06f;
+static constexpr float FW_BASE_GRAVITY = 0.06f;
 
 struct FWSpark {
     float x, y, vx, vy;
@@ -34,6 +34,13 @@ public:
         _at = animator->animTop;
         _ab = animator->animBottom;
 
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("fireworks"))
+            _speedMult = cfg["animation_settings"]["fireworks"].value("speed", 1.0f);
+
+        _gravity   = FW_BASE_GRAVITY * _speedMult;
+        _speedMult_ = _speedMult;
+
         int n = rndN(rng);
         int delay = 0;
         for (int i = 0; i < n; ++i) {
@@ -48,7 +55,7 @@ public:
             if (rk.phase == FWRocket::Phase::Wait) {
                 if (--rk.delay <= 0) rk.phase = FWRocket::Phase::Launch;
             } else if (rk.phase == FWRocket::Phase::Launch) {
-                rk.vy += FW_GRAVITY;
+                rk.vy += _gravity;
                 rk.y  += rk.vy;
                 if (rk.vy >= 0.0f || rk.y <= float(_at)) {
                     rk.y = std::max(rk.y, float(_at + 1));
@@ -57,7 +64,7 @@ public:
             } else if (rk.phase == FWRocket::Phase::Explode) {
                 bool alive = false;
                 for (auto& sp : rk.sparks) {
-                    sp.vy += FW_GRAVITY;
+                    sp.vy += _gravity;
                     sp.x  += sp.vx;
                     sp.y  += sp.vy;
                     --sp.life;
@@ -110,6 +117,8 @@ private:
     nlohmann::json   _cfg;
     WeatherAnimator* _animator;
     std::vector<FWRocket> _rockets;
+    float _gravity   = FW_BASE_GRAVITY;
+    float _speedMult_ = 1.0f;
 
     void _px(rgb_matrix::FrameCanvas* canvas, float fx, float fy, int r, int g, int b) {
         int px = int(std::round(fx)), py = int(std::round(fy));
@@ -125,7 +134,7 @@ private:
         int zone     = _ab - _at;
         int target_y = _at + std::uniform_int_distribution<int>(1, std::max(1, zone / 3))(rng);
         float dist   = float(_ab - target_y);
-        float vy0    = -std::sqrt(2.0f * FW_GRAVITY * std::max(dist, 1.0f));
+        float vy0    = -std::sqrt(2.0f * _gravity * std::max(dist, 1.0f));
         FWRocket rk;
         rk.phase = FWRocket::Phase::Wait;
         rk.delay = delay;
@@ -150,7 +159,7 @@ private:
         int n = rndN(rng);
         for (int i = 0; i < n; ++i) {
             float angle = float(2.0 * M_PI * i / n) + rndAngle(rng);
-            float speed = rndSpeed(rng);
+            float speed = rndSpeed(rng) * _speedMult_;
             const int* col = COLORS[rndCol(rng)];
             int life = rndLife(rng);
             FWSpark sp;

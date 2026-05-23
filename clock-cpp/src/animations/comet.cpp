@@ -19,8 +19,12 @@ public:
         _ab       = animator->animBottom;
         _tailLen  = rndTail(rng);
 
-        float speed = 0.35f + rnd01(rng) * 0.25f;
-        float steep = 0.20f + rnd01(rng) * 0.15f;
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("comet"))
+            _speedMult = cfg["animation_settings"]["comet"].value("speed", 1.0f);
+
+        float speed = (0.35f + rnd01(rng) * 0.25f) * _speedMult;
+        float steep = (0.20f + rnd01(rng) * 0.15f) * _speedMult;
 
         if (rnd01(rng) < 0.5f) {
             _vx = speed;

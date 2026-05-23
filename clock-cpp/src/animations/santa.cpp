@@ -16,9 +16,14 @@ public:
 
         _at   = animator->animTop;
         _ab   = animator->animBottom;
+
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("santa"))
+            _speedMult = cfg["animation_settings"]["santa"].value("speed", 1.0f);
+
         _x    = float(width + 2);
         _y    = float(_at + rndY(rng));
-        _vx   = -(0.4f + rnd01(rng) * 0.2f);
+        _vx   = -(0.4f + rnd01(rng) * 0.2f) * _speedMult;
         _wave = rnd01(rng) * float(M_PI) * 2.0f;
     }
 

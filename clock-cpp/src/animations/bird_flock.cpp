@@ -14,11 +14,15 @@ public:
     {
         static std::mt19937 rng{std::random_device{}()};
         std::uniform_int_distribution<int>    rndCount(5, 7);
-        std::uniform_int_distribution<int>    rndRowY(2, 6);
+        std::uniform_int_distribution<int>    rndRowY(5, 13);
         std::uniform_real_distribution<float> rnd01(0.0f, 1.0f);
 
         _at = animator->animTop;
         _ab = animator->animBottom;
+
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("bird_flock"))
+            _speedMult = cfg["animation_settings"]["bird_flock"].value("speed", 1.0f);
 
         int count = rndCount(rng);
         int rowY  = _at + rndRowY(rng);
@@ -36,7 +40,7 @@ public:
             _birds.push_back({bx, by});
         }
 
-        _vx   = 0.35f + rnd01(rng) * 0.15f;
+        _vx   = (0.35f + rnd01(rng) * 0.15f) * _speedMult;
         _ox   = -8.0f;
         _oy   = float(rowY);
         _flap = 0;

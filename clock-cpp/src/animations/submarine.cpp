@@ -15,10 +15,15 @@ public:
 
         _at    = animator->animTop;
         _ab    = animator->animBottom;
+
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("submarine"))
+            _speedMult = cfg["animation_settings"]["submarine"].value("speed", 1.0f);
+
         int mid = (_at + _ab) / 2;
         _baseY = float(mid - 2);
         _x     = -20.0f;
-        _vx    = 0.25f + rnd01(rng) * 0.15f;
+        _vx    = (0.25f + rnd01(rng) * 0.15f) * _speedMult;
         _wave  = rnd01(rng) * float(M_PI) * 2.0f;
     }
 

@@ -15,10 +15,15 @@ public:
 
         _at    = animator->animTop;
         _ab    = animator->animBottom;
+
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("tumbleweed"))
+            _speedMult = cfg["animation_settings"]["tumbleweed"].value("speed", 1.0f);
+
         _x     = -6.0f;
         _baseY = float(_ab - 4);
         _roll  = 0.0f;
-        _vx    = 0.35f + rnd01(rng) * 0.2f;
+        _vx    = (0.35f + rnd01(rng) * 0.2f) * _speedMult;
     }
 
     void update() override {

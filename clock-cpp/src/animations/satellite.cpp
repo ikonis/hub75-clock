@@ -12,13 +12,43 @@ public:
     {
         static std::mt19937 rng{std::random_device{}()};
         std::uniform_real_distribution<float> rnd01(0.0f, 1.0f);
+        std::uniform_int_distribution<int>    rndDir(0, 3);
+        std::uniform_int_distribution<int>    rndX(2, width - 10);
 
         _at = animator->animTop;
         _ab = animator->animBottom;
-        _x  = float(width - 2);
-        _y  = float(_at);
-        _vx = -(0.4f + rnd01(rng) * 0.2f);
-        _vy = 0.12f + rnd01(rng) * 0.06f;
+
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("satellite"))
+            _speedMult = cfg["animation_settings"]["satellite"].value("speed", 1.0f);
+
+        std::uniform_int_distribution<int> rndY(_at, std::max(_at, _ab - 4));
+
+        float speed = (0.4f + rnd01(rng) * 0.2f) * _speedMult;
+        float drift = (0.12f + rnd01(rng) * 0.06f) * _speedMult;
+
+        int dir = rndDir(rng);
+        if (dir == 0) {       // right_to_left
+            _x = float(width - 2);
+            _y = float(rndY(rng));
+            _vx = -speed;
+            _vy = drift;
+        } else if (dir == 1) { // left_to_right
+            _x = -10.0f;
+            _y = float(rndY(rng));
+            _vx = speed;
+            _vy = drift;
+        } else if (dir == 2) { // top_to_bottom
+            _x = float(rndX(rng));
+            _y = float(_at);
+            _vx = (rnd01(rng) - 0.5f) * drift;
+            _vy = speed;
+        } else {               // bottom_to_top
+            _x = float(rndX(rng));
+            _y = float(_ab);
+            _vx = (rnd01(rng) - 0.5f) * drift;
+            _vy = -speed;
+        }
     }
 
     void update() override {
@@ -28,15 +58,11 @@ public:
 
     void draw(rgb_matrix::FrameCanvas* canvas) override {
         static const struct Pixel { int dx, dy, r, g, b; } SPRITE[] = {
-            // Left solar panel
             {0,1, 40, 80,120},{1,1, 60,120,180},
-            // Body
             {3,0,180,180,200},{4,0,200,200,220},
             {3,1,200,200,220},{4,1,220,220,240},{5,1,200,200,220},
             {3,2,180,180,200},{4,2,200,200,220},
-            // Right solar panel
             {7,1, 60,120,180},{8,1, 40, 80,120},
-            // Truss
             {2,1,100,100,120},{6,1,100,100,120},
         };
 
@@ -50,7 +76,8 @@ public:
     }
 
     bool isDone() const override {
-        return _x < -12.0f || _y > float(_ab);
+        return _x < -12.0f || _x > float(_w + 12) ||
+               _y < float(_at - 4) || _y > float(_ab + 4);
     }
 
     const std::string& name()       const override { static std::string n = "satellite"; return n; }

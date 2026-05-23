@@ -15,9 +15,14 @@ public:
 
         _at     = animator->animTop;
         _ab     = animator->animBottom;
+
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("easter_egg"))
+            _speedMult = cfg["animation_settings"]["easter_egg"].value("speed", 1.0f);
+
         _x      = -8.0f;
         _baseY  = float(_ab - 8);
-        _vx     = 0.3f + rnd01(rng) * 0.15f;
+        _vx     = (0.3f + rnd01(rng) * 0.15f) * _speedMult;
         _bounce = 0.0f;
     }
 

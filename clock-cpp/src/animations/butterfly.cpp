@@ -3,6 +3,14 @@
 #include <nlohmann/json.hpp>
 #include <cmath>
 #include <random>
+#include <vector>
+#include <algorithm>
+
+struct ButterflySingle {
+    float x, y, vx, wave;
+    int   flapOffset;
+    int   cr, cg, cb;
+};
 
 class ButterflyAnimation : public Animation {
 public:
@@ -14,64 +22,96 @@ public:
         std::uniform_int_distribution<int>    rndY(3, 12);
         std::uniform_real_distribution<float> rnd01(0.0f, 1.0f);
 
-        _at   = animator->animTop;
-        _ab   = animator->animBottom;
-        _x    = -8.0f;
-        _y    = float(_at + rndY(rng));
-        _vx   = 0.3f + rnd01(rng) * 0.2f;
+        _at = animator->animTop;
+        _ab = animator->animBottom;
+
+        float speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("butterfly"))
+            speedMult = cfg["animation_settings"]["butterfly"].value("speed", 1.0f);
+
+        static const int PASTELS[5][3] = {
+            {100, 160, 255},
+            {255, 240, 100},
+            {255, 130, 180},
+            {130, 230, 140},
+            {255, 170,  80},
+        };
+        int order[5] = {0, 1, 2, 3, 4};
+        std::shuffle(std::begin(order), std::end(order), rng);
+
+        for (int i = 0; i < 3; ++i) {
+            ButterflySingle b;
+            bool right  = (rnd01(rng) < 0.5f);
+            b.x         = right ? float(-8 - i * 18) : float(width + 8 + i * 18);
+            b.y         = float(_at + rndY(rng));
+            b.vx        = (0.25f + rnd01(rng) * 0.2f) * speedMult * (right ? 1.0f : -1.0f);
+            b.wave      = rnd01(rng) * float(M_PI) * 2.0f;
+            b.flapOffset = i * 5;
+            b.cr        = PASTELS[order[i]][0];
+            b.cg        = PASTELS[order[i]][1];
+            b.cb        = PASTELS[order[i]][2];
+            _butterflies.push_back(b);
+        }
         _frame = 0;
-        _wave  = rnd01(rng) * float(M_PI) * 2.0f;
     }
 
     void update() override {
         ++_frame;
-        _wave += 0.12f;
-        _x    += _vx;
-        _y    += std::sin(_wave) * 0.4f;
+        for (auto& b : _butterflies) {
+            b.wave += 0.12f;
+            b.x    += b.vx;
+            b.y    += std::sin(b.wave) * 0.4f;
+        }
     }
 
     void draw(rgb_matrix::FrameCanvas* canvas) override {
-        // Frame 0: wings open
-        static const struct Pixel { int dx, dy, r, g, b; } OPEN[] = {
-            {0, 0, 255, 120, 30}, {1, 0, 255, 160, 50}, {2, 0, 255, 200, 80},
-            {0, 1, 255, 140, 40}, {1, 1, 255, 180, 60}, {2, 1, 255, 210, 90},
-            {4, 0, 255, 120, 30}, {5, 0, 255, 160, 50}, {6, 0, 255, 200, 80},
-            {4, 1, 255, 140, 40}, {5, 1, 255, 180, 60}, {6, 1, 255, 210, 90},
-            {0, 3, 220,  80, 20}, {1, 3, 240, 120, 40},
-            {0, 4, 200,  60, 10}, {1, 4, 220, 100, 30},
-            {5, 3, 220,  80, 20}, {6, 3, 240, 120, 40},
-            {5, 4, 200,  60, 10}, {6, 4, 220, 100, 30},
-            {3, 1,  40,  20, 10}, {3, 2,  50,  25, 12}, {3, 3,  40,  20, 10},
+        static const struct WingPx { int dx, dy; float brt; } OPEN[] = {
+            {0,0,1.00f},{1,0,1.00f},{2,0,1.00f},
+            {0,1,1.00f},{1,1,1.00f},{2,1,1.00f},
+            {4,0,1.00f},{5,0,1.00f},{6,0,1.00f},
+            {4,1,1.00f},{5,1,1.00f},{6,1,1.00f},
+            {0,3,0.86f},{1,3,0.94f},
+            {0,4,0.78f},{1,4,0.86f},
+            {5,3,0.86f},{6,3,0.94f},
+            {5,4,0.78f},{6,4,0.86f},
         };
-        // Frame 1: wings closed
-        static const struct Pixel CLOSED[] = {
-            {1, 0, 255, 140, 40}, {2, 0, 255, 190, 70},
-            {1, 1, 255, 120, 30}, {2, 1, 255, 170, 60},
-            {4, 0, 255, 140, 40}, {5, 0, 255, 190, 70},
-            {4, 1, 255, 120, 30}, {5, 1, 255, 170, 60},
-            {3, 1,  40,  20, 10}, {3, 2,  50,  25, 12}, {3, 3,  40,  20, 10},
+        static const struct WingPx CLOSED[] = {
+            {1,0,1.00f},{2,0,1.00f},
+            {1,1,1.00f},{2,1,1.00f},
+            {4,0,1.00f},{5,0,1.00f},
+            {4,1,1.00f},{5,1,1.00f},
         };
+        static const struct { int dx, dy; } BODY[] = {{3,1},{3,2},{3,3}};
 
-        int ox = int(std::round(_x));
-        int oy = int(std::round(_y));
-        bool use_open = (_frame / 5) % 2 == 0;
+        for (const auto& b : _butterflies) {
+            int ox = int(std::round(b.x));
+            int oy = int(std::round(b.y));
+            bool use_open = ((_frame + b.flapOffset) / 5) % 2 == 0;
 
-        if (use_open) {
-            for (const auto& p : OPEN) {
-                int px = ox + p.dx, py = oy + p.dy;
+            const WingPx* wing = use_open ? OPEN : CLOSED;
+            int            nw  = use_open ? 20 : 8;
+            for (int i = 0; i < nw; ++i) {
+                int px = ox + wing[i].dx, py = oy + wing[i].dy;
                 if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                    canvas->SetPixel(px, py, p.r, p.g, p.b);
+                    canvas->SetPixel(px, py,
+                        int(b.cr * wing[i].brt),
+                        int(b.cg * wing[i].brt),
+                        int(b.cb * wing[i].brt));
             }
-        } else {
-            for (const auto& p : CLOSED) {
-                int px = ox + p.dx, py = oy + p.dy;
+            for (const auto& bp : BODY) {
+                int px = ox + bp.dx, py = oy + bp.dy;
                 if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                    canvas->SetPixel(px, py, p.r, p.g, p.b);
+                    canvas->SetPixel(px, py, 45, 22, 11);
             }
         }
     }
 
-    bool isDone() const override { return _x > float(_w + 10); }
+    bool isDone() const override {
+        for (const auto& b : _butterflies) {
+            if (b.x >= -20.0f && b.x <= float(_w + 20)) return false;
+        }
+        return true;
+    }
 
     const std::string& name()       const override { static std::string n = "butterfly";  return n; }
     const std::string& layer()      const override { static std::string l = "foreground"; return l; }
@@ -81,8 +121,8 @@ private:
     int              _w, _h, _at, _ab;
     nlohmann::json   _cfg;
     WeatherAnimator* _animator;
-    float _x = 0.0f, _y = 0.0f, _vx = 0.0f, _wave = 0.0f;
-    int   _frame = 0;
+    std::vector<ButterflySingle> _butterflies;
+    int _frame = 0;
 };
 
 extern "C" std::unique_ptr<Animation> create_butterfly(

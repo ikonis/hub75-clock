@@ -12,18 +12,23 @@ public:
     {
         static std::mt19937 rng{std::random_device{}()};
         std::uniform_real_distribution<float> rnd01(0.0f, 1.0f);
-        std::uniform_int_distribution<int>    rndY(2, 8);
+        std::uniform_int_distribution<int>    rndY(5, 11);
 
         _at = animator->animTop;
         _ab = animator->animBottom;
+
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("airplane"))
+            _speedMult = cfg["animation_settings"]["airplane"].value("speed", 1.0f);
+
         _right = (rnd01(rng) < 0.5f);
         _y = float(_at + rndY(rng));
         if (_right) {
             _x  = -10.0f;
-            _vx = 0.45f + rnd01(rng) * 0.2f;
+            _vx = (0.45f + rnd01(rng) * 0.2f) * _speedMult;
         } else {
             _x  = float(width + 1);
-            _vx = -(0.45f + rnd01(rng) * 0.2f);
+            _vx = -(0.45f + rnd01(rng) * 0.2f) * _speedMult;
         }
     }
 

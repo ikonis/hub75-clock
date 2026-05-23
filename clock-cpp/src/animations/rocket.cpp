@@ -16,14 +16,20 @@ public:
 
         _at    = animator->animTop;
         _ab    = animator->animBottom;
-        _x     = float(rndX(rng));
-        _y     = float(_ab - 2);
-        _vy    = -(0.5f + rnd01(rng) * 0.3f);
-        _frame = 0;
+
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("rocket"))
+            _speedMult = cfg["animation_settings"]["rocket"].value("speed", 1.0f);
+
+        _x       = float(rndX(rng));
+        _y       = float(_ab - 2);
+        _vy      = -(0.5f + rnd01(rng) * 0.3f) * _speedMult;
+        _accel   = 0.04f * _speedMult;
+        _frame   = 0;
     }
 
     void update() override {
-        _vy -= 0.04f;
+        _vy -= _accel;
         _y  += _vy;
         ++_frame;
     }
@@ -74,7 +80,7 @@ private:
     int              _w, _h, _at, _ab;
     nlohmann::json   _cfg;
     WeatherAnimator* _animator;
-    float _x = 0.0f, _y = 0.0f, _vy = 0.0f;
+    float _x = 0.0f, _y = 0.0f, _vy = 0.0f, _accel = 0.04f;
     int   _frame = 0;
 };
 

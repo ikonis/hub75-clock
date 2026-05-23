@@ -18,6 +18,10 @@ public:
         _at = animator->animTop;
         _ab = animator->animBottom;
 
+        float _speedMult = 1.0f;
+        if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("ghost"))
+            _speedMult = cfg["animation_settings"]["ghost"].value("speed", 1.0f);
+
         static const int COLORS[4][3] = {
             {255,   0,   0},
             {255, 184, 255},
@@ -30,10 +34,10 @@ public:
         _right = (rnd01(rng) < 0.5f);
         if (_right) {
             _x  = -8.0f;
-            _vx = 0.28f + rnd01(rng) * 0.12f;
+            _vx = (0.28f + rnd01(rng) * 0.12f) * _speedMult;
         } else {
             _x  = float(width + 2);
-            _vx = -(0.28f + rnd01(rng) * 0.12f);
+            _vx = -(0.28f + rnd01(rng) * 0.12f) * _speedMult;
         }
         int mid = (_at + _ab) / 2;
         _baseY = float(mid - 4 + rndY(rng));
