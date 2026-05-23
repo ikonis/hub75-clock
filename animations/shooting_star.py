@@ -16,7 +16,7 @@ class Animation:
     themes     = []
     layer      = "celestial"
     persistent = False
-    speed = 1.0
+    speed = 0.75
 
     _ALLOWED = frozenset({"CLEAR", "PARTLYCLOUDY"})
 

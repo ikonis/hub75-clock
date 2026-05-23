@@ -7,7 +7,7 @@ class Animation:
     conditions = []
     themes = ["Day", "Sunrise", "Sunset"]
     layer = "foreground"
-    speed = 1.0
+    speed = 0.8
 
     # --- Appearance settings ---
     # Edit colors directly in _SPRITE_R below.

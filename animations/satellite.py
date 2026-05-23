@@ -7,7 +7,7 @@ class Animation:
     conditions = ["CLEAR"]
     themes = ["Night"]
     layer = "celestial"
-    speed = 1.0
+    speed = 0.8
 
     # --- Appearance settings ---
     # Edit colors directly in _SPRITE below.

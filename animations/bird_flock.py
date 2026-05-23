@@ -7,7 +7,7 @@ class Animation:
     conditions = []
     themes = ["Day"]
     layer = "foreground"
-    speed = 1.0
+    speed = 0.75
 
     # --- Appearance settings ---
     COLOR_BODY = (30, 30, 30)   # bird body center pixel
