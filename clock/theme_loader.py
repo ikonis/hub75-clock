@@ -54,6 +54,7 @@ class ThemeLoader:
         self.on_themes_changed = None
         self._themes: dict[str, Theme] = {}
         self._observer = None
+        self._handler = None
 
         os.makedirs(themes_dir, exist_ok=True)
         self._themes = self.load_all()
@@ -112,13 +113,20 @@ class ThemeLoader:
                     self._timer.daemon = True
                     self._timer.start()
 
+        self._handler = _Handler()
         self._observer = Observer()
-        self._observer.schedule(_Handler(), self.themes_dir, recursive=False)
+        self._observer.schedule(self._handler, self.themes_dir, recursive=False)
         self._observer.daemon = True
         self._observer.start()
 
     def stop(self):
+        if self._handler is not None:
+            with self._handler._lock:
+                if self._handler._timer is not None:
+                    self._handler._timer.cancel()
+                    self._handler._timer = None
         if self._observer is not None:
             self._observer.stop()
             self._observer.join()
             self._observer = None
+        self._handler = None

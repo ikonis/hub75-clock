@@ -249,6 +249,15 @@ def load_config(config_path: str) -> dict:
 
     cfg["panel"].setdefault("width", 64)
     cfg["panel"].setdefault("height", 32)
+    try:
+        cfg["animation"]["fps"] = max(1, int(cfg["animation"].get("fps", 15)))
+    except Exception:
+        cfg["animation"]["fps"] = 15
+    if "fps_night" in cfg["animation"]:
+        try:
+            cfg["animation"]["fps_night"] = max(1, int(cfg["animation"]["fps_night"]))
+        except Exception:
+            cfg["animation"]["fps_night"] = 1
 
     # Resolve full font paths from names
     fonts_dir = cfg["fonts"]["fonts_dir"]
@@ -412,8 +421,12 @@ class CameoManager:
                 print(f"[animations] warning: persistent update error: {e}")
 
         if self._active is not None:
-            self._active.update()
-            if self._active.is_done():
+            try:
+                self._active.update()
+                if self._active.is_done():
+                    self._active = None
+            except Exception as e:
+                print(f"[animations] warning: active update error: {e}")
                 self._active = None
 
         if self._active is None:
@@ -433,6 +446,7 @@ class CameoManager:
                     print(f"[animations] warning: failed to spawn {cls}: {e}")
 
     def _draw_persistent_layer(self, canvas, layer: str):
+        failed = []
         for p in self._persistent_others:
             if getattr(p, "layer", "foreground") != layer:
                 continue
@@ -440,6 +454,11 @@ class CameoManager:
                 p.draw(canvas)
             except Exception as e:
                 print(f"[animations] warning: persistent draw error: {e}")
+                failed.append(p)
+        if failed:
+            self._persistent_others = [
+                p for p in self._persistent_others if p not in failed
+            ]
 
     def draw_celestial(self, canvas):
         self._draw_persistent_layer(canvas, "celestial")
@@ -457,6 +476,7 @@ class CameoManager:
                 self._persistent_cloud.draw(canvas)
             except Exception as e:
                 print(f"[animations] warning: cloud draw error: {e}")
+                self._persistent_cloud = None
 
     def draw_foreground(self, canvas):
         self._draw_persistent_layer(canvas, "foreground")
@@ -972,6 +992,10 @@ class LD2410Sensor:
             if i > 0: del buf[:i]
             if len(buf) < 10: return
             dl = buf[4] | (buf[5] << 8)
+            if dl > 512:
+                print(f"[ld2410] dropping oversized frame length: {dl}")
+                del buf[:]
+                continue
             total = 4 + 2 + dl + 4
             if len(buf) < total: return
             if bytes(buf[total-4:total]) != self.TAIL:
@@ -1053,7 +1077,7 @@ class HUB75Clock:
         opts.pwm_bits          = cfg["panel"]["pwm_bits"]
         opts.pwm_lsb_nanoseconds = cfg["panel"]["pwm_lsb_nanoseconds"]
         opts.brightness        = cfg["panel"]["brightness"]
-        opts.led_rgb_sequence  = "RBG"
+        opts.led_rgb_sequence  = cfg["panel"]["led_rgb_sequence"]
         opts.drop_privileges   = False
         self.matrix = RGBMatrix(options=opts)
         self.canvas = self.matrix.CreateFrameCanvas()
@@ -1110,11 +1134,31 @@ class HUB75Clock:
                        if sc.get("ld2410_enabled", True) else None)
         self._alert_cycle_timer = 0
         self._alert_show_message = False
+        self._engineering_lock = threading.Lock()
+        self._engineering_running = False
 
     # ------------------------------------------------------------------
     # MQTT
     # ------------------------------------------------------------------
+    def _request_engineering_mode(self, enable: bool):
+        with self._engineering_lock:
+            if self._engineering_running:
+                print("[ld2410] engineering mode change already in progress")
+                return
+            self._engineering_running = True
+
+        def _target():
+            try:
+                self._set_engineering_mode(enable)
+            finally:
+                with self._engineering_lock:
+                    self._engineering_running = False
+
+        threading.Thread(target=_target, daemon=True).start()
+
     def _set_engineering_mode(self, enable: bool):
+        if self.ld2410 is None:
+            return
         if enable:
             self.ld2410._enable_engineering_mode()
         else:
@@ -1123,6 +1167,15 @@ class HUB75Clock:
         em_state_topic = (self.cfg["mqtt"]["topics"]
                           .get("engineering_mode", f"{client_id}/engineering_mode") + "/state")
         self.mqtt_client.publish(em_state_topic, "on" if enable else "off", retain=True)
+
+    def _write_gate_config_async(self, gate: int, move_thresh: int, still_thresh: int):
+        if self.ld2410 is None:
+            return
+        threading.Thread(
+            target=self.ld2410.write_gate_config,
+            args=(gate, move_thresh, still_thresh),
+            daemon=True,
+        ).start()
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc != 0:
@@ -1177,7 +1230,7 @@ class HUB75Clock:
                         gt["move"] = value
                     else:
                         gt["still"] = value
-                    self.ld2410.write_gate_config(gate, gt["move"], gt["still"])
+                    self._write_gate_config_async(gate, gt["move"], gt["still"])
                     self.mqtt_client.publish(msg.topic, str(value), retain=True)
                 except Exception as e:
                     print(f"[gates] threshold error: {e}")
@@ -1218,7 +1271,7 @@ class HUB75Clock:
 
             if "engineering_mode" in payload:
                 em = bool(payload["engineering_mode"])
-                threading.Thread(target=self._set_engineering_mode, args=(em,), daemon=True).start()
+                self._request_engineering_mode(em)
 
             if "bucket" in payload:
                 self._apply_bucket(payload["bucket"])
@@ -1284,25 +1337,25 @@ class HUB75Clock:
             if self.ld2410 is not None:
                 if "gates" in payload:
                     for g in payload["gates"]:
-                        self.ld2410.write_gate_config(
+                        self._write_gate_config_async(
                             int(g["gate"]),
                             int(g.get("move", 50)),
                             int(g.get("still", 30)),
                         )
                 elif "gate" in payload:
-                    self.ld2410.write_gate_config(
+                    self._write_gate_config_async(
                         int(payload["gate"]),
                         int(payload.get("move", 50)),
                         int(payload.get("still", 30)),
                     )
             if "engineering_mode" in payload:
                 em = bool(payload["engineering_mode"])
-                threading.Thread(target=self._set_engineering_mode, args=(em,), daemon=True).start()
+                self._request_engineering_mode(em)
 
         elif msg.topic == topics.get("engineering_mode", f"{client_id}/engineering_mode"):
             if "engineering_mode" in payload:
                 em = bool(payload["engineering_mode"])
-                threading.Thread(target=self._set_engineering_mode, args=(em,), daemon=True).start()
+                self._request_engineering_mode(em)
 
         elif msg.topic == topics.get("bucket", f"{client_id}/bucket"):
             if "bucket" in payload:
@@ -1541,6 +1594,10 @@ class HUB75Clock:
         if self.veml   is not None: self.veml.stop()
         if self.pir    is not None: self.pir.stop()
         if self.ld2410 is not None: self.ld2410.stop()
+        if getattr(self, "theme_loader", None) is not None:
+            self.theme_loader.stop()
+        if getattr(self, "animation_loader", None) is not None:
+            self.animation_loader.stop()
         if self.pir is not None:
             try: GPIO.cleanup()
             except: pass

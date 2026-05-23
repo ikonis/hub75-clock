@@ -13,13 +13,13 @@
     "high_temp": "#FF8C00",
     "condition": "#909090"
   },
-  "stars_enabled": true,
   "sun_enabled": false,
   "moon_enabled": true,
   "cloud_density": "medium",
   "cloud_speed": "medium",
   "precipitation": "none",
   "cameos": [
+    {"name": "stars"},
     {"name": "shooting_star", "chance_per_minute": 8},
     {"name": "firefly",       "chance_per_minute": 4}
   ],
