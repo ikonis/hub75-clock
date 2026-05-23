@@ -127,23 +127,29 @@ class Animation:
 
         # UFO body
         for dx, dy, r, g, b in self._BODY:
-            canvas.SetPixel(ox + dx, oy + dy, r, g, b)
+            px, py = ox + dx, oy + dy
+            if 0 <= px < self._w and self._at <= py <= self._ab:
+                canvas.SetPixel(px, py, r, g, b)
 
         # Cycling belly light
         li = self._light_phase // 6
         for idx, (ldx, ldy) in enumerate(self._LIGHTS):
+            px, py = ox + ldx, oy + ldy
+            if not (0 <= px < self._w and self._at <= py <= self._ab):
+                continue
             if idx == li:
-                canvas.SetPixel(ox + ldx, oy + ldy, *self.COLOR_LIGHT_ON)
+                canvas.SetPixel(px, py, *self.COLOR_LIGHT_ON)
             else:
-                canvas.SetPixel(ox + ldx, oy + ldy, *self.COLOR_LIGHT_OFF)
+                canvas.SetPixel(px, py, *self.COLOR_LIGHT_OFF)
 
         # Glow trail (only while flying)
         if self._mode == "fly":
             for i in range(1, 5):
                 gx = ox + 9 + i
+                gy = oy + 2
                 gb = max(0, 20 - i * 5)
-                if 0 <= gx < self._w:
-                    canvas.SetPixel(gx, oy + 2, 0, gb, gb // 2)
+                if 0 <= gx < self._w and self._at <= gy <= self._ab:
+                    canvas.SetPixel(gx, gy, 0, gb, gb // 2)
 
     def is_done(self) -> bool:
         return self.x < -10
