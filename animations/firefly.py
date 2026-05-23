@@ -18,6 +18,8 @@ class Animation:
         self._w = width
         self._at = animator.anim_top
         self._ab = animator.anim_bottom
+        self._fps = cfg.get("animation", {}).get("fps", 15)
+        _drift = 0.06 * (15.0 / self._fps)
         count = random.randint(6, 8)
         self._flies = []
         for _ in range(count):
@@ -25,8 +27,8 @@ class Animation:
             fy = random.uniform(self._at + 2, self._ab - 2)
             phase = random.random() * math.pi * 2
             period = random.randint(20, 50)     # blink period in frames
-            bx = (random.random() - 0.5) * 0.06
-            by = (random.random() - 0.5) * 0.06
+            bx = (random.random() - 0.5) * _drift
+            by = (random.random() - 0.5) * _drift
             self._flies.append([fx, fy, phase, period, bx, by])
         self._frame = 0
         self._total = 120 + random.randint(0, 60)
@@ -39,9 +41,10 @@ class Animation:
             fly[0] = max(1.0, min(float(self._w - 2), fly[0]))
             fly[1] = max(float(self._at + 1), min(float(self._ab - 1), fly[1]))
             # Occasionally change drift direction
-            if random.random() < 0.01:
-                fly[4] = (random.random() - 0.5) * 0.06
-                fly[5] = (random.random() - 0.5) * 0.06
+            if random.random() < 0.01 * (15.0 / self._fps):
+                _drift = 0.06 * (15.0 / self._fps)
+                fly[4] = (random.random() - 0.5) * _drift
+                fly[5] = (random.random() - 0.5) * _drift
 
     def draw(self, canvas):
         for fx, fy, phase, period, *_ in self._flies:

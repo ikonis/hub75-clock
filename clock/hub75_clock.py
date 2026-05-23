@@ -490,6 +490,7 @@ class WeatherAnimator:
         self.condition = "CLEAR"
         self.current_theme: Optional[Theme] = None
         self.frame = 0
+        self._fps = cfg.get("animation", {}).get("fps", 15)
         _loader = animation_loader or AnimationLoader(
             cfg.get("animations", {}).get("animations_dir", "/etc/hub75-clock/animations")
         )
@@ -548,7 +549,7 @@ class WeatherAnimator:
                 x=random.randint(0, self.width - 1),
                 y=random.randint(self.anim_top, self.anim_bottom),
                 phase=random.random() * 6.28,
-                speed=random.uniform(0.05, 0.15),
+                speed=random.uniform(0.05, 0.15) * (15.0 / self._fps),
                 max_brightness=random.choice([60, 80, 100, 140, 200]),
             ))
 
