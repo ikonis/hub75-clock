@@ -1,0 +1,21 @@
+{
+  "name": "Test - easter_egg",
+  "description": "Test theme for easter_egg animation",
+  "background_type": "solid",
+  "background_color": "#000820",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090"
+  },
+  "stars_enabled": false,
+  "sun_enabled": false,
+  "moon_enabled": false,
+  "cloud_density": "none",
+  "precipitation": "none",
+  "cameos": [
+    {"name": "easter_egg", "chance_per_minute": 60}
+  ],
+  "condition_overrides": {}
+}
