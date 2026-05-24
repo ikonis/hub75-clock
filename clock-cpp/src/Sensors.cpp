@@ -151,7 +151,8 @@ PIRSensor::PIRSensor(SensorPublish pub, const std::string& topic,
 PIRSensor::~PIRSensor() { stop(); }
 
 bool PIRSensor::_init() {
-    struct gpiod_chip* chip = gpiod_chip_open_by_name("gpiochip0");
+    struct gpiod_chip* chip = gpiod_chip_open("/dev/gpiochip0");
+    if (!chip) chip = gpiod_chip_open_by_name("gpiochip0");
     if (!chip) {
         std::cerr << "[pir] failed to open gpiochip0\n";
         return false;
