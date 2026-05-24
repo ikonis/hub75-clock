@@ -1,6 +1,7 @@
 #include "Animation.h"
 #include "WeatherAnimator.h"
 #include <nlohmann/json.hpp>
+#include <algorithm>
 #include <cmath>
 #include <random>
 #include <vector>
@@ -29,10 +30,12 @@ public:
 
         _at = animator->animTop;
         _ab = animator->animBottom;
+        if (cfg.contains("animation") && cfg["animation"].is_object())
+            _fps = std::max(1, cfg["animation"].value("fps", 15));
 
-        float _speedMult = 1.0f;
         if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("firefly"))
             _speedMult = cfg["animation_settings"]["firefly"].value("speed", 1.0f);
+        float drift = 0.24f * (15.0f / float(_fps)) * _speedMult;
 
         int count = rndCount(rng);
         for (int i = 0; i < count; ++i) {
@@ -41,8 +44,8 @@ public:
             f.y      = float(_at + 2) + rnd01(rng) * float(_ab - _at - 4);
             f.phase  = rnd01(rng) * float(M_PI) * 2.0f;
             f.period = rndPeriod(rng);
-            f.bx     = (rnd01(rng) - 0.5f) * 0.06f * _speedMult;
-            f.by     = (rnd01(rng) - 0.5f) * 0.06f * _speedMult;
+            f.bx     = (rnd01(rng) - 0.5f) * drift;
+            f.by     = (rnd01(rng) - 0.5f) * drift;
             _flies.push_back(f);
         }
         _frame = 0;
@@ -59,9 +62,10 @@ public:
             f.y += f.by;
             f.x = std::max(1.0f, std::min(float(_w - 2), f.x));
             f.y = std::max(float(_at + 1), std::min(float(_ab - 1), f.y));
-            if (rnd01(rng) < 0.01f) {
-                f.bx = (rnd01(rng) - 0.5f) * 0.06f;
-                f.by = (rnd01(rng) - 0.5f) * 0.06f;
+            if (rnd01(rng) < 0.04f * (15.0f / float(_fps))) {
+                float drift = 0.24f * (15.0f / float(_fps)) * _speedMult;
+                f.bx = (rnd01(rng) - 0.5f) * drift;
+                f.by = (rnd01(rng) - 0.5f) * drift;
             }
         }
     }
@@ -94,7 +98,8 @@ private:
     nlohmann::json   _cfg;
     WeatherAnimator* _animator;
     std::vector<Firefly> _flies;
-    int _frame = 0, _total = 120;
+    int _frame = 0, _total = 120, _fps = 15;
+    float _speedMult = 1.0f;
 };
 
 extern "C" std::unique_ptr<Animation> create_firefly(

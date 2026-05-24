@@ -3,6 +3,11 @@
 #include <nlohmann/json.hpp>
 #include <cmath>
 #include <random>
+#include <vector>
+
+struct TrailPoint {
+    float x, y;
+};
 
 class AirplaneAnimation : public Animation {
 public:
@@ -17,9 +22,9 @@ public:
         _at = animator->animTop;
         _ab = animator->animBottom;
 
-        float _speedMult = 1.0f;
+        float _speedMult = 0.8f;
         if (cfg.contains("animation_settings") && cfg["animation_settings"].contains("airplane"))
-            _speedMult = cfg["animation_settings"]["airplane"].value("speed", 1.0f);
+            _speedMult = cfg["animation_settings"]["airplane"].value("speed", 0.8f);
 
         _right = (rnd01(rng) < 0.5f);
         _y = float(_at + rndY(rng));
@@ -33,6 +38,11 @@ public:
     }
 
     void update() override {
+        float trailX = _right ? (_x - 2.0f) : (_x + 10.0f);
+        float trailY = _y + 1.0f;
+        _trail.push_back({trailX, trailY});
+        if (_trail.size() > _trailMax)
+            _trail.erase(_trail.begin());
         _x += _vx;
     }
 
@@ -56,6 +66,21 @@ public:
             // Windows (overwrite fuselage slots)
             {2, 1, 160, 200, 255}, {4, 1, 160, 200, 255},
         };
+
+        for (size_t i = 0; i < _trail.size(); ++i) {
+            float fade = float(i + 1) / float(_trail.size());
+            int b = int(85.0f * fade);
+            if (b <= 4) continue;
+            int px = int(std::round(_trail[i].x));
+            int py = int(std::round(_trail[i].y));
+            if (px >= 0 && px < _w && py >= _at && py <= _ab) {
+                canvas->SetPixel(px, py, b, b, b);
+                if (i % 3 == 0 && py + 1 <= _ab) {
+                    int dim = b / 2;
+                    canvas->SetPixel(px, py + 1, dim, dim, dim);
+                }
+            }
+        }
 
         int ox = int(std::round(_x));
         int oy = int(std::round(_y));
@@ -82,6 +107,8 @@ private:
     WeatherAnimator* _animator;
     float            _x, _y, _vx;
     bool             _right;
+    std::vector<TrailPoint> _trail;
+    size_t           _trailMax = 18;
 };
 
 extern "C" std::unique_ptr<Animation> create_airplane(
