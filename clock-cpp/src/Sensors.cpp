@@ -151,20 +151,34 @@ PIRSensor::PIRSensor(SensorPublish pub, const std::string& topic,
 PIRSensor::~PIRSensor() { stop(); }
 
 bool PIRSensor::_init() {
+    errno = 0;
     struct gpiod_chip* chip = gpiod_chip_open("/dev/gpiochip0");
-    if (!chip) chip = gpiod_chip_open_by_name("gpiochip0");
+    int pathErrno = errno;
     if (!chip) {
-        std::cerr << "[pir] failed to open gpiochip0\n";
+        errno = 0;
+        chip = gpiod_chip_open_by_name("gpiochip0");
+    }
+    int nameErrno = errno;
+    if (!chip) {
+        std::cerr << "[pir] failed to open /dev/gpiochip0: "
+                  << std::strerror(pathErrno)
+                  << "; by-name gpiochip0: " << std::strerror(nameErrno) << "\n";
         return false;
     }
+    std::cout << "[pir] opened gpiochip0 for GPIO" << _pin << "\n";
+
+    errno = 0;
     struct gpiod_line* line = gpiod_chip_get_line(chip, _pin);
     if (!line) {
-        std::cerr << "[pir] failed to get GPIO line " << _pin << "\n";
+        std::cerr << "[pir] failed to get GPIO line " << _pin
+                  << ": " << std::strerror(errno) << "\n";
         gpiod_chip_close(chip);
         return false;
     }
+    errno = 0;
     if (gpiod_line_request_input(line, "hub75_clock") < 0) {
-        std::cerr << "[pir] failed to request GPIO" << _pin << " as input\n";
+        std::cerr << "[pir] failed to request GPIO" << _pin
+                  << " as input: " << std::strerror(errno) << "\n";
         gpiod_chip_close(chip);
         return false;
     }
