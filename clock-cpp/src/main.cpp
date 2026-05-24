@@ -834,7 +834,7 @@ int main(int argc, char* argv[]) {
 
     matrix->Clear();
     mosquitto_publish(mosq, nullptr, availabilityTopic.c_str(), 7, "offline", 0, true);
-    mosquitto_loop_stop(mosq, true);
+    mosquitto_loop_stop(mosq, false);
     mosquitto_destroy(mosq);
     mosquitto_lib_cleanup();
     delete matrix;
