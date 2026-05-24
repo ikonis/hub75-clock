@@ -281,7 +281,6 @@ void LD2410Sensor::start() {
     if (_fd < 0) return;
     _running = true;
     usleep(100'000);
-    _enableEngineeringModeImpl(true); // matches Python: always start in engineering mode
     _thread = std::thread([this] { _run(); });
 }
 

@@ -696,7 +696,7 @@ int main(int argc, char* argv[]) {
     rtopts.gpio_slowdown     = cfg["panel"].value("gpio_slowdown", 2);
     std::string ledRgbSequence = cfg["panel"].value("led_rgb_sequence", std::string("RBG"));
     opts.led_rgb_sequence    = ledRgbSequence.c_str();
-    rtopts.drop_privileges   = 1;
+    rtopts.drop_privileges   = 0;
 
     auto* matrix = CreateMatrixFromOptions(opts, rtopts);
     if (!matrix) {
