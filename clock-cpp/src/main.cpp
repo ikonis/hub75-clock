@@ -329,7 +329,7 @@ static void drawBanner(
     rgb_matrix::DrawText(canvas, font, 1, baseline, colLow, lowText.c_str());
 
     // High temp: right-aligned.
-    int highX = PANEL_W - (int(highText.size()) - 1) * FONT_W - 2;
+    int highX = PANEL_W - (int(highText.size()) - 1) * FONT_W;
     rgb_matrix::DrawText(canvas, font, highX, baseline, colHigh, highText.c_str());
 
     // Condition: centered.
