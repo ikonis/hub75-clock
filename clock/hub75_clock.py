@@ -901,6 +901,9 @@ class LD2410Sensor:
         self.running = False
         self._last_pub = 0.0
         self.engineering_mode = False
+        self._stopping = False
+        self._thread = None
+        self._io_lock = threading.Lock()
         self._gate_thresholds = {i: {"move": 50, "still": 30} for i in range(9)}
         if HAS_LD2410:
             try:
@@ -912,26 +915,36 @@ class LD2410Sensor:
     def start(self):
         if self.serial:
             self.running = True
+            self._stopping = False
             time.sleep(0.1)
-            self._enable_engineering_mode()
-            threading.Thread(target=self._run, daemon=True).start()
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
 
     def stop(self):
+        self._stopping = True
         self.running = False
+        if self._thread is not None and self._thread.is_alive():
+            self._thread.join(timeout=2.0)
         if self.serial:
-            try: self.serial.close()
+            try:
+                with self._io_lock:
+                    self.serial.close()
             except: pass
 
     def _send_cmd(self, cmd_word: bytes, data: bytes = b""):
-        if not self.serial: return
+        if self._stopping or not self.serial: return
         payload = cmd_word + data
         length = len(payload).to_bytes(2, "little")
         frame = self.CMD_HEAD + length + payload + self.CMD_TAIL
         try:
-            self.serial.write(frame)
+            with self._io_lock:
+                if self._stopping or not self.serial or not self.serial.is_open:
+                    return
+                self.serial.write(frame)
             time.sleep(0.05)
         except Exception as e:
-            print(f"[ld2410] cmd error: {e}")
+            if not self._stopping:
+                print(f"[ld2410] cmd error: {e}")
 
     def _enable_engineering_mode(self):
         self._send_cmd(b"\xFF\x00")
@@ -956,10 +969,12 @@ class LD2410Sensor:
         threading.Thread(target=target, daemon=True).start()
 
     def write_gate_config(self, gate: int, move_thresh: int, still_thresh: int):
-        if not self.serial: return
+        if self._stopping or not self.serial: return
         try:
             self._send_cmd(b"\xFF\x00")
             time.sleep(0.1)
+            if self._stopping:
+                return
             data = (gate.to_bytes(4, "little") +
                     move_thresh.to_bytes(4, "little") +
                     still_thresh.to_bytes(4, "little"))
@@ -968,19 +983,26 @@ class LD2410Sensor:
             self._send_cmd(b"\xFE\x00")
             print(f"[ld2410] gate {gate} move={move_thresh} still={still_thresh}")
         except Exception as e:
-            print(f"[ld2410] gate config error: {e}")
+            if not self._stopping:
+                print(f"[ld2410] gate config error: {e}")
 
     def _run(self):
         buf = bytearray()
         while self.running:
             try:
-                if self.serial.in_waiting:
-                    buf.extend(self.serial.read(self.serial.in_waiting))
+                with self._io_lock:
+                    if self._stopping or not self.serial or not self.serial.is_open:
+                        return
+                    waiting = self.serial.in_waiting
+                    chunk = self.serial.read(waiting) if waiting else b""
+                if chunk:
+                    buf.extend(chunk)
                     self._process(buf)
                 else:
                     time.sleep(0.02)
             except Exception as e:
-                print(f"[ld2410] read error: {e}")
+                if not self._stopping:
+                    print(f"[ld2410] read error: {e}")
                 time.sleep(1)
 
     def _process(self, buf: bytearray):
@@ -1587,13 +1609,13 @@ class HUB75Clock:
     def stop(self):
         print("[clock] stopping")
         self.running = False
+        if self.veml   is not None: self.veml.stop()
+        if self.pir    is not None: self.pir.stop()
+        if self.ld2410 is not None: self.ld2410.stop()
         try:
             self.mqtt_client.publish(self.topic_avail, "offline", retain=True)
             self.mqtt_client.loop_stop(); self.mqtt_client.disconnect()
         except: pass
-        if self.veml   is not None: self.veml.stop()
-        if self.pir    is not None: self.pir.stop()
-        if self.ld2410 is not None: self.ld2410.stop()
         if getattr(self, "theme_loader", None) is not None:
             self.theme_loader.stop()
         if getattr(self, "animation_loader", None) is not None:
