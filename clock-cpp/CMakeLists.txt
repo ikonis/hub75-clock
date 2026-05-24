@@ -32,7 +32,7 @@ if(NOT nlohmann_json_FOUND)
 endif()
 
 # ── Source files ──────────────────────────────────────────────────────────────
-file(GLOB ANIM_SOURCES src/animations/*.cpp)
+file(GLOB ANIM_SOURCES CONFIGURE_DEPENDS src/animations/*.cpp)
 
 add_executable(hub75_clock
     src/main.cpp
