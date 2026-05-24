@@ -745,6 +745,10 @@ int main(int argc, char* argv[]) {
     mosquitto_connect_callback_set(mosq, mqttOnConnect);
     mosquitto_message_callback_set(mosq, mqttOnMessage);
 
+    auto& topics = cfg["mqtt"]["topics"];
+    std::string availabilityTopic = topics.value("availability", "hub75_clock/status");
+    mosquitto_will_set(mosq, availabilityTopic.c_str(), 7, "offline", 0, true);
+
     std::string broker = cfg["mqtt"].value("broker", "");
     int         port   = cfg["mqtt"].value("port", 1883);
     if (!broker.empty()) {
@@ -759,8 +763,7 @@ int main(int argc, char* argv[]) {
                           int(p.size()), p.c_str(), 0, retain ? 1 : 0);
     };
 
-    auto& sc     = cfg["sensors"];
-    auto& topics = cfg["mqtt"]["topics"];
+    auto& sc = cfg["sensors"];
 
     std::unique_ptr<VEML7700Sensor> veml;
     if (sc.value("veml7700_enabled", true)) {
@@ -830,6 +833,7 @@ int main(int argc, char* argv[]) {
     if (ld2410) ld2410->stop();
 
     matrix->Clear();
+    mosquitto_publish(mosq, nullptr, availabilityTopic.c_str(), 7, "offline", 0, true);
     mosquitto_loop_stop(mosq, true);
     mosquitto_destroy(mosq);
     mosquitto_lib_cleanup();
