@@ -1739,7 +1739,7 @@ class HUB75Clock:
                 # Temps visible, condition word replaced with "ALERT"
                 graphics.DrawText(self.canvas, self.font_banner, 1, baseline,
                                  self._col("low_temp"), low_text)
-                high_x = panel_w - len(high_text) * font_w - 1
+                high_x = panel_w - len(high_text) * font_w
                 graphics.DrawText(self.canvas, self.font_banner, high_x, baseline,
                                  self._col("high_temp"), high_text)
                 alert_label = "ALERT"
@@ -1750,7 +1750,7 @@ class HUB75Clock:
         else:
             graphics.DrawText(self.canvas, self.font_banner, 1, baseline,
                              self._col("low_temp"), low_text)
-            high_x = panel_w - len(high_text) * font_w - 1
+            high_x = panel_w - len(high_text) * font_w
             graphics.DrawText(self.canvas, self.font_banner, high_x, baseline,
                              self._col("high_temp"), high_text)
             cond_text = self._display_condition()
