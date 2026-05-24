@@ -44,9 +44,12 @@ echo "[update] building C++ clock..."
 cmake -S "$REPO_DIR/clock-cpp" -B "$REPO_DIR/clock-cpp/build"
 cmake --build "$REPO_DIR/clock-cpp/build"
 
+echo "[update] stopping $SERVICE_NAME..."
+sudo systemctl stop "$SERVICE_NAME"
+
 echo "[update] installing C++ clock binary..."
-sudo cp "$REPO_DIR/clock-cpp/build/hub75_clock" "$CLOCK_DIR/hub75_clock"
-sudo chmod +x "$CLOCK_DIR/hub75_clock"
+sudo install -m 0755 "$REPO_DIR/clock-cpp/build/hub75_clock" "$CLOCK_DIR/hub75_clock.new"
+sudo mv "$CLOCK_DIR/hub75_clock.new" "$CLOCK_DIR/hub75_clock"
 
 echo "[update] restarting $SERVICE_NAME..."
 sudo systemctl restart "$SERVICE_NAME"
