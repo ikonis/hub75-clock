@@ -272,12 +272,32 @@ make start      # start the service
 make test       # run test_sensors.py
 make config     # open config wizard (reconfigure)
 make rgb        # run test_display.py (panel pixel test)
+make theme-builder # edit repo themes in the browser
 ```
 
 After editing `/etc/hub75-clock/config.yaml` directly:
 ```bash
 make restart
 ```
+
+---
+
+## Theme Builder
+
+The offline builder is `tools/theme-builder.html`. To edit theme JSON files directly through the browser, run the tiny local helper server:
+
+```bash
+make theme-builder
+# open http://127.0.0.1:8765/
+```
+
+By default it reads and saves themes in the repo `themes/` directory. To edit the installed themes on a clock:
+
+```bash
+sudo python3 tools/theme-server.py --themes-dir /etc/hub75-clock/themes --host 0.0.0.0
+```
+
+Then browse to `http://<clock-ip>:8765/`. Only run it on a trusted network.
 
 ---
 

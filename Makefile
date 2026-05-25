@@ -2,7 +2,7 @@
 # Run from the repo root on the Pi
 # Usage: make <target>
 
-.PHONY: update logs restart status stop start test config install rgb
+.PHONY: update logs restart status stop start test config install rgb theme-builder
 
 update:
 	~/update-clock.sh
@@ -33,3 +33,6 @@ rgb:
 
 install:
 	bash install.sh
+
+theme-builder:
+	python3 tools/theme-server.py --themes-dir themes
