@@ -3,6 +3,9 @@ config.yaml
 __pycache__/
 clock-cpp/build/
 .theme-cache/
+build/
+dist/
+*.spec
 *.pyc
 *.pyo
 .DS_Store

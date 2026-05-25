@@ -55,17 +55,17 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 .btn:hover{background:var(--border);border-color:var(--border2)}
 .btn-p{background:var(--accent2);border-color:var(--accent);color:#ddf}
 .btn-p:hover{background:var(--accent)}
-.btn-d{padding:2px 9px;font-size:11px;background:transparent;border-color:var(--danger);color:var(--danger);min-width:24px;text-align:center;flex-shrink:0}
+.btn-d{padding:2px 7px;font-size:11px;background:transparent;border-color:var(--danger);color:var(--danger);width:28px;min-width:28px;text-align:center;flex-shrink:0}
 .btn-d:hover{background:var(--danger);color:#fff}
 .btn-sm{padding:3px 8px;font-size:11px}
 /* List items (cameos) */
 .li{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:7px 8px;display:flex;flex-direction:column;gap:5px}
 .li-row{display:flex;align-items:center;gap:5px}
 .li-row label{font-size:11px;color:var(--dim);flex-shrink:0}
-.li-row input,.li-row select{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:var(--r);font:11px monospace;outline:none}
+.li-row input,.li-row select{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:var(--r);font:11px monospace;outline:none;min-width:0}
 .li-row input:focus,.li-row select:focus{border-color:var(--accent)}
 .li-row input[type=number]{width:60px}
-.li-row .spacer{flex:1}
+.li-row .spacer{display:none}
 .add-row{display:flex;gap:5px;align-items:center;margin-top:2px}
 .add-row select{background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:var(--r);font:11px monospace;outline:none}
 /* Preview panel */
