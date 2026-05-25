@@ -641,18 +641,59 @@ class WeatherAnimator:
                 for x in range(self.width):
                     canvas.SetPixel(x, y, 0, 0, 0)
 
+    def _background_color_at(self, y: int) -> tuple:
+        if self.current_theme is None:
+            return parse_color(self.cfg["colors"].get("sky_day", "#000820"))
+
+        theme = self.current_theme
+        bg_type    = theme.background_type
+        bg_color   = theme.background_color
+        bg_top     = theme.background_top
+        bg_bottom  = theme.background_bottom
+        bg_split   = theme.background_split
+        bg_dir     = theme.background_gradient_direction
+
+        override = theme.condition_overrides.get(self.condition, {})
+        if override:
+            bg_type   = override.get("background_type",               bg_type)
+            bg_color  = override.get("background_color",              bg_color)
+            bg_top    = override.get("background_top",                bg_top)
+            bg_bottom = override.get("background_bottom",             bg_bottom)
+            bg_split  = override.get("background_split",              bg_split)
+            bg_dir    = override.get("background_gradient_direction", bg_dir)
+
+        if bg_type == "solid":
+            return parse_color(bg_color)
+
+        if bg_type != "gradient":
+            return (0, 0, 0)
+
+        top_col = parse_color(bg_top)
+        bot_col = parse_color(bg_bottom)
+        zone_h = self.anim_bottom - self.anim_top
+        split_y = self.anim_top + int(zone_h * bg_split)
+
+        if bg_dir == "sunrise":
+            if y <= split_y:
+                span = split_y - self.anim_top
+                t = (y - self.anim_top) / span if span > 0 else 1.0
+                return tuple(int(top_col[i] + (bot_col[i] - top_col[i]) * t) for i in range(3))
+            return bot_col
+
+        if y < split_y:
+            return top_col
+        span = self.anim_bottom - split_y
+        t = (y - split_y) / span if span > 0 else 1.0
+        return tuple(int(top_col[i] + (bot_col[i] - top_col[i]) * t) for i in range(3))
+
     def _draw_sun(self, canvas):
         color = self._color("sun_day")
         ox = self.width - 1
         oy = self.anim_top
         radius = 12
         glow_radius = 20
-        # Use theme background color for glow blend, fall back to sky_day
-        if self.current_theme and self.current_theme.background_type == "solid":
-            sky = parse_color(self.current_theme.background_color)
-        else:
-            sky = parse_color(self.cfg["colors"].get("sky_day", "#000820"))
         for y in range(oy, oy + glow_radius + 1):
+            sky = self._background_color_at(y)
             for x in range(ox - glow_radius, ox + 1):
                 dist = math.sqrt((ox - x) ** 2 + (y - oy) ** 2)
                 if dist <= radius:
@@ -691,15 +732,13 @@ class WeatherAnimator:
         cx, cy = 3, self.anim_top + 3
         radius = 3
         glow_r = 5
-        sky = (parse_color(self.current_theme.background_color)
-               if self.current_theme and self.current_theme.background_type == "solid"
-               else (0, 0, 8))
         # Glow
         for dy in range(-glow_r, glow_r + 1):
             for dx in range(-glow_r, glow_r + 1):
                 dist = math.sqrt(dx * dx + dy * dy)
                 if radius < dist <= glow_r:
                     fade = 1.0 - (dist - radius) / (glow_r - radius)
+                    sky = self._background_color_at(cy + dy)
                     gc = (
                         int(200 * fade * 0.4 + sky[0] * (1.0 - fade * 0.4)),
                         int(200 * fade * 0.4 + sky[1] * (1.0 - fade * 0.4)),
