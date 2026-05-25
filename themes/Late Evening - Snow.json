@@ -1,0 +1,26 @@
+{
+  "name": "Late Evening - Snow",
+  "description": "Snow falling in the late evening",
+  "background_type": "solid",
+  "background_color": "#030408",
+  "background_top": "#000000",
+  "background_bottom": "#000000",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#D0D0E0",
+    "low_temp": "#6699CC",
+    "high_temp": "#996633",
+    "condition": "#707080",
+    "cloud_day": "#505060"
+  },
+  "sun_enabled": false,
+  "moon_enabled": true,
+  "cloud_density": "dense",
+  "cloud_speed": "slow",
+  "precipitation": "snow",
+  "cameos": [
+    {"name": "clouds"}
+  ],
+  "condition_overrides": {}
+}

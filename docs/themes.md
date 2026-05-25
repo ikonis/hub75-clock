@@ -10,16 +10,16 @@ Built-in themes are installed to `/etc/hub75-clock/themes/` by `install.sh`. Tha
 
 ```
 /etc/hub75-clock/themes/
-├── day.json
-├── sunrise.json
-├── sunset.json
-├── late_evening.json
-├── night.json
-├── away.json
+├── Day - Clear.json
+├── Day - Rain.json
+├── Evening - Clear.json
+├── Night - Partly Cloudy.json
+├── Away.json
+├── Test - shooting_star.json
 └── your_custom_theme.json   ← drop it here
 ```
 
-The repo ships the built-in themes under `themes/` and the installer copies them on first install. On subsequent `make update` runs the directory is left alone so your edits survive.
+The repo ships the built-in themes under `themes/` and the installer copies them on first install. `make update` syncs the repo's `themes/` directory to `/etc/hub75-clock/themes/`, so keep local-only experiments in git or copy them elsewhere before updating.
 
 ---
 

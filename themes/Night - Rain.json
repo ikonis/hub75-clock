@@ -1,8 +1,12 @@
 {
-  "name": "Rainy Night",
+  "name": "Night - Rain",
   "description": "Dark rainy night",
   "background_type": "solid",
   "background_color": "#020008",
+  "background_top": "#000000",
+  "background_bottom": "#000000",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
   "colors": {
     "time": "#404040",
     "low_temp": "#002233",
@@ -10,10 +14,13 @@
     "condition": "#181820",
     "cloud_day": "#282830"
   },
-  "cameos": [{"name": "clouds"}],
+  "sun_enabled": false,
+  "moon_enabled": false,
   "cloud_density": "dense",
   "cloud_speed": "medium",
   "precipitation": "rain",
-  "sun_enabled": false,
-  "moon_enabled": false
+  "cameos": [
+    {"name": "clouds"}
+  ],
+  "condition_overrides": {}
 }

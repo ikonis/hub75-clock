@@ -1,8 +1,12 @@
 {
-  "name": "Rainy Day",
+  "name": "Day - Rain",
   "description": "Overcast daytime with rain",
   "background_type": "solid",
   "background_color": "#04000E",
+  "background_top": "#000000",
+  "background_bottom": "#000000",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
   "colors": {
     "time": "#D0D0D0",
     "low_temp": "#0099CC",
@@ -10,9 +14,13 @@
     "condition": "#707080",
     "cloud_day": "#505060"
   },
-  "cameos": [{"name": "clouds"}],
+  "sun_enabled": false,
+  "moon_enabled": false,
   "cloud_density": "dense",
   "cloud_speed": "medium",
   "precipitation": "rain",
-  "sun_enabled": false
+  "cameos": [
+    {"name": "clouds"}
+  ],
+  "condition_overrides": {}
 }

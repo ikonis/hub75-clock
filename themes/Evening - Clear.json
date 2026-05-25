@@ -1,7 +1,8 @@
 {
-  "name": "Sunset",
-  "description": "Evening around sunset",
+  "name": "Evening - Clear",
+  "description": "Clear evening sunset sky",
   "background_type": "gradient",
+  "background_color": "#000000",
   "background_top": "#0F0019",
   "background_bottom": "#3C1400",
   "background_split": 0.5,
@@ -12,9 +13,14 @@
     "high_temp": "#FF8C00",
     "condition": "#909090"
   },
-  "cameos": [{"name": "clouds"}],
+  "sun_enabled": false,
+  "moon_enabled": false,
   "cloud_density": "medium",
-  "cloud_speed": "slow",
+  "cloud_speed": "medium",
   "precipitation": "none",
-  "sun_enabled": false
+  "cameos": [
+    {"name": "airplane",        "chance_per_minute": 1},
+    {"name": "hot_air_balloon", "chance_per_minute": 1}
+  ],
+  "condition_overrides": {}
 }

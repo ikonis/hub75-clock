@@ -4,8 +4,6 @@
 
 set -euo pipefail
 
-THEME_VARIANT="${THEME_VARIANT:-living-room}"
-
 CLOCK_DIR="${CLOCK_DIR:-/opt/hub75-clock}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/hub75-clock}"
 SERVICE_NAME="${SERVICE_NAME:-hub75-clock}"
@@ -36,9 +34,9 @@ echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
 
 sudo mkdir -p "$CLOCK_DIR" "$CONFIG_DIR/themes"
 
-echo "[update] syncing themes from themes/$THEME_VARIANT..."
+echo "[update] syncing themes..."
 sudo rsync -av --delete --exclude='__pycache__' \
-    "$REPO_DIR/themes/$THEME_VARIANT/" \
+    "$REPO_DIR/themes/" \
     "$CONFIG_DIR/themes/"
 
 echo "[update] building C++ clock..."

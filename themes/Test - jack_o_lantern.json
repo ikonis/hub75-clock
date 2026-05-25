@@ -1,0 +1,20 @@
+{
+  "name": "Test - jack_o_lantern",
+  "description": "Test theme for jack_o_lantern animation",
+  "background_type": "solid",
+  "background_color": "#000820",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090"
+  },
+  "sun_enabled": false,
+  "moon_enabled": false,
+  "cloud_density": "none",
+  "precipitation": "none",
+  "cameos": [
+    {"name": "jack_o_lantern", "chance_per_minute": 60}
+  ],
+  "condition_overrides": {}
+}

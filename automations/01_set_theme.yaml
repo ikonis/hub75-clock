@@ -57,10 +57,11 @@ triggers:
 actions:
   - variables:
       bucket: "{{ states('input_select.house_bucket') }}"
+      after_sunset: "{{ is_state('sun.sun', 'below_horizon') }}"
       brightness: >
         {% if bucket == 'Away' %}1
         {% elif bucket == 'Night' %}5
-        {% elif bucket == 'after_sunset' %}30
+        {% elif after_sunset %}30
         {% else %}60{% endif %}
   - action: number.set_value
     target:

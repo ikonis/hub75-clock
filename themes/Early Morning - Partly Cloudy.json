@@ -1,7 +1,8 @@
 {
-  "name": "Sunrise",
-  "description": "Early morning before full daylight",
+  "name": "Early Morning - Partly Cloudy",
+  "description": "Partly cloudy pre-dawn sky",
   "background_type": "gradient",
+  "background_color": "#000000",
   "background_top": "#0F0019",
   "background_bottom": "#3C1400",
   "background_split": 0.5,
@@ -10,11 +11,17 @@
     "time": "#F0F0F0",
     "low_temp": "#00CCFF",
     "high_temp": "#FF8C00",
-    "condition": "#909090"
+    "condition": "#909090",
+    "cloud_day": "#585858"
   },
-  "cameos": [{"name": "clouds"}],
+  "sun_enabled": false,
+  "moon_enabled": false,
   "cloud_density": "sparse",
   "cloud_speed": "slow",
   "precipitation": "none",
-  "sun_enabled": false
+  "cameos": [
+    {"name": "clouds"},
+    {"name": "bird_flock", "chance_per_minute": 2}
+  ],
+  "condition_overrides": {}
 }
