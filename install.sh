@@ -87,6 +87,25 @@ case "$CLOCK_RUNTIME" in
 esac
 echo "      Selected runtime: $CLOCK_RUNTIME"
 
+echo ""
+echo "Theme builder webserver:"
+echo "  off     - do not install/start the web editor"
+echo "  ha      - install it, but let Home Assistant switch it on/off"
+echo "  always  - run it all the time"
+read -p "Theme builder mode [off/ha/always] [ha]: " THEME_BUILDER_MODE
+THEME_BUILDER_MODE="${THEME_BUILDER_MODE:-ha}"
+case "$THEME_BUILDER_MODE" in
+    off|none|no|disabled) THEME_BUILDER_MODE="off" ;;
+    ha|toggle|switch) THEME_BUILDER_MODE="ha" ;;
+    always|on|yes) THEME_BUILDER_MODE="always" ;;
+    *)
+        echo "[error] Unknown theme builder mode: $THEME_BUILDER_MODE"
+        exit 1
+        ;;
+esac
+echo "      Theme builder mode: $THEME_BUILDER_MODE"
+export THEME_BUILDER_MODE
+
 echo "[4/11] Building rpi-rgb-led-matrix..."
 if [ ! -d "$HOME/rpi-rgb-led-matrix" ]; then
     git clone https://github.com/hzeller/rpi-rgb-led-matrix "$HOME/rpi-rgb-led-matrix"
@@ -185,11 +204,14 @@ echo "      Added to dialout, gpio, i2c."
 
 echo "[8/11] Installing clock files..."
 sudo mkdir -p "$CLOCK_DIR" "$CONFIG_DIR" "$CONFIG_DIR/themes" "$CONFIG_DIR/animations"
+sudo mkdir -p "$CLOCK_DIR/tools"
 sudo chmod 755 /home/$USERNAME
 sudo chmod 755 "$CONFIG_DIR"
 sudo chmod 755 "$CONFIG_DIR/themes"
 sudo chmod 755 "$CONFIG_DIR/animations"
 sudo cp "$REPO_DIR/scripts/test_display.py"  "$CLOCK_DIR/"
+sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/theme-server.py" "$CLOCK_DIR/tools/"
 # Copy built-in themes only if the themes dir is empty (preserve user edits)
 if [ -z "$(ls -A "$CONFIG_DIR/themes" 2>/dev/null)" ]; then
     sudo cp "$REPO_DIR/themes/"*.json "$CONFIG_DIR/themes/"
@@ -244,6 +266,36 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable $SERVICE_NAME
 echo "      Service installed and enabled."
+
+echo "      Installing theme builder service..."
+sudo tee /etc/systemd/system/hub75-theme-builder.service > /dev/null << EOF
+[Unit]
+Description=HUB75 Theme Builder
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$CLOCK_DIR
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --host 0.0.0.0 --port 8765
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+if [ "$THEME_BUILDER_MODE" = "always" ]; then
+    sudo systemctl enable hub75-theme-builder.service
+    echo "      Theme builder service enabled."
+else
+    sudo systemctl disable hub75-theme-builder.service >/dev/null 2>&1 || true
+    echo "      Theme builder service installed but disabled."
+fi
 
 echo "[10/11] Installing update script..."
 if [ "$CLOCK_RUNTIME" = "python" ]; then
