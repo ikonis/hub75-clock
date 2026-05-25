@@ -22,6 +22,5 @@
   "cameos": [
     {"name": "clouds"},
     {"name": "bird_flock", "chance_per_minute": 2}
-  ],
-  "condition_overrides": {}
+  ]
 }

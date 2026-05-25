@@ -25,6 +25,5 @@
     {"name": "shooting_star", "chance_per_minute": 4},
     {"name": "satellite",     "chance_per_minute": 1},
     {"name": "firefly",       "chance_per_minute": 2}
-  ],
-  "condition_overrides": {}
+  ]
 }

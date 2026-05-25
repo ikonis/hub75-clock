@@ -26,6 +26,5 @@
     {"name": "meteor",        "chance_per_minute": 0.3},
     {"name": "comet",         "chance_per_minute": 0.1},
     {"name": "firefly",       "chance_per_minute": 3}
-  ],
-  "condition_overrides": {}
+  ]
 }

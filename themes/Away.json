@@ -11,6 +11,5 @@
   },
   "cloud_density": "sparse",
   "cloud_speed": "slow",
-  "sun_enabled": false,
-  "condition_overrides": {}
+  "sun_enabled": false
 }

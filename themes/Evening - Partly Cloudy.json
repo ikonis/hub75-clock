@@ -22,6 +22,5 @@
   "cameos": [
     {"name": "clouds"},
     {"name": "airplane", "chance_per_minute": 1}
-  ],
-  "condition_overrides": {}
+  ]
 }
