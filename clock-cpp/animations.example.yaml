@@ -22,4 +22,13 @@ tumbleweed:
 fireworks:
   speed: 1.0
 
+clouds:
+  speed: 1.0             # cloud drift
+  particle_speed: 1.0    # all rain/snow/sleet particles
+  rain_speed: 1.0
+  heavy_rain_speed: 1.0
+  snow_speed: 1.0
+  sleet_fast_speed: 1.0
+  sleet_slow_speed: 1.0
+
 # All other animations use speed: 1.0 when not listed here.

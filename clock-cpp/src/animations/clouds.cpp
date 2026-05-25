@@ -69,6 +69,20 @@ public:
         if (speedKey == "slow") baseSpeed = 0.2f;
         else if (speedKey == "fast") baseSpeed = 0.7f;
 
+        nlohmann::json settings = nlohmann::json::object();
+        if (cfg.contains("animation_settings") &&
+            cfg["animation_settings"].contains("clouds") &&
+            cfg["animation_settings"]["clouds"].is_object()) {
+            settings = cfg["animation_settings"]["clouds"];
+        }
+        _cloudSpeedMult = settings.value("speed", settings.value("cloud_speed", 1.0f));
+        float particleSpeed = settings.value("particle_speed", 1.0f);
+        _rainSpeedMult = settings.value("rain_speed", 1.0f) * particleSpeed;
+        _heavyRainSpeedMult = settings.value("heavy_rain_speed", 1.0f) * particleSpeed;
+        _snowSpeedMult = settings.value("snow_speed", 1.0f) * particleSpeed;
+        _sleetFastSpeedMult = settings.value("sleet_fast_speed", 1.0f) * particleSpeed;
+        _sleetSlowSpeedMult = settings.value("sleet_slow_speed", 1.0f) * particleSpeed;
+
         int count = 4;
         if (density == "sparse") count = 2;
         else if (density == "dense") count = 7;
@@ -111,7 +125,7 @@ public:
             Cloud c;
             c.x    = rndW(rng);
             c.y    = float(rndY(rng));
-            c.vx   = -(baseSpeed + rnd08(rng));
+            c.vx   = -(baseSpeed + rnd08(rng)) * _cloudSpeedMult;
             c.size = _pickSize(density, rng);
             c.cr   = cloudR; c.cg = cloudG; c.cb = cloudB;
             c.particles = _makeParticles(c.x, c.y, c.size, rng);
@@ -146,8 +160,24 @@ public:
             if (_flashLife > 0) --_flashLife;
             --_nextBolt;
             if (_nextBolt <= 0 && !_clouds.empty()) {
-                std::uniform_int_distribution<int> rndC(0, int(_clouds.size()) - 1);
-                auto& lc = _clouds[rndC(rng)];
+                std::vector<size_t> visible;
+                for (size_t i = 0; i < _clouds.size(); ++i) {
+                    auto span = getSpan(_clouds[i].size);
+                    if (_clouds[i].x + span.spanL < _w &&
+                        _clouds[i].x + span.spanR >= 0 &&
+                        _clouds[i].y + span.spanH <= _ab - 4) {
+                        visible.push_back(i);
+                    }
+                }
+                size_t idx = 0;
+                if (!visible.empty()) {
+                    std::uniform_int_distribution<int> rndC(0, int(visible.size()) - 1);
+                    idx = visible[rndC(rng)];
+                } else {
+                    std::uniform_int_distribution<int> rndC(0, int(_clouds.size()) - 1);
+                    idx = size_t(rndC(rng));
+                }
+                auto& lc = _clouds[idx];
                 _makeBolt(lc.x, lc.y, lc.size, rng);
                 std::uniform_int_distribution<int> rndBL(2, 3), rndFL(1, 2);
                 _boltLife  = rndBL(rng);
@@ -229,6 +259,12 @@ private:
     int  _sunR_col = 220, _sunG_col = 160, _sunB_col = 30;
 
     std::vector<Cloud> _clouds;
+    float _cloudSpeedMult = 1.0f;
+    float _rainSpeedMult = 1.0f;
+    float _heavyRainSpeedMult = 1.0f;
+    float _snowSpeedMult = 1.0f;
+    float _sleetFastSpeedMult = 1.0f;
+    float _sleetSlowSpeedMult = 1.0f;
 
     std::vector<std::pair<int,int>> _bolt;
     std::vector<std::vector<std::pair<int,int>>> _boltBranches;
@@ -274,23 +310,23 @@ private:
         if (_precip == "rain") {
             int n = rnd24(rng);
             for (int i = 0; i < n; ++i)
-                particles.push_back(_newParticle(span.spanL, span.spanR, bottom, "rain", 1.5f, rng));
+                particles.push_back(_newParticle(span.spanL, span.spanR, bottom, "rain", 1.5f * _rainSpeedMult, rng));
         } else if (_precip == "heavy_rain" || _precip == "tstorm") {
             int n = rnd46(rng);
             for (int i = 0; i < n; ++i)
-                particles.push_back(_newParticle(span.spanL, span.spanR, bottom, "heavy_rain", 2.5f, rng));
+                particles.push_back(_newParticle(span.spanL, span.spanR, bottom, "heavy_rain", 2.5f * _heavyRainSpeedMult, rng));
         } else if (_precip == "snow") {
             int n = rnd23(rng);
             for (int i = 0; i < n; ++i)
-                particles.push_back(_newParticle(span.spanL, span.spanR, bottom, "snow", rndVsnow(rng), rng));
+                particles.push_back(_newParticle(span.spanL, span.spanR, bottom, "snow", rndVsnow(rng) * _snowSpeedMult, rng));
         } else if (_precip == "sleet") {
             int n = rnd35(rng);
             std::uniform_real_distribution<float> rndVsl(0.4f, 0.6f);
             for (int i = 0; i < n; ++i) {
                 if (i % 2 == 0)
-                    particles.push_back(_newParticle(span.spanL, span.spanR, bottom, "sleet_fast", 1.5f, rng));
+                    particles.push_back(_newParticle(span.spanL, span.spanR, bottom, "sleet_fast", 1.5f * _sleetFastSpeedMult, rng));
                 else
-                    particles.push_back(_newParticle(span.spanL, span.spanR, bottom, "sleet_slow", rndVsl(rng), rng));
+                    particles.push_back(_newParticle(span.spanL, span.spanR, bottom, "sleet_slow", rndVsl(rng) * _sleetSlowSpeedMult, rng));
             }
         }
         return particles;
@@ -311,7 +347,8 @@ private:
         std::uniform_int_distribution<int> rndLen(10,16), rndDx(-2,2), rndDy(2,3), rndBLen(1,3);
 
         int x = int(cx + rndBX(rng));
-        int y = int(cy + span.spanH);
+        x = std::max(1, std::min(_w - 2, x));
+        int y = std::max(_at, std::min(_ab - 4, int(cy + span.spanH)));
         _bolt.push_back({x, y});
         int targetY = std::min(_ab, y + rndLen(rng));
 

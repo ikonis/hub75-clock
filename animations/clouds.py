@@ -57,6 +57,12 @@ class Animation:
     themes = []
     layer = "foreground"
     persistent = True
+    speed = 1.0
+    rain_speed = 1.0
+    heavy_rain_speed = 1.0
+    snow_speed = 1.0
+    sleet_fast_speed = 1.0
+    sleet_slow_speed = 1.0
 
     def __init__(self, width, height, cfg, animator):
         self._w = width
@@ -99,7 +105,7 @@ class Animation:
         for _ in range(count):
             x = random.uniform(0, width)
             y = float(random.randint(self._at + 1, max(self._at + 1, self._ab - 12)))
-            vx = -(base_speed + random.uniform(0.0, 0.08))
+            vx = -(base_speed + random.uniform(0.0, 0.08)) * self.speed
             size = self._pick_size(density)
             self._clouds.append({
                 "x":    x,
@@ -137,24 +143,24 @@ class Animation:
         if p == "rain":
             for _ in range(random.randint(2, 4)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "rain",
-                                                    vy=1.5))
+                                                    vy=1.5 * self.rain_speed))
         elif p in ("heavy_rain", "tstorm"):
             for _ in range(random.randint(4, 6)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "heavy_rain",
-                                                    vy=2.5))
+                                                    vy=2.5 * self.heavy_rain_speed))
         elif p == "snow":
             for _ in range(random.randint(2, 3)):
                 particles.append(self._new_particle(span_l, span_r, bottom, "snow",
-                                                    vy=random.uniform(0.3, 0.5)))
+                                                    vy=random.uniform(0.3, 0.5) * self.snow_speed))
         elif p == "sleet":
             for i in range(random.randint(3, 5)):
                 if i % 2 == 0:
                     particles.append(self._new_particle(span_l, span_r, bottom,
-                                                        "sleet_fast", vy=1.5))
+                                                        "sleet_fast", vy=1.5 * self.sleet_fast_speed))
                 else:
                     particles.append(self._new_particle(span_l, span_r, bottom,
                                                         "sleet_slow",
-                                                        vy=random.uniform(0.4, 0.6)))
+                                                        vy=random.uniform(0.4, 0.6) * self.sleet_slow_speed))
         return particles
 
     def _new_particle(self, span_l, span_r, cloud_bottom, ptype, vy):
@@ -174,7 +180,8 @@ class Animation:
     def _make_bolt(self, cx, cy, size):
         span_l, span_r, span_h = _CLOUD_SPAN[size]
         x = int(cx + random.uniform(span_l * 0.5, span_r * 0.5))
-        y = int(cy + span_h)
+        x = max(1, min(self._w - 2, x))
+        y = max(self._at, min(self._ab - 4, int(cy + span_h)))
         points = [(x, y)]
         target_y = min(self._ab, y + random.randint(10, 16))
         branches = []
@@ -226,7 +233,13 @@ class Animation:
                 self._flash_life -= 1
             self._next_bolt -= 1
             if self._next_bolt <= 0 and self._clouds:
-                lc = random.choice(self._clouds)
+                visible = [
+                    c for c in self._clouds
+                    if c["x"] + _CLOUD_SPAN[c["size"]][0] < self._w
+                    and c["x"] + _CLOUD_SPAN[c["size"]][1] >= 0
+                    and c["y"] + _CLOUD_SPAN[c["size"]][2] <= self._ab - 4
+                ]
+                lc = random.choice(visible or self._clouds)
                 self._bolt, self._bolt_branches = self._make_bolt(
                     lc["x"], lc["y"], lc["size"])
                 self._bolt_life  = random.randint(2, 3)
