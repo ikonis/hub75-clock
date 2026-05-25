@@ -2,6 +2,7 @@ config.yaml
 .venv/
 __pycache__/
 clock-cpp/build/
+.theme-cache/
 *.pyc
 *.pyo
 .DS_Store
