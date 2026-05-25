@@ -17,7 +17,6 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 SERVICE_NAME="hub75-clock"
 FONTS_DIR="$HOME/rpi-rgb-led-matrix/fonts"
 USERNAME=$(whoami)
-THEME_VARIANT="${THEME_VARIANT:-living-room}"
 
 echo ""
 echo "============================================"
@@ -193,11 +192,7 @@ sudo chmod 755 "$CONFIG_DIR/animations"
 sudo cp "$REPO_DIR/scripts/test_display.py"  "$CLOCK_DIR/"
 # Copy built-in themes only if the themes dir is empty (preserve user edits)
 if [ -z "$(ls -A "$CONFIG_DIR/themes" 2>/dev/null)" ]; then
-    if [ -d "$REPO_DIR/themes/$THEME_VARIANT" ]; then
-        sudo cp "$REPO_DIR/themes/$THEME_VARIANT/"*.json "$CONFIG_DIR/themes/"
-    else
-        sudo cp "$REPO_DIR/themes/"*.json "$CONFIG_DIR/themes/"
-    fi
+    sudo cp "$REPO_DIR/themes/"*.json "$CONFIG_DIR/themes/"
     echo "      Built-in themes installed to $CONFIG_DIR/themes/"
 else
     echo "      Themes dir already has files — skipping built-in theme copy."
