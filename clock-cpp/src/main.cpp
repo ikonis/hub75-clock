@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <csignal>
@@ -60,6 +61,13 @@ static json defaults() {
             {"prefix",             "homeassistant"},
             {"ha_discovery_name",  "HUB75 Clock"},
             {"ha_discovery_area",  ""},
+        }},
+        {"theme_builder", {
+            {"mode", "off"},
+            {"service_name", "hub75-theme-builder"},
+            {"host", "0.0.0.0"},
+            {"port", 8765},
+            {"url", ""},
         }},
         {"panel", {
             {"hardware_mapping",    "regular"},
@@ -415,6 +423,49 @@ struct MqttCtx {
     LD2410Sensor*    ld2410 = nullptr;
 };
 
+static std::string themeBuilderStateTopic(const json& cfg) {
+    std::string cid = cfg["mqtt"].value("client_id", "hub75_clock");
+    return cid + "/theme_builder/state";
+}
+
+static std::string themeBuilderUrlTopic(const json& cfg) {
+    std::string cid = cfg["mqtt"].value("client_id", "hub75_clock");
+    return cid + "/theme_builder/url";
+}
+
+static std::string themeBuilderUrl(const json& cfg) {
+    const auto& tb = cfg["theme_builder"];
+    std::string configured = tb.value("url", "");
+    if (!configured.empty()) return configured;
+    std::string cid = cfg["mqtt"].value("client_id", "hub75_clock");
+    int port = tb.value("port", 8765);
+    return "http://" + cid + ".local:" + std::to_string(port) + "/";
+}
+
+static bool themeBuilderActive(const json& cfg) {
+    std::string service = cfg["theme_builder"].value("service_name", "hub75-theme-builder");
+    std::string cmd = "systemctl is-active --quiet " + service;
+    return std::system(cmd.c_str()) == 0;
+}
+
+static void publishThemeBuilderState(mosquitto* mosq, const json& cfg) {
+    if (cfg["theme_builder"].value("mode", "off") == "off") return;
+    std::string state = themeBuilderActive(cfg) ? "on" : "off";
+    std::string stateTopic = themeBuilderStateTopic(cfg);
+    std::string urlTopic = themeBuilderUrlTopic(cfg);
+    std::string url = themeBuilderUrl(cfg);
+    mosquitto_publish(mosq, nullptr, stateTopic.c_str(), int(state.size()), state.c_str(), 0, 1);
+    mosquitto_publish(mosq, nullptr, urlTopic.c_str(), int(url.size()), url.c_str(), 0, 1);
+}
+
+static void setThemeBuilderService(mosquitto* mosq, const json& cfg, bool enable) {
+    if (cfg["theme_builder"].value("mode", "off") == "off") return;
+    std::string service = cfg["theme_builder"].value("service_name", "hub75-theme-builder");
+    std::string cmd = std::string("systemctl ") + (enable ? "start " : "stop ") + service;
+    std::system(cmd.c_str());
+    publishThemeBuilderState(mosq, cfg);
+}
+
 static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
     if (rc != 0) {
         std::cerr << "[mqtt] connect failed: " << mosquitto_connack_string(rc) << "\n";
@@ -472,6 +523,52 @@ static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
         std::string emStateTopic =
             topics.value("engineering_mode", cid + "/engineering_mode") + "/state";
         pub(emStateTopic, ctx->ld2410->engineeringMode() ? "on" : "off", true);
+    }
+    publishThemeBuilderState(mosq, *ctx->cfg);
+
+    if ((*ctx->cfg)["ha_discovery"].value("enabled", true) &&
+        (*ctx->cfg)["theme_builder"].value("mode", "off") == "ha") {
+        std::string prefix = (*ctx->cfg)["ha_discovery"].value("prefix", "homeassistant");
+        std::string devName = (*ctx->cfg)["ha_discovery"].value("ha_discovery_name", "HUB75 Clock");
+        json device = {
+            {"identifiers", json::array({cid})},
+            {"name", devName},
+            {"model", "HUB75 Smart Clock"},
+            {"manufacturer", "DIY"},
+        };
+        std::string area = (*ctx->cfg)["ha_discovery"].value("ha_discovery_area", "");
+        if (!area.empty()) device["suggested_area"] = area;
+        json availability = json::array();
+        availability.push_back({{"topic", topics.value("availability", "hub75_clock/status")}});
+
+        json sw = {
+            {"name", "Theme Builder"},
+            {"unique_id", cid + "_theme_builder"},
+            {"device", device},
+            {"availability", availability},
+            {"command_topic", topics.value("config", "clock/config")},
+            {"payload_on", "{\"theme_builder\": true}"},
+            {"payload_off", "{\"theme_builder\": false}"},
+            {"state_topic", themeBuilderStateTopic(*ctx->cfg)},
+            {"state_on", "on"},
+            {"state_off", "off"},
+            {"entity_category", "config"},
+            {"icon", "mdi:palette-outline"},
+            {"has_entity_name", true},
+        };
+        pub(prefix + "/switch/" + cid + "_theme_builder/config", sw.dump(), true);
+
+        json sensor = {
+            {"name", "Theme Builder URL"},
+            {"unique_id", cid + "_theme_builder_url"},
+            {"device", device},
+            {"availability", availability},
+            {"state_topic", themeBuilderUrlTopic(*ctx->cfg)},
+            {"entity_category", "diagnostic"},
+            {"icon", "mdi:web"},
+            {"has_entity_name", true},
+        };
+        pub(prefix + "/sensor/" + cid + "_theme_builder_url/config", sensor.dump(), true);
     }
 
     std::cout << "[mqtt] connected and subscribed\n";
@@ -596,6 +693,9 @@ static void mqttOnMessage(mosquitto* mosq, void* obj,
                 const char* s = em ? "on" : "off";
                 mosquitto_publish(mosq, nullptr, emStateT.c_str(),
                                   static_cast<int>(std::strlen(s)), s, 0, 1);
+            }
+            if (payload.contains("theme_builder")) {
+                setThemeBuilderService(mosq, *ctx->cfg, payload["theme_builder"].get<bool>());
             }
         } catch (...) {}
 

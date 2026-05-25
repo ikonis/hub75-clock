@@ -218,15 +218,17 @@ Run once on a fresh Pi. Does everything in sequence:
 2. Installs system packages for both runtimes (git, build-essential, Python headers/tools, CMake, Mosquitto, yaml-cpp, gpiod, and others)
 3. Installs Python packages (paho-mqtt, PyYAML, pyserial, RPi.GPIO, adafruit-circuitpython-veml7700, adafruit-blinka, watchdog)
 4. Lets you choose the clock runtime: Python is the suggested default for multicore Pis; C++ is suggested for Pi Zero / lowest CPU overhead
-5. Builds and installs `rpi-rgb-led-matrix` with Python bindings. Pi 4: installs a pinned commit via pip. Pi Zero W: clones, checks out commit `076c54b`, and builds with `make build-python` / `make install-python`. The C++ runtime also builds the matrix C++ library. See `docs/pi-zero-w.md`.
-6. Downloads fonts (rpi-rgb-led-matrix bundled BDF fonts + Spleen 12x24/16x32) to `~/hub75-fonts`
-7. Enables I2C and UART hardware; disables serial console; disables Bluetooth; blacklists `snd_bcm2835`
-8. Adds user to `dialout`, `gpio`, `i2c` groups
-9. Installs the selected runtime to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only; copies Python animation `.py` files when using the Python runtime
-10. Installs and enables the `hub75-clock` systemd service for the selected runtime
-11. Installs the matching update script to `~/update-clock.sh`
-12. Launches `scripts/configure.sh` to write your `config.yaml`
-13. Prompts to reboot
+5. Lets you choose the theme builder mode: off, Home Assistant controlled, or always running
+6. Builds and installs `rpi-rgb-led-matrix` with Python bindings. Pi 4: installs a pinned commit via pip. Pi Zero W: clones, checks out commit `076c54b`, and builds with `make build-python` / `make install-python`. The C++ runtime also builds the matrix C++ library. See `docs/pi-zero-w.md`.
+7. Downloads fonts (rpi-rgb-led-matrix bundled BDF fonts + Spleen 12x24/16x32) to `~/hub75-fonts`
+8. Enables I2C and UART hardware; disables serial console; disables Bluetooth; blacklists `snd_bcm2835`
+9. Adds user to `dialout`, `gpio`, `i2c` groups
+10. Installs the selected runtime to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only; copies Python animation `.py` files when using the Python runtime; installs the theme builder helper files
+11. Installs and enables the `hub75-clock` systemd service for the selected runtime
+12. Installs the `hub75-theme-builder` systemd service, enabled only when theme builder mode is `always`
+13. Installs the matching update script to `~/update-clock.sh`
+14. Launches `scripts/configure.sh` to write your `config.yaml`
+15. Prompts to reboot
 
 ```bash
 bash install.sh
@@ -298,6 +300,8 @@ sudo python3 tools/theme-server.py --themes-dir /etc/hub75-clock/themes --host 0
 ```
 
 Then browse to `http://<clock-ip>:8765/`. Only run it on a trusted network.
+
+During install, the theme builder can be disabled, left always running, or controlled from Home Assistant. In HA-controlled mode, the clock publishes a Theme Builder switch and a Theme Builder URL sensor through MQTT discovery. The switch starts/stops the `hub75-theme-builder` service; the URL sensor gives you the browser address.
 
 ---
 

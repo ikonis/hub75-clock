@@ -32,11 +32,34 @@ git -C "$REPO_DIR" pull --ff-only origin "$BRANCH"
 
 echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
 
-sudo mkdir -p "$CLOCK_DIR" "$CONFIG_DIR/themes" "$CONFIG_DIR/animations"
+sudo mkdir -p "$CLOCK_DIR" "$CLOCK_DIR/tools" "$CONFIG_DIR/themes" "$CONFIG_DIR/animations"
 
 echo "[update] installing Python clock files..."
 sudo cp "$REPO_DIR/clock/hub75_clock.py" "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/clock/theme_loader.py" "$CLOCK_DIR/"
+sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/theme-server.py" "$CLOCK_DIR/tools/"
+
+sudo tee /etc/systemd/system/hub75-theme-builder.service > /dev/null << EOF
+[Unit]
+Description=HUB75 Theme Builder
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$CLOCK_DIR
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --host 0.0.0.0 --port 8765
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
 
 echo "[update] syncing themes..."
 sudo rsync -av --delete --exclude='__pycache__' \

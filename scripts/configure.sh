@@ -34,6 +34,15 @@ CLIENT_ID="${CLIENT_ID:-hub75_clock}"
 
 read -p "Home Assistant area (optional, leave blank to skip) []: " HA_AREA
 
+THEME_BUILDER_MODE="${THEME_BUILDER_MODE:-off}"
+case "$THEME_BUILDER_MODE" in
+    off|ha|always) ;;
+    *) THEME_BUILDER_MODE="off" ;;
+esac
+THEME_BUILDER_PORT="${THEME_BUILDER_PORT:-8765}"
+THEME_BUILDER_HOST="${THEME_BUILDER_HOST:-0.0.0.0}"
+THEME_BUILDER_URL="${THEME_BUILDER_URL:-http://$(hostname).local:${THEME_BUILDER_PORT}/}"
+
 # ── MQTT ─────────────────────────────────────────────────────────────────────
 echo ""
 echo "--- MQTT Broker ---"
@@ -136,6 +145,7 @@ echo "  Device name:      $HA_NAME"
 echo "  Client ID:        $CLIENT_ID"
 echo "  HA area:          ${HA_AREA:-not set}"
 echo "  MQTT broker:      $MQTT_BROKER:$MQTT_PORT"
+echo "  Theme builder:    $THEME_BUILDER_MODE"
 echo "  Pi model:         gpio_slowdown=$GPIO_SLOWDOWN"
 echo "  Panel mapping:    $HW_MAP"
 echo "  VEML7700:         $VEML_ENABLED"
@@ -184,6 +194,13 @@ ha_discovery:
   prefix: homeassistant
   ha_discovery_name: "$HA_NAME"
   ha_discovery_area: "$HA_AREA"
+
+theme_builder:
+  mode: "$THEME_BUILDER_MODE"
+  service_name: hub75-theme-builder
+  host: "$THEME_BUILDER_HOST"
+  port: $THEME_BUILDER_PORT
+  url: "$THEME_BUILDER_URL"
 
 panel:
   hardware_mapping: $HW_MAP

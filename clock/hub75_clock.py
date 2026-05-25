@@ -20,6 +20,7 @@ import threading
 import random
 import re
 import importlib.util
+import subprocess
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
@@ -110,6 +111,13 @@ DEFAULTS = {
         "prefix":             "homeassistant",
         "ha_discovery_name":  "HUB75 Clock",
         "ha_discovery_area":  "",
+    },
+    "theme_builder": {
+        "mode": "off",
+        "service_name": "hub75-theme-builder",
+        "host": "0.0.0.0",
+        "port": 8765,
+        "url": "",
     },
     "panel": {
         "hardware_mapping":    "regular",
@@ -1199,6 +1207,57 @@ class HUB75Clock:
             daemon=True,
         ).start()
 
+    def _theme_builder_cfg(self):
+        return self.cfg.get("theme_builder", {})
+
+    def _theme_builder_state_topic(self):
+        client_id = self.cfg["mqtt"]["client_id"]
+        return f"{client_id}/theme_builder/state"
+
+    def _theme_builder_url_topic(self):
+        client_id = self.cfg["mqtt"]["client_id"]
+        return f"{client_id}/theme_builder/url"
+
+    def _theme_builder_url(self):
+        tb = self._theme_builder_cfg()
+        if tb.get("url"):
+            return tb["url"]
+        return f"http://{self.cfg['mqtt']['client_id']}.local:{int(tb.get('port', 8765))}/"
+
+    def _theme_builder_is_active(self) -> bool:
+        service = self._theme_builder_cfg().get("service_name", "hub75-theme-builder")
+        try:
+            return subprocess.run(
+                ["systemctl", "is-active", "--quiet", service],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode == 0
+        except Exception:
+            return False
+
+    def _publish_theme_builder_state(self):
+        if self._theme_builder_cfg().get("mode", "off") == "off":
+            return
+        active = self._theme_builder_is_active()
+        self.mqtt_client.publish(self._theme_builder_state_topic(), "on" if active else "off", retain=True)
+        self.mqtt_client.publish(self._theme_builder_url_topic(), self._theme_builder_url(), retain=True)
+
+    def _set_theme_builder(self, enable: bool):
+        tb = self._theme_builder_cfg()
+        if tb.get("mode", "off") == "off":
+            return
+        service = tb.get("service_name", "hub75-theme-builder")
+        action = "start" if enable else "stop"
+        try:
+            subprocess.run(["systemctl", action, service], check=False)
+        except Exception as e:
+            print(f"[theme_builder] {action} failed: {e}")
+        self._publish_theme_builder_state()
+
+    def _set_theme_builder_async(self, enable: bool):
+        threading.Thread(target=self._set_theme_builder, args=(enable,), daemon=True).start()
+
     def _on_connect(self, client, userdata, flags, rc):
         if rc != 0:
             print(f"[mqtt] connect failed rc={rc}"); return
@@ -1229,6 +1288,7 @@ class HUB75Clock:
         em_state_topic = topics.get("engineering_mode", f"{client_id}/engineering_mode") + "/state"
         if self.ld2410 is not None:
             client.publish(em_state_topic, "on" if self.ld2410.engineering_mode else "off", retain=True)
+        self._publish_theme_builder_state()
         if self.cfg["ha_discovery"]["enabled"]:
             self._publish_discovery()
 
@@ -1294,6 +1354,9 @@ class HUB75Clock:
             if "engineering_mode" in payload:
                 em = bool(payload["engineering_mode"])
                 self._request_engineering_mode(em)
+
+            if "theme_builder" in payload:
+                self._set_theme_builder_async(bool(payload["theme_builder"]))
 
             if "bucket" in payload:
                 self._apply_bucket(payload["bucket"])
@@ -1568,6 +1631,38 @@ class HUB75Clock:
                     "state_on":      "on",
                     "state_off":     "off",
                     "entity_category": "config",
+                    "has_entity_name": True,
+                }), retain=True)
+
+        # --- Switch + URL sensor: theme builder webserver ---
+        if self._theme_builder_cfg().get("mode", "off") == "ha":
+            self.mqtt_client.publish(
+                f"{prefix}/switch/{client_id}_theme_builder/config",
+                json.dumps({
+                    "name":          "Theme Builder",
+                    "unique_id":     f"{client_id}_theme_builder",
+                    "device":        device,
+                    "availability":  avail,
+                    "command_topic": topics["config"],
+                    "payload_on":    '{"theme_builder": true}',
+                    "payload_off":   '{"theme_builder": false}',
+                    "state_topic":   self._theme_builder_state_topic(),
+                    "state_on":      "on",
+                    "state_off":     "off",
+                    "entity_category": "config",
+                    "icon":          "mdi:palette-outline",
+                    "has_entity_name": True,
+                }), retain=True)
+            self.mqtt_client.publish(
+                f"{prefix}/sensor/{client_id}_theme_builder_url/config",
+                json.dumps({
+                    "name":          "Theme Builder URL",
+                    "unique_id":     f"{client_id}_theme_builder_url",
+                    "device":        device,
+                    "availability":  avail,
+                    "state_topic":   self._theme_builder_url_topic(),
+                    "entity_category": "diagnostic",
+                    "icon":          "mdi:web",
                     "has_entity_name": True,
                 }), retain=True)
 
