@@ -258,16 +258,16 @@ Celestial animations are drawn before sun/moon and clouds so meteors appear to f
 probability_per_frame = chance_per_minute / 60 / fps
 ```
 
-At 15 fps (night) with `chance_per_minute: 8`:
+At 90 fps with `chance_per_minute: 8`:
 
 ```
-8 / 60 / 15 = 0.0089  →  ~1 spawn per 113 frames (~7.5 seconds)
+8 / 60 / 90 = 0.0015  →  ~1 spawn per 675 frames (~7.5 seconds)
 ```
 
-At 30 fps (day) you need a higher value for the same visual density:
+At lower FPS, the per-frame probability is higher so the per-minute rate stays the same:
 
 ```
-chance_per_minute: 16  →  16 / 60 / 30 = 0.0089  (same rate as 8/min at night)
+8 / 60 / 30 = 0.0044  →  still ~8 spawns per minute on average
 ```
 
 Typical values:

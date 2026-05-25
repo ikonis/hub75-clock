@@ -167,7 +167,7 @@ DEFAULTS = {
         "late_evening_bg": "#05000F",
     },
     "animation": {
-        "fps":                        15,
+        "fps":                        90,
         "rain_count":                [5, 8],
         "snow_count":                [6, 10],
         "sleet_count":               [6, 10],
@@ -250,9 +250,9 @@ def load_config(config_path: str) -> dict:
     cfg["panel"].setdefault("width", 64)
     cfg["panel"].setdefault("height", 32)
     try:
-        cfg["animation"]["fps"] = max(1, int(cfg["animation"].get("fps", 15)))
+        cfg["animation"]["fps"] = max(1, int(cfg["animation"].get("fps", 90)))
     except Exception:
-        cfg["animation"]["fps"] = 15
+        cfg["animation"]["fps"] = 90
     if "fps_night" in cfg["animation"]:
         try:
             cfg["animation"]["fps_night"] = max(1, int(cfg["animation"]["fps_night"]))
