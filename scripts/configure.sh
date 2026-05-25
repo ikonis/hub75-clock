@@ -239,8 +239,8 @@ colors:
   ice_bg: "#001830"
 
 animation:
-  fps: 15
-  fps_night: 8
+  fps: 90
+  fps_night: 90
   rain_count: [5, 8]
   snow_count: [6, 10]
   sleet_count: [6, 10]

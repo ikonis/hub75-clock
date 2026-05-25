@@ -67,14 +67,16 @@ sensors:
 
 ## Performance Notes
 
-The Pi Zero W is a single-core ARMv6 at 1GHz. The clock runs well at 15fps for normal conditions but may feel sluggish when:
+The Pi Zero W is a single-core ARMv6 at 1GHz. The installer defaults to the C++ runtime on Pi Zero because it has the lowest CPU overhead, but the Python runtime remains available if you want it. Both runtimes now default to 90fps.
+
+Things that can still add load:
 
 - Receiving lots of MQTT messages (gate data, engineering mode)
 - Changing conditions or buckets rapidly
 
 For best performance on Zero W:
 - Keep `engineering_mode` off unless actively tuning
-- Set `animation.fps: 12` instead of 15
+- Use the C++ runtime if the Python runtime feels sluggish
 - Set `sensors.lux_interval: 60` (already default)
 
 ---

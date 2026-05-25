@@ -818,9 +818,9 @@ function render() {
   pixbuf.fill(0);
   drawBackground();
   drawStars();
+  drawShootingStars();
   drawSun();
   drawClouds();
-  drawShootingStars();
   drawCameoFlash();
   drawBanner();
   drawTime();
@@ -859,6 +859,14 @@ function stopAnim() {
 // JSON OUTPUT
 // =====================================================================
 function buildJSON() {
+  const cameoOut = [];
+  if (theme.stars_enabled) cameoOut.push({ name: 'stars' });
+  for (const c of theme.cameos) {
+    if (c.name === 'stars' || c.name === 'clouds') continue;
+    cameoOut.push({ name: c.name, chance_per_minute: c.chance_per_minute });
+  }
+  if (theme.clouds_enabled) cameoOut.push({ name: 'clouds' });
+
   const out = {
     name: theme.name,
     description: theme.description,
@@ -869,12 +877,10 @@ function buildJSON() {
     background_split: theme.background_split,
     background_gradient_direction: theme.background_gradient_direction,
     colors: { ...theme.colors },
-    stars_enabled: theme.stars_enabled,
     sun_enabled: theme.sun_enabled,
-    clouds_enabled: theme.clouds_enabled,
     cloud_density: theme.cloud_density,
     cloud_speed: theme.cloud_speed,
-    cameos: theme.cameos.map(c => ({ name: c.name, chance_per_minute: c.chance_per_minute })),
+    cameos: cameoOut,
     condition_overrides: {}
   };
   for (const [cond, ov] of Object.entries(theme.condition_overrides)) {
@@ -932,6 +938,7 @@ function loadFile(file) {
 }
 
 function applyThemeData(data) {
+  const incomingCameos = Array.isArray(data.cameos) ? data.cameos : [];
   const defaults = {
     name: 'Imported', description: '',
     background_type: 'solid', background_color: '#000820',
@@ -946,13 +953,17 @@ function applyThemeData(data) {
     if (k === 'colors') {
       if (data.colors) Object.assign(theme.colors, data.colors);
     } else if (k === 'cameos') {
-      theme.cameos = Array.isArray(data.cameos) ? data.cameos.map(c => ({...c})) : [];
+      theme.cameos = incomingCameos
+        .filter(c => c.name !== 'stars' && c.name !== 'clouds')
+        .map(c => ({...c}));
     } else if (k === 'condition_overrides') {
       theme.condition_overrides = data.condition_overrides ? JSON.parse(JSON.stringify(data.condition_overrides)) : {};
     } else if (data[k] !== undefined) {
       theme[k] = data[k];
     }
   }
+  theme.stars_enabled = !!data.stars_enabled || incomingCameos.some(c => c.name === 'stars');
+  theme.clouds_enabled = !!data.clouds_enabled || incomingCameos.some(c => c.name === 'clouds');
   // backward compat: shooting_stars_enabled → cameo
   if (data.shooting_stars_enabled && !theme.cameos.some(c => c.name === 'shooting_star')) {
     theme.cameos.push({ name: 'shooting_star', chance_per_minute: 8 });

@@ -29,8 +29,9 @@ class Animation:
     name = "my_animation"          # unique string key — must match what you put in themes
     conditions = []                # informational: intended weather conditions (not enforced at runtime)
     themes = []                    # informational: intended theme names (not enforced at runtime)
-    layer = "foreground"           # "celestial" renders behind weather; "foreground" renders in front
+    layer = "foreground"           # "celestial" draws before sun/moon; "foreground" draws last
     persistent = False             # True = runs every frame without a chance_per_minute roll
+    speed = 1.0                    # optional multiplier for motion/twinkle speed
 
     def __init__(self, width, height, cfg, animator):
         self._w = width
@@ -65,17 +66,17 @@ Drop the file into `/etc/hub75-clock/animations/`. The clock picks it up within 
 
 ---
 
-## Two-slot cameo system
+## Cameo runtime
 
-`CameoManager` maintains two independent animation slots:
+`CameoManager` maintains one one-shot animation slot plus persistent animations:
 
 - **One-shot slot (`_active`)**: The normal cameo slot. Spawned via `chance_per_minute` probability rolls. Only one runs at a time; while one is active, new rolls are skipped. Cleared on condition change.
-- **Persistent slot (`_persistent`)**: Started once when the theme is applied. Runs every frame without any roll. Cleared only on theme change, surviving condition changes. Used for continuously visible effects (e.g. `clouds`).
+- **Persistent animations**: Started once when the theme is applied. They run every frame without any roll and are cleared only on theme change, surviving condition changes. Used for continuously visible effects such as `stars` and `clouds`.
 
 A persistent animation sets `persistent = True` on its class and should return `False` from `is_done()` always. It does not need a `chance_per_minute` entry in the cameos array:
 
 ```json
-"cameos": [{"name": "clouds"}]
+"cameos": [{"name": "stars"}, {"name": "clouds"}]
 ```
 
 ---
@@ -86,10 +87,10 @@ Animations declare their draw layer via the `layer` class attribute:
 
 | Value | When drawn | Examples |
 |---|---|---|
-| `"celestial"` | After stars, before weather particles | `shooting_star`, `meteor`, `comet`, `satellite` |
-| `"foreground"` | After weather particles, on top of rain/snow | `clouds`, `ghost`, `ufo`, all others |
+| `"celestial"` | After background fill, before sun/moon and clouds | `stars`, `shooting_star`, `meteor`, `comet`, `satellite` |
+| `"foreground"` | After clouds, on top of weather particles | `ghost`, `ufo`, all others |
 
-Draw order each frame: background → stars → sun → moon → celestial cameos → foreground cameos (including clouds and precipitation).
+Draw order each frame: background fill -> celestial cameos (`stars`, `shooting_star`, `meteor`, `comet`) -> sun/moon -> clouds and precipitation -> foreground cameos.
 
 ---
 
@@ -115,12 +116,16 @@ An empty list (`[]`) means "suitable for any theme."
 
 Controls where in the draw stack this animation is rendered. Default is `"foreground"`.
 
-- `"celestial"` — rendered after stars and sun/moon but before weather particles. Use for space objects (meteors, shooting stars, satellites, comets) that should appear behind rain and snow.
-- `"foreground"` — rendered after all weather particles. Use for everything else.
+- `"celestial"` — rendered after the background fill and before sun/moon and weather particles. Use for sky objects such as stars, meteors, shooting stars, satellites, and comets.
+- `"foreground"` — rendered after clouds and precipitation. Use for everything else.
 
 ### `persistent` (optional, bool)
 
 Default `False`. When `True`, the animation is instantiated once when the theme is applied and runs every frame without a `chance_per_minute` roll. It is replaced only when the theme changes. Persistent animations should always return `False` from `is_done()`.
+
+### `speed` (optional, float)
+
+Default `1.0`. Built-in animations use this as a simple multiplier for movement, twinkle, or drift speed so timing can be tuned without rewriting update logic.
 
 ---
 
@@ -193,12 +198,13 @@ class Animation:
 
 All of these are installed to `/etc/hub75-clock/animations/` by `install.sh` and updated on `make update`.
 
-### Space / Night (layer: celestial)
+### Space / Night
 
-These animations are drawn behind weather particles so meteors appear to fall through rain.
+Celestial animations are drawn before sun/moon and clouds so meteors appear to fall behind weather. Foreground night animations draw after clouds.
 
 | File | Name | Conditions | Themes | Description |
 |---|---|---|---|---|
+| `stars.py` | `stars` | CLEAR, PARTLYCLOUDY | Night, Late Evening | **Persistent.** Twinkling star field. Add without `chance_per_minute`; rendered in the celestial layer before sun/moon. |
 | `shooting_star.py` | `shooting_star` | CLEAR, PARTLYCLOUDY | Night, Late Evening | Fast diagonal streak with fading tail. Built-in fallback; always registered even if the file is missing. |
 | `ufo.py` | `ufo` | CLEAR, PARTLYCLOUDY | Night, Late Evening | Saucer silhouette drifting across with cycling teal belly lights, glow trail, and occasional tractor beam abduction sequence. |
 | `satellite.py` | `satellite` | CLEAR | Night | ISS-profile cross sprite, slow diagonal pass from top-right to bottom-left. |
@@ -213,6 +219,7 @@ These animations are drawn behind weather particles so meteors appear to fall th
 | `airplane.py` | `airplane` | _(any)_ | Day, Sunrise, Sunset | 8px fuselage + wings + windows, random left/right direction, mirrors sprite to face direction of travel. |
 | `bird_flock.py` | `bird_flock` | _(any)_ | Day | V-formation of 5–7 birds with alternating flap frames. |
 | `butterfly.py` | `butterfly` | CLEAR | Day | Open/closed wing frames every 5 ticks, sine wave vertical drift, orange. |
+| `flutterflies.py` | `flutterflies` | CLEAR | Day | **Persistent.** Small pastel butterfly group with gentle wandering motion. Add without `chance_per_minute`. |
 | `hot_air_balloon.py` | `hot_air_balloon` | CLEAR, PARTLYCLOUDY | Day, Sunrise | 7×10px balloon with ROYGBIV stripes, drifts upward. |
 | `tumbleweed.py` | `tumbleweed` | _(any)_ | Day | 5px circle with rotation transform, slight bounce via `|sin|×1.5`. |
 
@@ -251,16 +258,16 @@ These animations are drawn behind weather particles so meteors appear to fall th
 probability_per_frame = chance_per_minute / 60 / fps
 ```
 
-At 15 fps (night) with `chance_per_minute: 8`:
+At 90 fps with `chance_per_minute: 8`:
 
 ```
-8 / 60 / 15 = 0.0089  →  ~1 spawn per 113 frames (~7.5 seconds)
+8 / 60 / 90 = 0.0015  →  ~1 spawn per 675 frames (~7.5 seconds)
 ```
 
-At 30 fps (day) you need a higher value for the same visual density:
+At lower FPS, the per-frame probability is higher so the per-minute rate stays the same:
 
 ```
-chance_per_minute: 16  →  16 / 60 / 30 = 0.0089  (same rate as 8/min at night)
+8 / 60 / 30 = 0.0044  →  still ~8 spawns per minute on average
 ```
 
 Typical values:
