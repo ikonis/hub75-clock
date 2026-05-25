@@ -21,6 +21,5 @@
   "cameos": [
     {"name": "bird_flock",      "chance_per_minute": 3},
     {"name": "hot_air_balloon", "chance_per_minute": 2}
-  ],
-  "condition_overrides": {}
+  ]
 }

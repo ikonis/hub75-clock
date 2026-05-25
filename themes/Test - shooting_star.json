@@ -15,6 +15,5 @@
   "precipitation": "none",
   "cameos": [
     {"name": "shooting_star", "chance_per_minute": 60}
-  ],
-  "condition_overrides": {}
+  ]
 }

@@ -24,6 +24,5 @@
     {"name": "hot_air_balloon", "chance_per_minute": 1},
     {"name": "butterfly",       "chance_per_minute": 2},
     {"name": "tumbleweed",      "chance_per_minute": 0.5}
-  ],
-  "condition_overrides": {}
+  ]
 }

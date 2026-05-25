@@ -15,6 +15,5 @@
   "precipitation": "none",
   "cameos": [
     {"name": "easter_egg", "chance_per_minute": 60}
-  ],
-  "condition_overrides": {}
+  ]
 }

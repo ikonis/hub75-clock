@@ -15,6 +15,5 @@
   "precipitation": "none",
   "cameos": [
     {"name": "firefly", "chance_per_minute": 0}
-  ],
-  "condition_overrides": {}
+  ]
 }

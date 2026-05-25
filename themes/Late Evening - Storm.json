@@ -21,6 +21,5 @@
   "precipitation": "tstorm",
   "cameos": [
     {"name": "clouds"}
-  ],
-  "condition_overrides": {}
+  ]
 }

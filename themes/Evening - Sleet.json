@@ -21,6 +21,5 @@
   "precipitation": "sleet",
   "cameos": [
     {"name": "clouds"}
-  ],
-  "condition_overrides": {}
+  ]
 }

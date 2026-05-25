@@ -55,10 +55,10 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 .btn:hover{background:var(--border);border-color:var(--border2)}
 .btn-p{background:var(--accent2);border-color:var(--accent);color:#ddf}
 .btn-p:hover{background:var(--accent)}
-.btn-d{padding:2px 7px;font-size:11px;background:transparent;border-color:var(--danger);color:var(--danger)}
+.btn-d{padding:2px 9px;font-size:11px;background:transparent;border-color:var(--danger);color:var(--danger);min-width:24px;text-align:center;flex-shrink:0}
 .btn-d:hover{background:var(--danger);color:#fff}
 .btn-sm{padding:3px 8px;font-size:11px}
-/* List items (cameos / overrides) */
+/* List items (cameos) */
 .li{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:7px 8px;display:flex;flex-direction:column;gap:5px}
 .li-row{display:flex;align-items:center;gap:5px}
 .li-row label{font-size:11px;color:var(--dim);flex-shrink:0}
@@ -68,7 +68,6 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 .li-row .spacer{flex:1}
 .add-row{display:flex;gap:5px;align-items:center;margin-top:2px}
 .add-row select{background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:var(--r);font:11px monospace;outline:none}
-.ov-fields{margin-top:5px;padding:6px 0 0 8px;border-left:2px solid var(--border);display:flex;flex-direction:column;gap:4px}
 /* Preview panel */
 .pv{display:flex;flex-direction:column;overflow:hidden;padding:12px;gap:10px;background:var(--bg)}
 .matrix-wrap{display:flex;justify-content:center;flex-shrink:0}
@@ -240,26 +239,6 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
       </div>
     </div>
   </div>
-  <!-- Condition Overrides -->
-  <div class="sec">
-    <div class="sec-hdr">Condition Overrides</div>
-    <div class="sec-body">
-      <div id="override-list"></div>
-      <div class="add-row">
-        <select id="override-add-sel">
-          <option value="CLEAR">CLEAR</option>
-          <option value="PARTLYCLOUDY">PARTLYCLOUDY</option>
-          <option value="CLOUDY">CLOUDY</option>
-          <option value="RAIN">RAIN</option>
-          <option value="SNOW">SNOW</option>
-          <option value="TSTORM">TSTORM</option>
-          <option value="SLEET">SLEET</option>
-          <option value="ICE">ICE</option>
-        </select>
-        <button class="btn btn-sm" id="override-add-btn">+ Add Override</button>
-      </div>
-    </div>
-  </div>
 </div>
 <!-- ===== RIGHT PREVIEW ===== -->
 <div class="pv">
@@ -326,7 +305,7 @@ const theme = {
   colors: { time: '#F0F0F0', low_temp: '#00CCFF', high_temp: '#FF8C00', condition: '#909090' },
   stars_enabled: false, sun_enabled: true, moon_enabled: false, clouds_enabled: false,
   cloud_density: 'medium', cloud_speed: 'medium',
-  cameos: [], condition_overrides: {}
+  cameos: []
 };
 
 const preview = { condition: 'CLEAR', nightMode: false, lowTemp: 68, highTemp: 88, condText: 'CLEAR', animate: false };
@@ -539,14 +518,12 @@ function drawStr12x24(text, sx, sy, r, g, b) {
 // BACKGROUND RENDERING
 // =====================================================================
 function drawBackground() {
-  const cond = preview.condition;
-  const ov = (theme.condition_overrides[cond]) || {};
-  const bgtype = ov.background_type || theme.background_type;
-  const bgcol  = ov.background_color || theme.background_color;
-  const bgtop  = ov.background_top || theme.background_top;
-  const bgbot  = ov.background_bottom || theme.background_bottom;
-  const bgspl  = ov.background_split !== undefined ? ov.background_split : theme.background_split;
-  const bgdir  = ov.background_gradient_direction || theme.background_gradient_direction;
+  const bgtype = theme.background_type;
+  const bgcol  = theme.background_color;
+  const bgtop  = theme.background_top;
+  const bgbot  = theme.background_bottom;
+  const bgspl  = theme.background_split;
+  const bgdir  = theme.background_gradient_direction;
 
   if (bgtype === 'solid') {
     const [r,g,b] = hex2rgb(bgcol);
@@ -909,12 +886,8 @@ function buildThemeObject() {
     moon_enabled: theme.moon_enabled,
     cloud_density: theme.cloud_density,
     cloud_speed: theme.cloud_speed,
-    cameos: cameoOut,
-    condition_overrides: {}
+    cameos: cameoOut
   };
-  for (const [cond, ov] of Object.entries(theme.condition_overrides)) {
-    out.condition_overrides[cond] = { ...ov };
-  }
   return out;
 }
 
@@ -1126,7 +1099,7 @@ function applyThemeData(data) {
     background_split: 0.5, background_gradient_direction: 'sunset',
     colors: {}, stars_enabled: false, sun_enabled: true, moon_enabled: false,
     clouds_enabled: false, cloud_density: 'medium', cloud_speed: 'medium',
-    cameos: [], condition_overrides: {}
+    cameos: []
   };
   Object.assign(theme, defaults);
   for (const k of Object.keys(defaults)) {
@@ -1136,8 +1109,6 @@ function applyThemeData(data) {
       theme.cameos = incomingCameos
         .filter(c => c.name !== 'stars' && c.name !== 'clouds')
         .map(c => ({...c}));
-    } else if (k === 'condition_overrides') {
-      theme.condition_overrides = data.condition_overrides ? JSON.parse(JSON.stringify(data.condition_overrides)) : {};
     } else if (data[k] !== undefined) {
       theme[k] = data[k];
     }
@@ -1179,7 +1150,6 @@ function syncFormToTheme() {
   showHideBgGroups();
   showHideCloudOptions();
   buildCameoList();
-  buildOverrideList();
 }
 
 function setVal(id, val) {
@@ -1259,119 +1229,6 @@ function cameoFieldChange(e) {
   if (field === 'del') { theme.cameos.splice(idx, 1); buildCameoList(); }
   else if (field === 'name') { theme.cameos[idx].name = e.target.value; }
   else if (field === 'cpm') { theme.cameos[idx].chance_per_minute = parseFloat(e.target.value) || 8; }
-  render(); updateJSON();
-}
-
-// =====================================================================
-// CONDITION OVERRIDE LIST
-// =====================================================================
-function buildOverrideList() {
-  const list = document.getElementById('override-list');
-  list.innerHTML = '';
-  for (const [cond, ov] of Object.entries(theme.condition_overrides)) {
-    const li = document.createElement('div');
-    li.className = 'li';
-    li.setAttribute('data-oc', cond);
-
-    const bgtype = ov.background_type || 'solid';
-    const isSolid = bgtype === 'solid';
-
-    li.innerHTML = `
-      <div class="li-row">
-        <strong style="font-size:12px;color:var(--text)">${cond}</strong>
-        <span class="spacer"></span>
-        <button class="btn btn-d" data-oc="${cond}" data-of="del">x</button>
-      </div>
-      <div class="ov-fields">
-        <div class="li-row">
-          <label>Type</label>
-          <select data-oc="${cond}" data-of="background_type">
-            <option value="solid"${isSolid?' selected':''}>solid</option>
-            <option value="gradient"${!isSolid?' selected':''}>gradient</option>
-          </select>
-        </div>
-        <div class="li-row ov-solid"${isSolid?'':' style="display:none"'}>
-          <label>Color</label>
-          <input type="color" data-oc="${cond}" data-of="background_color" value="${normalizeHex(ov.background_color||'#020005')}">
-          <input type="text" data-oc="${cond}" data-of="background_color_hex" value="${normalizeHex(ov.background_color||'#020005')}" style="width:74px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:3px;font:11px monospace;outline:none">
-        </div>
-        <div class="ov-grad"${!isSolid?'':' style="display:none"'}>
-          <div class="li-row">
-            <label>Top</label>
-            <input type="color" data-oc="${cond}" data-of="background_top" value="${normalizeHex(ov.background_top||'#0F0019')}">
-            <input type="text" data-oc="${cond}" data-of="background_top_hex" value="${normalizeHex(ov.background_top||'#0F0019')}" style="width:74px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:3px;font:11px monospace;outline:none">
-          </div>
-          <div class="li-row">
-            <label>Bottom</label>
-            <input type="color" data-oc="${cond}" data-of="background_bottom" value="${normalizeHex(ov.background_bottom||'#3C1400')}">
-            <input type="text" data-oc="${cond}" data-of="background_bottom_hex" value="${normalizeHex(ov.background_bottom||'#3C1400')}" style="width:74px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:3px;font:11px monospace;outline:none">
-          </div>
-          <div class="li-row">
-            <label>Split</label>
-            <input type="range" data-oc="${cond}" data-of="background_split" min="0" max="1" step="0.01" value="${ov.background_split !== undefined ? ov.background_split : 0.5}" style="flex:1;accent-color:var(--accent)">
-            <span class="rv ov-split-val">${(ov.background_split !== undefined ? ov.background_split : 0.5).toFixed(2)}</span>
-          </div>
-          <div class="li-row">
-            <label>Direction</label>
-            <select data-oc="${cond}" data-of="background_gradient_direction">
-              <option value="sunset"${(ov.background_gradient_direction||'sunset')==='sunset'?' selected':''}>sunset</option>
-              <option value="sunrise"${ov.background_gradient_direction==='sunrise'?' selected':''}>sunrise</option>
-            </select>
-          </div>
-        </div>
-      </div>`;
-    list.appendChild(li);
-  }
-
-  list.querySelectorAll('[data-oc][data-of="del"]').forEach(el => {
-    el.addEventListener('click', overrideFieldChange);
-  });
-  list.querySelectorAll('[data-oc][data-of]:not([data-of="del"])').forEach(el => {
-    el.addEventListener('change', overrideFieldChange);
-    el.addEventListener('input', overrideFieldChange);
-  });
-}
-
-function overrideFieldChange(e) {
-  const cond = e.target.dataset.oc;
-  const field = e.target.dataset.of;
-  const ov = theme.condition_overrides[cond];
-  if (!ov) return;
-
-  if (field === 'del') {
-    delete theme.condition_overrides[cond];
-    buildOverrideList();
-    render(); updateJSON();
-    return;
-  }
-
-  if (field === 'background_type') {
-    ov.background_type = e.target.value;
-    const li = e.target.closest('.li');
-    const isSolid = e.target.value === 'solid';
-    li.querySelectorAll('.ov-solid').forEach(el => el.style.display = isSolid ? '' : 'none');
-    li.querySelectorAll('.ov-grad').forEach(el => el.style.display = isSolid ? 'none' : '');
-  } else if (field.endsWith('_hex')) {
-    const realField = field.replace('_hex','');
-    if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
-      ov[realField] = e.target.value;
-      // sync color picker
-      const pick = e.target.closest('.li-row').querySelector(`[data-of="${realField}"]`);
-      if (pick && pick.type === 'color') pick.value = e.target.value;
-    }
-  } else if (e.target.type === 'color') {
-    ov[field] = e.target.value;
-    // sync hex input
-    const hexEl = e.target.closest('.li-row').querySelector(`[data-of="${field}_hex"]`);
-    if (hexEl) hexEl.value = e.target.value;
-  } else if (field === 'background_split') {
-    ov.background_split = parseFloat(e.target.value);
-    const valEl = e.target.closest('.ov-grad').querySelector('.ov-split-val');
-    if (valEl) valEl.textContent = ov.background_split.toFixed(2);
-  } else if (field === 'background_gradient_direction') {
-    ov.background_gradient_direction = e.target.value;
-  }
-
   render(); updateJSON();
 }
 
@@ -1457,15 +1314,6 @@ function wireControls() {
     buildCameoList(); render(); updateJSON();
   });
 
-  // Overrides
-  document.getElementById('override-add-btn').addEventListener('click', () => {
-    const cond = document.getElementById('override-add-sel').value;
-    if (!theme.condition_overrides[cond]) {
-      theme.condition_overrides[cond] = { background_type: 'solid', background_color: '#020005' };
-      buildOverrideList(); render(); updateJSON();
-    }
-  });
-
   // Preview controls
   document.getElementById('p-cond').addEventListener('change', e => {
     preview.condition = e.target.value;
@@ -1526,7 +1374,6 @@ function init() {
   showHideBgGroups();
   showHideCloudOptions();
   buildCameoList();
-  buildOverrideList();
   initStars();
   initClouds();
   render();

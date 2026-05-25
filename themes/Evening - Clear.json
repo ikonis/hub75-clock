@@ -21,6 +21,5 @@
   "cameos": [
     {"name": "airplane",        "chance_per_minute": 1},
     {"name": "hot_air_balloon", "chance_per_minute": 1}
-  ],
-  "condition_overrides": {}
+  ]
 }

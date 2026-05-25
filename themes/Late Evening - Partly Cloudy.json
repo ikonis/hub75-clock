@@ -24,6 +24,5 @@
     {"name": "clouds"},
     {"name": "shooting_star", "chance_per_minute": 4},
     {"name": "firefly",       "chance_per_minute": 2}
-  ],
-  "condition_overrides": {}
+  ]
 }
