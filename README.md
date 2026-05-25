@@ -183,8 +183,16 @@ ls -l /dev/serial0         # must point to ttyAMA0
 
 ### 5. Test the clock
 
+Python runtime:
+
 ```bash
 sudo python3 /opt/hub75-clock/hub75_clock.py
+```
+
+C++ runtime:
+
+```bash
+sudo /opt/hub75-clock/hub75_clock /etc/hub75-clock/config.yaml
 ```
 
 Root required for matrix DMA/PWM. Panel should light up with time. Banner shows `--/-- CLEAR` until HA pushes weather.
@@ -207,25 +215,26 @@ make status
 Run once on a fresh Pi. Does everything in sequence:
 
 1. Updates apt package lists
-2. Installs system packages (git, build-essential, python3-dev, python3-pip, python3-pillow, cython3, i2c-tools, wget, and others)
+2. Installs system packages for both runtimes (git, build-essential, Python headers/tools, CMake, Mosquitto, yaml-cpp, gpiod, and others)
 3. Installs Python packages (paho-mqtt, PyYAML, pyserial, RPi.GPIO, adafruit-circuitpython-veml7700, adafruit-blinka, watchdog)
-4. Builds and installs `rpi-rgb-led-matrix` with Python bindings. Pi 4: installs a pinned commit via pip. Pi Zero W: clones, checks out commit `076c54b`, and builds with `make build-python` / `make install-python`. See `docs/pi-zero-w.md`.
-5. Downloads fonts (rpi-rgb-led-matrix bundled BDF fonts + Spleen 12x24/16x32) to `~/hub75-fonts`
-6. Enables I2C and UART hardware; disables serial console; disables Bluetooth; blacklists `snd_bcm2835`
-7. Adds user to `dialout`, `gpio`, `i2c` groups
-8. Installs clock files (`hub75_clock.py`, `theme_loader.py`, `test_sensors.py`, `test_display.py`) to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only; copies all built-in animation `.py` files to `/etc/hub75-clock/animations/`
-9. Installs and enables the `hub75-clock` systemd service
-10. Installs `update.sh` to `~/update-clock.sh`
-11. Launches `scripts/configure.sh` to write your `config.yaml`
-12. Prompts to reboot
+4. Lets you choose the clock runtime: Python is the suggested default for multicore Pis; C++ is suggested for Pi Zero / lowest CPU overhead
+5. Builds and installs `rpi-rgb-led-matrix` with Python bindings. Pi 4: installs a pinned commit via pip. Pi Zero W: clones, checks out commit `076c54b`, and builds with `make build-python` / `make install-python`. The C++ runtime also builds the matrix C++ library. See `docs/pi-zero-w.md`.
+6. Downloads fonts (rpi-rgb-led-matrix bundled BDF fonts + Spleen 12x24/16x32) to `~/hub75-fonts`
+7. Enables I2C and UART hardware; disables serial console; disables Bluetooth; blacklists `snd_bcm2835`
+8. Adds user to `dialout`, `gpio`, `i2c` groups
+9. Installs the selected runtime to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only; copies Python animation `.py` files when using the Python runtime
+10. Installs and enables the `hub75-clock` systemd service for the selected runtime
+11. Installs the matching update script to `~/update-clock.sh`
+12. Launches `scripts/configure.sh` to write your `config.yaml`
+13. Prompts to reboot
 
 ```bash
 bash install.sh
 ```
 
-### update.sh
+### update scripts
 
-Pulls the latest code from GitHub, copies updated files to `/opt/hub75-clock/`, and restarts the service. Installed to `~/update-clock.sh` by `install.sh` so it works from any directory.
+Pulls the latest code from GitHub, copies updated files to `/opt/hub75-clock/`, and restarts the service. `install.sh` installs either `scripts/update-clock-python.sh` or `scripts/update-clock-cpp.sh` as `~/update-clock.sh`, matching the runtime you selected.
 
 ```bash
 make update

@@ -4,7 +4,6 @@
 
 set -euo pipefail
 
-BRANCH="${BRANCH:-feature/cpp-port}"
 THEME_VARIANT="${THEME_VARIANT:-living-room}"
 
 CLOCK_DIR="${CLOCK_DIR:-/opt/hub75-clock}"
@@ -24,6 +23,8 @@ if [ ! -d "$REPO_DIR/.git" ]; then
     echo "[update] repo not found: $REPO_DIR" >&2
     exit 1
 fi
+
+BRANCH="${BRANCH:-$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)}"
 
 echo "[update] mode=cpp branch=$BRANCH repo=$REPO_DIR"
 

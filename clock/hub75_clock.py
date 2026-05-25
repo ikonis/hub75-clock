@@ -167,7 +167,7 @@ DEFAULTS = {
         "late_evening_bg": "#05000F",
     },
     "animation": {
-        "fps":                        15,
+        "fps":                        90,
         "rain_count":                [5, 8],
         "snow_count":                [6, 10],
         "sleet_count":               [6, 10],

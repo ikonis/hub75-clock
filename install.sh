@@ -17,6 +17,7 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 SERVICE_NAME="hub75-clock"
 FONTS_DIR="$HOME/rpi-rgb-led-matrix/fonts"
 USERNAME=$(whoami)
+THEME_VARIANT="${THEME_VARIANT:-living-room}"
 
 echo ""
 echo "============================================"
@@ -49,7 +50,8 @@ sudo apt update -q
 echo "[2/11] Installing system packages..."
 sudo apt-get install -y git build-essential python3-dev python3-pip \
     python3-pillow cython3 libgraphicsmagick++-dev libwebp-dev \
-    i2c-tools wget python3-yaml
+    i2c-tools wget python3-yaml rsync cmake pkg-config \
+    libyaml-cpp-dev nlohmann-json3-dev libmosquitto-dev libgpiod-dev gpiod
 
 echo "[3/11] Installing Python packages..."
 sudo pip3 install paho-mqtt --break-system-packages
@@ -65,6 +67,26 @@ if echo "$PI_MODEL" | grep -qi "Zero W"; then
     IS_ZERO_W=true
     echo "      Detected: Raspberry Pi Zero W — using legacy build method"
 fi
+
+DEFAULT_RUNTIME="python"
+if [ "$IS_ZERO_W" = true ]; then
+    DEFAULT_RUNTIME="cpp"
+fi
+echo ""
+echo "Clock runtime:"
+echo "  python  - recommended default for multicore Pis"
+echo "  cpp     - recommended for Pi Zero / lowest CPU overhead"
+read -p "Install runtime [python/cpp] [$DEFAULT_RUNTIME]: " CLOCK_RUNTIME
+CLOCK_RUNTIME="${CLOCK_RUNTIME:-$DEFAULT_RUNTIME}"
+case "$CLOCK_RUNTIME" in
+    python|py) CLOCK_RUNTIME="python" ;;
+    cpp|c++|C++|CPP) CLOCK_RUNTIME="cpp" ;;
+    *)
+        echo "[error] Unknown runtime: $CLOCK_RUNTIME"
+        exit 1
+        ;;
+esac
+echo "      Selected runtime: $CLOCK_RUNTIME"
 
 echo "[4/11] Building rpi-rgb-led-matrix..."
 if [ ! -d "$HOME/rpi-rgb-led-matrix" ]; then
@@ -97,6 +119,13 @@ else
     sudo pip3 install --break-system-packages \
         "git+https://github.com/hzeller/rpi-rgb-led-matrix@86df760" \
         || { echo "[error] rpi-rgb-led-matrix install failed"; exit 1; }
+fi
+if [ "$CLOCK_RUNTIME" = "cpp" ]; then
+    cd "$HOME/rpi-rgb-led-matrix"
+    if [ "$IS_ZERO_W" != true ]; then
+        git checkout 86df760
+    fi
+    make -j"$(nproc)" || { echo "[error] rpi-rgb-led-matrix C++ build failed"; exit 1; }
 fi
 cd "$REPO_DIR"
 python3 -c "from rgbmatrix import RGBMatrix, RGBMatrixOptions; print('      rgbmatrix OK')" \
@@ -161,25 +190,41 @@ sudo chmod 755 /home/$USERNAME
 sudo chmod 755 "$CONFIG_DIR"
 sudo chmod 755 "$CONFIG_DIR/themes"
 sudo chmod 755 "$CONFIG_DIR/animations"
-sudo cp "$REPO_DIR/clock/hub75_clock.py" "$CLOCK_DIR/"
-sudo cp "$REPO_DIR/clock/test_sensors.py" "$CLOCK_DIR/"
-sudo cp "$REPO_DIR/clock/theme_loader.py" "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/scripts/test_display.py"  "$CLOCK_DIR/"
 # Copy built-in themes only if the themes dir is empty (preserve user edits)
 if [ -z "$(ls -A "$CONFIG_DIR/themes" 2>/dev/null)" ]; then
-    sudo cp "$REPO_DIR/themes/"*.json "$CONFIG_DIR/themes/"
+    if [ -d "$REPO_DIR/themes/$THEME_VARIANT" ]; then
+        sudo cp "$REPO_DIR/themes/$THEME_VARIANT/"*.json "$CONFIG_DIR/themes/"
+    else
+        sudo cp "$REPO_DIR/themes/"*.json "$CONFIG_DIR/themes/"
+    fi
     echo "      Built-in themes installed to $CONFIG_DIR/themes/"
 else
     echo "      Themes dir already has files — skipping built-in theme copy."
 fi
-# Copy animation files (always overwrite — user-custom animations go in the same dir)
-sudo cp "$REPO_DIR/animations/"*.py "$CONFIG_DIR/animations/"
-sudo chmod 644 "$CONFIG_DIR/animations/"*.py
-echo "      Animations installed to $CONFIG_DIR/animations/"
+if [ "$CLOCK_RUNTIME" = "python" ]; then
+    sudo cp "$REPO_DIR/clock/hub75_clock.py" "$CLOCK_DIR/"
+    sudo cp "$REPO_DIR/clock/test_sensors.py" "$CLOCK_DIR/"
+    sudo cp "$REPO_DIR/clock/theme_loader.py" "$CLOCK_DIR/"
+    # Copy animation files (always overwrite — user-custom animations go in the same dir)
+    sudo cp "$REPO_DIR/animations/"*.py "$CONFIG_DIR/animations/"
+    sudo chmod 644 "$CONFIG_DIR/animations/"*.py
+    echo "      Python clock and animations installed."
+else
+    cmake -S "$REPO_DIR/clock-cpp" -B "$REPO_DIR/clock-cpp/build"
+    cmake --build "$REPO_DIR/clock-cpp/build"
+    sudo install -m 0755 "$REPO_DIR/clock-cpp/build/hub75_clock" "$CLOCK_DIR/hub75_clock"
+    echo "      C++ clock binary installed."
+fi
 sudo chown -R root:root "$CLOCK_DIR"
 echo "      Installed to $CLOCK_DIR"
 
 echo "[9/11] Installing systemd service..."
+if [ "$CLOCK_RUNTIME" = "python" ]; then
+    EXEC_START="/usr/bin/python3 $CLOCK_DIR/hub75_clock.py"
+else
+    EXEC_START="$CLOCK_DIR/hub75_clock $CONFIG_DIR/config.yaml"
+fi
 sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null << EOF
 [Unit]
 Description=HUB75 Smart Clock
@@ -191,7 +236,7 @@ Type=simple
 User=root
 WorkingDirectory=$CLOCK_DIR
 Environment="CLOCK_CONFIG=$CONFIG_DIR/config.yaml"
-ExecStart=/usr/bin/python3 $CLOCK_DIR/hub75_clock.py
+ExecStart=$EXEC_START
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
@@ -206,7 +251,11 @@ sudo systemctl enable $SERVICE_NAME
 echo "      Service installed and enabled."
 
 echo "[10/11] Installing update script..."
-cp "$REPO_DIR/update.sh" "$HOME/update-clock.sh"
+if [ "$CLOCK_RUNTIME" = "python" ]; then
+    cp "$REPO_DIR/scripts/update-clock-python.sh" "$HOME/update-clock.sh"
+else
+    cp "$REPO_DIR/scripts/update-clock-cpp.sh" "$HOME/update-clock.sh"
+fi
 chmod +x "$HOME/update-clock.sh"
 
 echo "[11/11] Writing initial configuration..."

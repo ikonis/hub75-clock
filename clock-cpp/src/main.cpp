@@ -114,7 +114,7 @@ static json defaults() {
             {"late_evening_bg", "#05000F"},
         }},
         {"animation", {
-            {"fps",                        15},
+            {"fps",                        90},
             {"rain_count",                 {5, 8}},
             {"snow_count",                 {6, 10}},
             {"sleet_count",                {6, 10}},
@@ -194,9 +194,9 @@ static json loadConfig(const std::string& path) {
     json cfg = defaults();
     if (!fs::exists(path)) {
         std::cerr << "[config] " << path << " not found — using defaults\n";
-        cfg["animation"]["fps"] = std::max(1, cfg["animation"].value("fps", 15));
+        cfg["animation"]["fps"] = std::max(1, cfg["animation"].value("fps", 90));
         if (cfg["animation"].contains("fps_night"))
-            cfg["animation"]["fps_night"] = std::max(1, cfg["animation"].value("fps_night", 15));
+            cfg["animation"]["fps_night"] = std::max(1, cfg["animation"].value("fps_night", 90));
         return cfg;
     }
     try {
@@ -207,16 +207,16 @@ static json loadConfig(const std::string& path) {
     } catch (const std::exception& e) {
         std::cerr << "[config] Failed to parse " << path << ": " << e.what() << "\n";
     }
-    cfg["animation"]["fps"] = std::max(1, cfg["animation"].value("fps", 15));
+    cfg["animation"]["fps"] = std::max(1, cfg["animation"].value("fps", 90));
     if (cfg["animation"].contains("fps_night"))
-        cfg["animation"]["fps_night"] = std::max(1, cfg["animation"].value("fps_night", 15));
+        cfg["animation"]["fps_night"] = std::max(1, cfg["animation"].value("fps_night", 90));
     return cfg;
 }
 
 // ── Signal handling ───────────────────────────────────────────────────────────
 
 static std::atomic<bool> g_running{true};
-static std::atomic<int>  g_fps{15};
+static std::atomic<int>  g_fps{90};
 
 static void onSignal(int) { g_running = false; }
 
@@ -577,7 +577,7 @@ static void mqttOnMessage(mosquitto* mosq, void* obj,
                                   int(bStr.size()), bStr.c_str(), 0, 1);
             }
             if (payload.contains("fps")) {
-                int f = std::max(1, std::min(60, payload["fps"].get<int>()));
+                int f = std::max(1, std::min(120, payload["fps"].get<int>()));
                 (*ctx->cfg)["animation"]["fps"] = f;
                 g_fps.store(f);
             }
@@ -806,7 +806,7 @@ int main(int argc, char* argv[]) {
 
     // ── Render loop ───────────────────────────────────────────────────────
     auto* canvas = matrix->CreateFrameCanvas();
-    g_fps.store(std::max(1, cfg["animation"].value("fps", 15)));
+    g_fps.store(std::max(1, cfg["animation"].value("fps", 90)));
 
     while (g_running) {
         auto t0      = std::chrono::steady_clock::now();

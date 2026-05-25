@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # ── rpi-rgb-led-matrix ────────────────────────────────────────────────────────
-set(RGB_MATRIX_DIR /home/ikonis/rpi-rgb-led-matrix)
+set(RGB_MATRIX_DIR "$ENV{HOME}/rpi-rgb-led-matrix" CACHE PATH "Path to rpi-rgb-led-matrix checkout")
 
 add_library(rgb_matrix STATIC IMPORTED)
 set_target_properties(rgb_matrix PROPERTIES

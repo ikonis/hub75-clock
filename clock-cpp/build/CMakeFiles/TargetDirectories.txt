@@ -1,7 +1,0 @@
-/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles/hub75_clock.dir
-/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles/edit_cache.dir
-/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles/rebuild_cache.dir
-/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles/list_install_components.dir
-/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles/install.dir
-/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles/install/local.dir
-/home/ikonis/hub75-clock/clock-cpp/build/CMakeFiles/install/strip.dir
