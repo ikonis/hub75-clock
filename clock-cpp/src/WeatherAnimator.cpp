@@ -144,6 +144,65 @@ void WeatherAnimator::_drawBackground(rgb_matrix::FrameCanvas* canvas) {
 // _drawCondition() handles standalone condition overlays that aren't
 // attached to cloud bodies — currently ICE crack lines.
 
+std::array<int, 3> WeatherAnimator::_backgroundColorAt(int y) const {
+    if (!currentTheme) {
+        return resolveColor(parseColorValue(
+            cfg.value("/colors/sky_day"_json_pointer, nlohmann::json("#000820"))));
+    }
+
+    std::string bgType   = currentTheme->backgroundType;
+    std::string bgColor  = currentTheme->backgroundColor;
+    std::string bgTop    = currentTheme->backgroundTop;
+    std::string bgBottom = currentTheme->backgroundBottom;
+    float       bgSplit  = currentTheme->backgroundSplit;
+    std::string bgDir    = currentTheme->backgroundGradientDirection;
+
+    auto ovIt = currentTheme->conditionOverrides.find(condition);
+    if (ovIt != currentTheme->conditionOverrides.end()) {
+        const auto& ov = ovIt->second;
+        if (ov.contains("background_type"))               bgType   = ov["background_type"].get<std::string>();
+        if (ov.contains("background_color"))              bgColor  = ov["background_color"].get<std::string>();
+        if (ov.contains("background_top"))                bgTop    = ov["background_top"].get<std::string>();
+        if (ov.contains("background_bottom"))             bgBottom = ov["background_bottom"].get<std::string>();
+        if (ov.contains("background_split"))              bgSplit  = ov["background_split"].get<float>();
+        if (ov.contains("background_gradient_direction")) bgDir    = ov["background_gradient_direction"].get<std::string>();
+    }
+
+    if (bgType == "solid") {
+        return resolveColor(parseColorValue(nlohmann::json(bgColor)));
+    }
+    if (bgType != "gradient") {
+        return {0, 0, 0};
+    }
+
+    auto topCol = resolveColor(parseColorValue(nlohmann::json(bgTop)));
+    auto botCol = resolveColor(parseColorValue(nlohmann::json(bgBottom)));
+    int zoneH = animBottom - animTop;
+    int splitY = animTop + static_cast<int>(zoneH * bgSplit);
+
+    auto blend = [](const std::array<int, 3>& a, const std::array<int, 3>& b, float t) {
+        return std::array<int, 3>{
+            int(a[0] + (b[0] - a[0]) * t),
+            int(a[1] + (b[1] - a[1]) * t),
+            int(a[2] + (b[2] - a[2]) * t),
+        };
+    };
+
+    if (bgDir == "sunrise") {
+        if (y <= splitY) {
+            int span = splitY - animTop;
+            float t = (span > 0) ? float(y - animTop) / span : 1.0f;
+            return blend(topCol, botCol, t);
+        }
+        return botCol;
+    }
+
+    if (y < splitY) return topCol;
+    int span = animBottom - splitY;
+    float t = (span > 0) ? float(y - splitY) / span : 1.0f;
+    return blend(topCol, botCol, t);
+}
+
 void WeatherAnimator::_drawCondition(rgb_matrix::FrameCanvas* canvas) {
     if (condition == "ICE") {
         // Render ice crack lines seeded deterministically from the frame
@@ -198,16 +257,8 @@ void WeatherAnimator::_drawSun(rgb_matrix::FrameCanvas* canvas) {
     constexpr int RADIUS      = 12;
     constexpr int GLOW_RADIUS = 20;
 
-    // Sky color for glow blend — prefer theme solid background, else sky_day.
-    std::array<int, 3> sky = {0, 0, 8};
-    if (currentTheme && currentTheme->backgroundType == "solid") {
-        sky = resolveColor(parseColorValue(nlohmann::json(currentTheme->backgroundColor)));
-    } else {
-        sky = resolveColor(parseColorValue(
-            cfg.value("/colors/sky_day"_json_pointer, nlohmann::json("#000820"))));
-    }
-
     for (int y = oy; y <= oy + GLOW_RADIUS; ++y) {
+        auto sky = _backgroundColorAt(y);
         for (int x = ox - GLOW_RADIUS; x <= ox; ++x) {
             if (x < 0 || x >= width || y < animTop || y > animBottom) continue;
             float dist = std::sqrt(float((ox - x) * (ox - x) + (y - oy) * (y - oy)));
@@ -233,17 +284,13 @@ void WeatherAnimator::_drawMoon(rgb_matrix::FrameCanvas* canvas) {
     constexpr int RADIUS = 3;
     constexpr int GLOW_R = 5;
 
-    std::array<int, 3> sky = {0, 0, 8};
-    if (currentTheme && currentTheme->backgroundType == "solid") {
-        sky = resolveColor(parseColorValue(nlohmann::json(currentTheme->backgroundColor)));
-    }
-
     // Glow
     for (int dy = -GLOW_R; dy <= GLOW_R; ++dy) {
         for (int dx = -GLOW_R; dx <= GLOW_R; ++dx) {
             float dist = std::sqrt(float(dx * dx + dy * dy));
             if (dist > RADIUS && dist <= GLOW_R) {
                 float fade = 1.0f - (dist - RADIUS) / (GLOW_R - RADIUS);
+                auto sky = _backgroundColorAt(cy + dy);
                 int r = int(200 * fade * 0.4f + sky[0] * (1.0f - fade * 0.4f));
                 int g = int(200 * fade * 0.4f + sky[1] * (1.0f - fade * 0.4f));
                 int b = int(160 * fade * 0.3f + sky[2] * (1.0f - fade * 0.3f));

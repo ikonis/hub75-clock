@@ -51,5 +51,6 @@ private:
     void _drawSun(rgb_matrix::FrameCanvas* canvas);
     void _drawMoon(rgb_matrix::FrameCanvas* canvas);
 
+    std::array<int, 3> _backgroundColorAt(int y) const;
     std::array<int, 3> _resolveColor(const std::string& key) const;
 };
