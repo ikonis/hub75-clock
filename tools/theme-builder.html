@@ -94,6 +94,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     <select id="server-theme-select" class="server-only"></select>
     <button class="btn server-only" id="btn-server-load">Load</button>
     <button class="btn btn-p server-only" id="btn-server-save">Save</button>
+    <button class="btn server-only" id="btn-server-save-as">Save As</button>
     <span id="server-status" class="server-only"></span>
     <label class="btn">
       <input type="file" id="file-load" accept=".json" style="display:none"> Load JSON
@@ -907,6 +908,12 @@ function themeFileName() {
   return base.replace(/[<>:"/\\|?*\x00-\x1f]+/g, '_') + '.json';
 }
 
+function normalizeThemeFileName(name) {
+  const cleaned = (name || '').trim().replace(/[<>:"/\\|?*\x00-\x1f]+/g, '_');
+  if (!cleaned) return '';
+  return cleaned.toLowerCase().endsWith('.json') ? cleaned : cleaned + '.json';
+}
+
 function setServerStatus(msg) {
   const el = document.getElementById('server-status');
   if (el) el.textContent = msg;
@@ -979,6 +986,20 @@ async function saveServerTheme() {
     setServerStatus('Save failed');
     alert('Save failed: ' + err.message);
   }
+}
+
+async function saveServerThemeAs() {
+  if (!serverMode) return;
+  const defaultName = currentThemeFile || themeFileName();
+  const entered = prompt('Save theme as:', defaultName);
+  if (entered === null) return;
+  const file = normalizeThemeFileName(entered);
+  if (!file) {
+    alert('Please enter a theme filename.');
+    return;
+  }
+  currentThemeFile = file;
+  await saveServerTheme();
 }
 
 function updateJSON() {
@@ -1402,6 +1423,7 @@ function wireControls() {
   // Export / copy
   document.getElementById('btn-server-load').addEventListener('click', () => loadServerTheme());
   document.getElementById('btn-server-save').addEventListener('click', saveServerTheme);
+  document.getElementById('btn-server-save-as').addEventListener('click', saveServerThemeAs);
   document.getElementById('server-theme-select').addEventListener('change', e => {
     currentThemeFile = e.target.value;
   });
