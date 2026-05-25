@@ -62,15 +62,9 @@ def push_theme(user, host, themes_dir, path, restart):
     require_tool("ssh")
     dest = remote(user, host)
     remote_theme = themes_dir + "/" + path.name
+    remote_tmp = f"/tmp/hub75-theme-upload-{os.getpid()}.json"
 
-    direct = run_cmd(["scp", str(path), f"{dest}:{shlex.quote(remote_theme)}"], check=False)
-    if direct.returncode == 0:
-        if restart:
-            run_cmd(["ssh", dest, "sudo systemctl restart hub75-clock"])
-        return
-
-    remote_tmp = f"/tmp/hub75-theme-{path.name}"
-    run_cmd(["scp", str(path), f"{dest}:{shlex.quote(remote_tmp)}"])
+    run_cmd(["scp", str(path), f"{dest}:{remote_tmp}"])
 
     install_cmd = (
         "sudo install -m 0644 "
@@ -78,10 +72,10 @@ def push_theme(user, host, themes_dir, path, restart):
         f"{shlex.quote(remote_theme)} && "
         f"rm -f {shlex.quote(remote_tmp)}"
     )
-    run_cmd(["ssh", dest, install_cmd])
+    run_cmd(["ssh", "-t", dest, install_cmd])
 
     if restart:
-        run_cmd(["ssh", dest, "sudo systemctl restart hub75-clock"])
+        run_cmd(["ssh", "-t", dest, "sudo systemctl restart hub75-clock"])
 
 
 class IkonisThemeHandler(theme_server.ThemeBuilderHandler):
