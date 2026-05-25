@@ -27,6 +27,11 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 .hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;gap:8px}
 .hdr-title{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.5px;white-space:nowrap}
 .hdr-btns{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.server-only{display:none}
+.server-mode .server-only{display:flex}
+#server-theme-select{background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:var(--r);font:11px monospace;outline:none;min-width:190px;max-width:280px}
+#server-theme-select:focus{border-color:var(--accent)}
+#server-status{align-items:center;color:var(--dim);font-size:11px;min-width:72px}
 /* Layout */
 .body{display:grid;grid-template-columns:320px 1fr;flex:1;min-height:0;overflow:hidden}
 /* Controls panel */
@@ -86,6 +91,10 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 <div class="hdr">
   <span class="hdr-title">HUB75 Theme Builder</span>
   <div class="hdr-btns">
+    <select id="server-theme-select" class="server-only"></select>
+    <button class="btn server-only" id="btn-server-load">Load</button>
+    <button class="btn btn-p server-only" id="btn-server-save">Save</button>
+    <span id="server-status" class="server-only"></span>
     <label class="btn">
       <input type="file" id="file-load" accept=".json" style="display:none"> Load JSON
     </label>
@@ -858,7 +867,7 @@ function stopAnim() {
 // =====================================================================
 // JSON OUTPUT
 // =====================================================================
-function buildJSON() {
+function buildThemeObject() {
   const cameoOut = [];
   if (theme.stars_enabled) cameoOut.push({ name: 'stars' });
   for (const c of theme.cameos) {
@@ -886,7 +895,90 @@ function buildJSON() {
   for (const [cond, ov] of Object.entries(theme.condition_overrides)) {
     out.condition_overrides[cond] = { ...ov };
   }
-  return JSON.stringify(out, null, 2);
+  return out;
+}
+
+function buildJSON() {
+  return JSON.stringify(buildThemeObject(), null, 2);
+}
+
+function themeFileName() {
+  const base = (theme.name || 'theme').trim() || 'theme';
+  return base.replace(/[<>:"/\\|?*\x00-\x1f]+/g, '_') + '.json';
+}
+
+function setServerStatus(msg) {
+  const el = document.getElementById('server-status');
+  if (el) el.textContent = msg;
+}
+
+let serverMode = false;
+let currentThemeFile = '';
+
+async function refreshServerThemes(selectFile = currentThemeFile) {
+  const res = await fetch('/api/themes', { cache: 'no-store' });
+  const data = await res.json();
+  if (!res.ok || !data.ok) throw new Error(data.error || 'Unable to list themes');
+  const sel = document.getElementById('server-theme-select');
+  sel.innerHTML = '';
+  for (const file of data.themes) {
+    const opt = document.createElement('option');
+    opt.value = file;
+    opt.textContent = file;
+    sel.appendChild(opt);
+  }
+  if (selectFile && data.themes.includes(selectFile)) sel.value = selectFile;
+  else if (data.themes.length) sel.value = data.themes[0];
+  setServerStatus(data.themes.length ? `${data.themes.length} themes` : 'No themes');
+}
+
+async function initServerMode() {
+  try {
+    await refreshServerThemes('');
+    serverMode = true;
+    document.body.classList.add('server-mode');
+  } catch (err) {
+    serverMode = false;
+  }
+}
+
+async function loadServerTheme(file) {
+  const selected = file || document.getElementById('server-theme-select').value;
+  if (!selected) return;
+  setServerStatus('Loading...');
+  try {
+    const res = await fetch('/api/theme?file=' + encodeURIComponent(selected), { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Unable to load theme');
+    applyThemeData(data.theme);
+    currentThemeFile = data.file;
+    document.getElementById('server-theme-select').value = data.file;
+    setServerStatus('Loaded');
+  } catch (err) {
+    setServerStatus('Load failed');
+    alert('Load failed: ' + err.message);
+  }
+}
+
+async function saveServerTheme() {
+  if (!serverMode) return;
+  const file = currentThemeFile || themeFileName();
+  setServerStatus('Saving...');
+  try {
+    const res = await fetch('/api/theme', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file, theme: buildThemeObject() })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Unable to save theme');
+    currentThemeFile = data.file;
+    await refreshServerThemes(currentThemeFile);
+    setServerStatus('Saved');
+  } catch (err) {
+    setServerStatus('Save failed');
+    alert('Save failed: ' + err.message);
+  }
 }
 
 function updateJSON() {
@@ -927,6 +1019,7 @@ function flashBtn(id, msg) {
 
 function loadFile(file) {
   if (!file) return;
+  currentThemeFile = file.name || '';
   const reader = new FileReader();
   reader.onload = e => {
     try {
@@ -1307,6 +1400,11 @@ function wireControls() {
   });
 
   // Export / copy
+  document.getElementById('btn-server-load').addEventListener('click', () => loadServerTheme());
+  document.getElementById('btn-server-save').addEventListener('click', saveServerTheme);
+  document.getElementById('server-theme-select').addEventListener('change', e => {
+    currentThemeFile = e.target.value;
+  });
   document.getElementById('btn-export').addEventListener('click', exportJSON);
   document.getElementById('btn-copy').addEventListener('click', copyJSON);
   document.getElementById('btn-copy2').addEventListener('click', () => {
@@ -1332,6 +1430,7 @@ function init() {
   initClouds();
   render();
   updateJSON();
+  initServerMode();
 
   // Live time update every 10 seconds when not animating
   setInterval(() => { if (!preview.animate) render(); }, 10000);
