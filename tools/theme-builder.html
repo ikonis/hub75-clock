@@ -79,6 +79,10 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 .pv-ctrl .f input[type=text],.pv-ctrl .f input[type=number]{width:56px}
 .json-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--border);border-radius:var(--r);min-height:80px}
 .json-hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 9px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:11px;color:var(--dim);flex-shrink:0}
+.json-actions{display:flex;align-items:center;gap:6px}
+#json-status{font-size:11px;color:var(--dim);min-width:86px;text-align:right}
+#json-status.err{color:var(--danger)}
+#json-status.ok{color:#66c080}
 #json-out{flex:1;background:var(--bg4);color:#7ab0ff;border:none;padding:9px;font:11px/1.5 monospace;resize:none;outline:none;overflow:auto}
 /* Scrollbar */
 ::-webkit-scrollbar{width:5px}
@@ -158,6 +162,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     <div class="sec-body">
       <div class="f"><label>Stars</label><input type="checkbox" id="i-stars"></div>
       <div class="f"><label>Sun</label><input type="checkbox" id="i-sun" checked></div>
+      <div class="f"><label>Moon</label><input type="checkbox" id="i-moon"></div>
       <div class="f"><label>Clouds</label><input type="checkbox" id="i-clouds"></div>
       <div id="g-clouds" class="hidden">
         <div class="f"><label>Density</label>
@@ -216,6 +221,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
           <option value="firefly">firefly</option>
           <option value="fireworks">fireworks</option>
           <option value="fish">fish</option>
+          <option value="flutterflies">flutterflies</option>
           <option value="ghost">ghost</option>
           <option value="hot_air_balloon">hot_air_balloon</option>
           <option value="jack_o_lantern">jack_o_lantern</option>
@@ -261,7 +267,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     <canvas id="matrix" width="512" height="256"></canvas>
   </div>
   <div style="text-align:center;font-size:10px;color:var(--dim);margin-top:4px">
-    Font preview uses embedded bitmap glyphs (4&times;6 banner, Spleen 12&times;24 time) &mdash; approximate match to actual BDF files
+    Preview approximates the clock: colors, weather, stars, sun, moon, clouds, and cameo timing hints are represented; exact BDF font rendering and full cameo sprites are not.
   </div>
   <div class="pv-ctrl">
     <div class="f">
@@ -286,10 +292,14 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
   </div>
   <div class="json-wrap">
     <div class="json-hdr">
-      <span>JSON Output</span>
-      <button class="btn btn-sm" id="btn-copy2">Copy</button>
+      <span>Editable JSON</span>
+      <div class="json-actions">
+        <span id="json-status">Generated</span>
+        <button class="btn btn-sm" id="btn-apply-json">Apply JSON</button>
+        <button class="btn btn-sm" id="btn-copy2">Copy</button>
+      </div>
     </div>
-    <textarea id="json-out" readonly spellcheck="false"></textarea>
+    <textarea id="json-out" spellcheck="false"></textarea>
   </div>
 </div>
 </div>
@@ -314,7 +324,7 @@ const theme = {
   background_top: '#0F0019', background_bottom: '#3C1400',
   background_split: 0.5, background_gradient_direction: 'sunset',
   colors: { time: '#F0F0F0', low_temp: '#00CCFF', high_temp: '#FF8C00', condition: '#909090' },
-  stars_enabled: false, sun_enabled: true, clouds_enabled: false,
+  stars_enabled: false, sun_enabled: true, moon_enabled: false, clouds_enabled: false,
   cloud_density: 'medium', cloud_speed: 'medium',
   cameos: [], condition_overrides: {}
 };
@@ -700,7 +710,7 @@ function updateClouds() {
 }
 
 // =====================================================================
-// SUN GLOW
+// SUN / MOON
 // =====================================================================
 function drawSun() {
   const cond = preview.condition;
@@ -719,6 +729,42 @@ function drawSun() {
         const g2 = Math.round(200 * t);
         const b2 = Math.round(60 * t);
         addpx(x, y, r2, g2, b2);
+      }
+    }
+  }
+}
+
+function drawMoon() {
+  if (!theme.moon_enabled) return;
+  const cx = 3;
+  const cy = ANIM_TOP + 3;
+  const radius = 3;
+  const glowR = 5;
+  const sky = theme.background_type === 'solid' ? hex2rgb(theme.background_color) : [0, 0, 8];
+
+  for (let dy = -glowR; dy <= glowR; dy++) {
+    for (let dx = -glowR; dx <= glowR; dx++) {
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (radius < dist && dist <= glowR) {
+        const fade = 1.0 - (dist - radius) / (glowR - radius);
+        const mix = fade * 0.4;
+        addpx(
+          cx + dx, cy + dy,
+          Math.round(200 * mix + sky[0] * (1 - mix)),
+          Math.round(200 * mix + sky[1] * (1 - mix)),
+          Math.round(160 * fade * 0.3 + sky[2] * (1 - fade * 0.3))
+        );
+      }
+    }
+  }
+
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      if (dx * dx + dy * dy <= radius * radius) {
+        let shade = 180 + ((dx * 13 + dy * 7) % 40) - 20;
+        if ((dx === -1 && dy === -1) || (dx === 1 && dy === 1)) shade = 120;
+        shade = Math.max(80, Math.min(220, shade));
+        px(cx + dx, cy + dy, shade, shade, Math.round(shade * 0.85));
       }
     }
   }
@@ -830,6 +876,7 @@ function render() {
   drawStars();
   drawShootingStars();
   drawSun();
+  drawMoon();
   drawClouds();
   drawCameoFlash();
   drawBanner();
@@ -888,6 +935,7 @@ function buildThemeObject() {
     background_gradient_direction: theme.background_gradient_direction,
     colors: { ...theme.colors },
     sun_enabled: theme.sun_enabled,
+    moon_enabled: theme.moon_enabled,
     cloud_density: theme.cloud_density,
     cloud_speed: theme.cloud_speed,
     cameos: cameoOut,
@@ -921,6 +969,42 @@ function setServerStatus(msg) {
 
 let serverMode = false;
 let currentThemeFile = '';
+let syncingJSON = false;
+let jsonDirty = false;
+
+function setJSONStatus(msg, cls = '') {
+  const el = document.getElementById('json-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = cls;
+}
+
+function parseJSONEditor() {
+  const text = document.getElementById('json-out').value;
+  try {
+    const data = JSON.parse(text);
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('Theme JSON must be an object');
+    }
+    setJSONStatus(jsonDirty ? 'Valid edit' : 'Generated', jsonDirty ? 'ok' : '');
+    return data;
+  } catch (err) {
+    setJSONStatus(err.message, 'err');
+    return null;
+  }
+}
+
+function applyJSONEditor() {
+  const data = parseJSONEditor();
+  if (!data) return false;
+  applyThemeData(data);
+  setJSONStatus('Applied', 'ok');
+  return true;
+}
+
+function applyJSONIfDirty() {
+  return !jsonDirty || applyJSONEditor();
+}
 
 async function refreshServerThemes(selectFile = currentThemeFile) {
   const res = await fetch('/api/themes', { cache: 'no-store' });
@@ -967,9 +1051,13 @@ async function loadServerTheme(file) {
   }
 }
 
-async function saveServerTheme() {
+async function saveServerTheme(fileOverride = '') {
   if (!serverMode) return;
-  const file = currentThemeFile || themeFileName();
+  if (!applyJSONIfDirty()) {
+    alert('Fix the JSON before saving.');
+    return;
+  }
+  const file = fileOverride || currentThemeFile || themeFileName();
   setServerStatus('Saving...');
   try {
     const res = await fetch('/api/theme', {
@@ -998,18 +1086,25 @@ async function saveServerThemeAs() {
     alert('Please enter a theme filename.');
     return;
   }
-  currentThemeFile = file;
-  await saveServerTheme();
+  await saveServerTheme(file);
 }
 
 function updateJSON() {
+  syncingJSON = true;
   document.getElementById('json-out').value = buildJSON();
+  syncingJSON = false;
+  jsonDirty = false;
+  setJSONStatus('Generated');
 }
 
 // =====================================================================
 // EXPORT / IMPORT
 // =====================================================================
 function exportJSON() {
+  if (!applyJSONIfDirty()) {
+    alert('Fix the JSON before exporting.');
+    return;
+  }
   const json = buildJSON();
   const fname = (theme.name || 'theme').toLowerCase().replace(/[^a-z0-9]+/g, '_') + '.json';
   const blob = new Blob([json], { type: 'application/json' });
@@ -1021,7 +1116,7 @@ function exportJSON() {
 }
 
 function copyJSON() {
-  const text = buildJSON();
+  const text = document.getElementById('json-out').value;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(() => flashBtn('btn-copy', 'Copied!'));
   } else {
@@ -1058,7 +1153,7 @@ function applyThemeData(data) {
     background_type: 'solid', background_color: '#000820',
     background_top: '#0F0019', background_bottom: '#3C1400',
     background_split: 0.5, background_gradient_direction: 'sunset',
-    colors: {}, stars_enabled: false, sun_enabled: true,
+    colors: {}, stars_enabled: false, sun_enabled: true, moon_enabled: false,
     clouds_enabled: false, cloud_density: 'medium', cloud_speed: 'medium',
     cameos: [], condition_overrides: {}
   };
@@ -1102,6 +1197,7 @@ function syncFormToTheme() {
   setVal('i-bgdir', theme.background_gradient_direction);
   document.getElementById('i-stars').checked = theme.stars_enabled;
   document.getElementById('i-sun').checked = theme.sun_enabled;
+  document.getElementById('i-moon').checked = theme.moon_enabled;
   document.getElementById('i-clouds').checked = theme.clouds_enabled;
   setVal('i-cdensity', theme.cloud_density);
   setVal('i-cspeed', theme.cloud_speed);
@@ -1152,7 +1248,7 @@ function showHideCloudOptions() {
 // =====================================================================
 const ALL_ANIMATIONS = [
   'shooting_star','airplane','biplane','bird_flock','butterfly','comet',
-  'easter_egg','firefly','fireworks','fish','ghost','hot_air_balloon',
+  'easter_egg','firefly','fireworks','fish','flutterflies','ghost','hot_air_balloon',
   'jack_o_lantern','meteor','rainbow','rocket','santa','satellite',
   'snowman','submarine','tractor','tumbleweed','ufo'
 ];
@@ -1363,6 +1459,9 @@ function wireControls() {
   document.getElementById('i-sun').addEventListener('change', e => {
     theme.sun_enabled = e.target.checked; render(); updateJSON();
   });
+  document.getElementById('i-moon').addEventListener('change', e => {
+    theme.moon_enabled = e.target.checked; render(); updateJSON();
+  });
   document.getElementById('i-clouds').addEventListener('change', e => {
     theme.clouds_enabled = e.target.checked;
     showHideCloudOptions(); initClouds(); render(); updateJSON();
@@ -1422,7 +1521,7 @@ function wireControls() {
 
   // Export / copy
   document.getElementById('btn-server-load').addEventListener('click', () => loadServerTheme());
-  document.getElementById('btn-server-save').addEventListener('click', saveServerTheme);
+  document.getElementById('btn-server-save').addEventListener('click', () => saveServerTheme());
   document.getElementById('btn-server-save-as').addEventListener('click', saveServerThemeAs);
   document.getElementById('server-theme-select').addEventListener('change', e => {
     currentThemeFile = e.target.value;
@@ -1430,8 +1529,17 @@ function wireControls() {
   document.getElementById('btn-export').addEventListener('click', exportJSON);
   document.getElementById('btn-copy').addEventListener('click', copyJSON);
   document.getElementById('btn-copy2').addEventListener('click', () => {
-    navigator.clipboard ? navigator.clipboard.writeText(buildJSON()).then(() => flashBtn('btn-copy2','Copied!'))
+    const text = document.getElementById('json-out').value;
+    navigator.clipboard ? navigator.clipboard.writeText(text).then(() => flashBtn('btn-copy2','Copied!'))
       : (() => { document.getElementById('json-out').select(); document.execCommand('copy'); flashBtn('btn-copy2','Copied!'); })();
+  });
+  document.getElementById('btn-apply-json').addEventListener('click', () => {
+    if (!applyJSONEditor()) alert('Fix the JSON before applying it.');
+  });
+  document.getElementById('json-out').addEventListener('input', () => {
+    if (syncingJSON) return;
+    jsonDirty = true;
+    parseJSONEditor();
   });
   document.getElementById('file-load').addEventListener('change', e => {
     loadFile(e.target.files[0]);
