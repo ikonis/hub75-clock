@@ -69,15 +69,14 @@ public:
 
         for (size_t i = 0; i < _trail.size(); ++i) {
             float fade = float(i + 1) / float(_trail.size());
-            int b = int(85.0f * fade);
-            if (b <= 4) continue;
+            float alpha = 0.42f * fade;
+            if (alpha <= 0.02f) continue;
             int px = int(std::round(_trail[i].x));
             int py = int(std::round(_trail[i].y));
             if (px >= 0 && px < _w && py >= _at && py <= _ab) {
-                canvas->SetPixel(px, py, b, b, b);
+                render::BlendPixel(canvas, px, py, 175, 175, 180, alpha);
                 if (i % 3 == 0 && py + 1 <= _ab) {
-                    int dim = b / 2;
-                    canvas->SetPixel(px, py + 1, dim, dim, dim);
+                    render::BlendPixel(canvas, px, py + 1, 150, 150, 155, alpha * 0.45f);
                 }
             }
         }
@@ -89,7 +88,7 @@ public:
             int px = ox + dx;
             int py = oy + p.dy;
             if (px >= 0 && px < _w && py >= _at - 2 && py <= _ab)
-                canvas->SetPixel(px, py, p.r, p.g, p.b);
+                render::SetPixel(canvas, px, py, p.r, p.g, p.b);
         }
     }
 

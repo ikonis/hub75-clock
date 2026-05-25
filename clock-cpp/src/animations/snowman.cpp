@@ -54,8 +54,7 @@ public:
         for (const auto& p : SPRITE) {
             int px = _ox + p.dx, py = _oy + p.dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py,
-                    int(p.r * alpha), int(p.g * alpha), int(p.b * alpha));
+                render::BlendPixel(canvas, px, py, p.r, p.g, p.b, alpha);
         }
     }
 

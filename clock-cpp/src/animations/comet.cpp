@@ -57,29 +57,26 @@ public:
             int ty = hy + int(std::round(tdy * i));
             if (!(tx >= 0 && tx < _w && ty >= _at && ty <= _ab)) continue;
             float t = float(i) / float(_tailLen);
-            int r = int(180 * (1.0f - t));
-            int g = int(200 * (1.0f - t * 0.6f));
-            int b = int(255 * (1.0f - t * 0.3f));
-            canvas->SetPixel(tx, ty, r, g, b);
+            float alpha = std::max(0.0f, 1.0f - t);
+            render::BlendPixel(canvas, tx, ty, 180, 200, 255, alpha);
             if (i < _tailLen / 2) {
-                int dim = int((1.0f - t) * 80.0f);
                 for (int off : {-1, 1}) {
                     int ny = ty + off;
                     if (ny >= _at && ny <= _ab)
-                        canvas->SetPixel(tx, ny, dim / 2, dim / 2, dim);
+                        render::BlendPixel(canvas, tx, ny, 80, 100, 180, alpha * 0.35f);
                 }
             }
         }
 
         // Bright head
         if (hx >= 0 && hx < _w && hy >= _at && hy <= _ab)
-            canvas->SetPixel(hx, hy, 220, 240, 255);
+            render::SetPixel(canvas, hx, hy, 220, 240, 255);
         static const int DDX[] = {-1, 1, 0, 0};
         static const int DDY[] = {0, 0, -1, 1};
         for (int i = 0; i < 4; ++i) {
             int gx = hx + DDX[i], gy = hy + DDY[i];
             if (gx >= 0 && gx < _w && gy >= _at && gy <= _ab)
-                canvas->SetPixel(gx, gy, 120, 160, 220);
+                render::BlendPixel(canvas, gx, gy, 120, 160, 220, 0.55f);
         }
     }
 

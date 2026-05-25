@@ -53,7 +53,7 @@ public:
             float level = (std::sin(phase) + 1.0f) * 0.5f;
             int b = int(float(s.maxBrightness) * level);
             if (b > 5 && s.x >= 0 && s.x < _w && s.y >= at && s.y <= ab)
-                canvas->SetPixel(s.x, s.y, b, b, b);
+                render::BlendPixel(canvas, s.x, s.y, 220, 220, 220, float(b) / 220.0f);
         }
     }
 

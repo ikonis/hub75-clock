@@ -79,9 +79,10 @@ public:
                 int px = int(std::round(f.x));
                 int py = int(std::round(f.y));
                 if (px >= 0 && px < _w && py >= _at && py <= _ab) {
-                    canvas->SetPixel(px, py, b, b, int(b * 0.6f));
+                    float alpha = std::min(1.0f, float(b) / 200.0f);
+                    render::BlendPixel(canvas, px, py, 220, 220, int(220 * 0.6f), alpha);
                     if (py + 1 <= _ab)
-                        canvas->SetPixel(px, py + 1, b / 2, b / 2, int(b * 0.3f));
+                        render::BlendPixel(canvas, px, py + 1, 180, 180, int(180 * 0.6f), alpha * 0.35f);
                 }
             }
         }

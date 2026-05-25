@@ -85,17 +85,14 @@ public:
                 for (const auto& sp : rk.sparks) {
                     if (sp.life <= 0) continue;
                     float alpha = float(sp.life) / float(sp.maxLife);
-                    int r = int(sp.r * alpha);
-                    int g = int(sp.g * alpha);
-                    int b = int(sp.b * alpha);
-                    _px(canvas, sp.x, sp.y, r, g, b);
+                    _blend(canvas, sp.x, sp.y, sp.r, sp.g, sp.b, alpha);
                     float spd = std::sqrt(sp.vx * sp.vx + sp.vy * sp.vy);
                     if (spd > 0.01f) {
                         float uvx = sp.vx / spd, uvy = sp.vy / spd;
-                        _px(canvas, sp.x - uvx, sp.y - uvy,
-                            int(r * 0.6f), int(g * 0.6f), int(b * 0.6f));
-                        _px(canvas, sp.x - 2*uvx, sp.y - 2*uvy,
-                            int(r * 0.3f), int(g * 0.3f), int(b * 0.3f));
+                        _blend(canvas, sp.x - uvx, sp.y - uvy,
+                            sp.r, sp.g, sp.b, alpha * 0.45f);
+                        _blend(canvas, sp.x - 2*uvx, sp.y - 2*uvy,
+                            sp.r, sp.g, sp.b, alpha * 0.22f);
                     }
                 }
             }
@@ -123,10 +120,16 @@ private:
     void _px(rgb_matrix::FrameCanvas* canvas, float fx, float fy, int r, int g, int b) {
         int px = int(std::round(fx)), py = int(std::round(fy));
         if (px >= 0 && px < _w && py >= _at && py <= _ab)
-            canvas->SetPixel(px, py,
+            render::SetPixel(canvas, px, py,
                 std::max(0, std::min(255, r)),
                 std::max(0, std::min(255, g)),
                 std::max(0, std::min(255, b)));
+    }
+
+    void _blend(rgb_matrix::FrameCanvas* canvas, float fx, float fy, int r, int g, int b, float alpha) {
+        int px = int(std::round(fx)), py = int(std::round(fy));
+        if (px >= 0 && px < _w && py >= _at && py <= _ab)
+            render::BlendPixel(canvas, px, py, r, g, b, alpha);
     }
 
     FWRocket _makeRocket(int delay, std::mt19937& rng) {

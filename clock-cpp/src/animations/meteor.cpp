@@ -55,19 +55,21 @@ public:
             int idx = std::min(ci, 7);
             int px = int(std::round(_history[i][0]));
             int py = int(std::round(_history[i][1]));
-            if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, TAIL_R[idx], TAIL_G[idx], TAIL_B[idx]);
+            if (px >= 0 && px < _w && py >= _at && py <= _ab) {
+                float alpha = std::max(0.08f, 1.0f - float(idx + 1) / 9.0f);
+                render::BlendPixel(canvas, px, py, TAIL_R[idx], TAIL_G[idx], TAIL_B[idx], alpha);
+            }
         }
 
         int hx = int(std::round(_x)), hy = int(std::round(_y));
         if (hx >= 0 && hx < _w && hy >= _at && hy <= _ab) {
-            canvas->SetPixel(hx, hy, 255, 255, 255);
+            render::SetPixel(canvas, hx, hy, 255, 255, 255);
             static const int DDX[] = {-1, 1, 0, 0};
             static const int DDY[] = { 0, 0,-1, 1};
             for (int i = 0; i < 4; ++i) {
                 int gx = hx + DDX[i], gy = hy + DDY[i];
                 if (gx >= 0 && gx < _w && gy >= _at && gy <= _ab)
-                    canvas->SetPixel(gx, gy, 255, 210, 80);
+                    render::BlendPixel(canvas, gx, gy, 255, 210, 80, 0.55f);
             }
         }
     }

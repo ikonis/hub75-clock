@@ -71,7 +71,7 @@ public:
         for (const auto& p : SPRITE) {
             int px = ox + p.dx, py = oy + p.dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, p.r, p.g, p.b);
+                render::SetPixel(canvas, px, py, p.r, p.g, p.b);
         }
     }
 

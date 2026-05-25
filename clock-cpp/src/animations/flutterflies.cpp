@@ -105,10 +105,7 @@ public:
                 int px = ox + sprite[i].dx;
                 int py = oy + sprite[i].dy;
                 if (px >= 0 && px < _w && py >= _at && py <= _ab) {
-                    canvas->SetPixel(px, py,
-                        int(f.cr * sprite[i].brt),
-                        int(f.cg * sprite[i].brt),
-                        int(f.cb * sprite[i].brt));
+                    render::BlendPixel(canvas, px, py, f.cr, f.cg, f.cb, sprite[i].brt);
                 }
             }
         }

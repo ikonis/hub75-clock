@@ -93,15 +93,12 @@ public:
             for (int i = 0; i < nw; ++i) {
                 int px = ox + wing[i].dx, py = oy + wing[i].dy;
                 if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                    canvas->SetPixel(px, py,
-                        int(b.cr * wing[i].brt),
-                        int(b.cg * wing[i].brt),
-                        int(b.cb * wing[i].brt));
+                    render::BlendPixel(canvas, px, py, b.cr, b.cg, b.cb, wing[i].brt);
             }
             for (const auto& bp : BODY) {
                 int px = ox + bp.dx, py = oy + bp.dy;
                 if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                    canvas->SetPixel(px, py, 45, 22, 11);
+                    render::SetPixel(canvas, px, py, 45, 22, 11);
             }
         }
     }

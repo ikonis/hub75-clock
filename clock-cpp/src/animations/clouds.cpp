@@ -12,7 +12,7 @@ static constexpr int   COLOR_HEAVY_RAIN_R  = 10,  COLOR_HEAVY_RAIN_G  = 18,  COL
 static constexpr int   COLOR_SNOW_R        = 180, COLOR_SNOW_G        = 180, COLOR_SNOW_B        = 200;
 static constexpr int   COLOR_SLEET_R       = 120, COLOR_SLEET_G       = 160, COLOR_SLEET_B       = 180;
 static constexpr int   COLOR_LIGHTNING_R   = 232, COLOR_LIGHTNING_G   = 232, COLOR_LIGHTNING_B   = 64;
-static constexpr int   COLOR_FLASH_R       = 20,  COLOR_FLASH_G       = 20,  COLOR_FLASH_B       = 60;
+static constexpr int   COLOR_FLASH_R       = 45,  COLOR_FLASH_G       = 45,  COLOR_FLASH_B       = 120;
 
 struct CloudCircle { int dx, dy, r; };
 struct CloudSpan   { int spanL, spanR, spanH; };
@@ -189,9 +189,10 @@ public:
 
     void draw(rgb_matrix::FrameCanvas* canvas) override {
         if (_flashLife > 0) {
+            float alpha = std::min(0.65f, 0.28f * float(_flashLife));
             for (int y = _at; y <= _ab; ++y)
                 for (int x = 0; x < _w; ++x)
-                    canvas->SetPixel(x, y, COLOR_FLASH_R, COLOR_FLASH_G, COLOR_FLASH_B);
+                    render::AddPixel(canvas, x, y, COLOR_FLASH_R, COLOR_FLASH_G, COLOR_FLASH_B, alpha);
         }
 
         for (const auto& c : _clouds) {
@@ -232,10 +233,9 @@ public:
         }
 
         if (_boltLife > 0 && !_bolt.empty()) {
-            float fade = float(_boltLife) / 3.0f;
-            int lr = int(COLOR_LIGHTNING_R * fade);
-            int lg = int(COLOR_LIGHTNING_G * fade);
-            int lb = int(COLOR_LIGHTNING_B * fade);
+            int lr = COLOR_LIGHTNING_R;
+            int lg = COLOR_LIGHTNING_G;
+            int lb = COLOR_LIGHTNING_B;
             _drawBolt(canvas, _bolt, lr, lg, lb);
             for (const auto& br : _boltBranches)
                 _drawBolt(canvas, br, lr/2, lg/2, lb/2);
@@ -380,17 +380,16 @@ private:
                     int px = cx + dx, py = cy + dy;
                     if (px < 0 || px >= _w || py < _at || py > _ab) continue;
                     int pr = cr, pg = cg, pb = cb;
-                    if (_sunEnabled) {
-                        int sdx = px - _sunOx, sdy = py - _sunOy;
-                        float dist = std::sqrt(float(sdx*sdx + sdy*sdy));
-                        if (dist < _sunGlow) {
-                            float t = std::min(0.35f, (1.0f - dist / _sunGlow) * (1.0f - dist / _sunGlow));
-                            pr = int(pr * (1.0f - t) + _sunR_col * t);
-                            pg = int(pg * (1.0f - t) + _sunG_col * t);
-                            pb = int(pb * (1.0f - t) + _sunB_col * t);
-                        }
+                    auto behind = render::GetPixel(px, py);
+                    float cloudLuma = pr * 0.299f + pg * 0.587f + pb * 0.114f;
+                    float backLuma = behind[0] * 0.299f + behind[1] * 0.587f + behind[2] * 0.114f;
+                    if (backLuma > cloudLuma) {
+                        float t = std::min(0.42f, (backLuma - cloudLuma) / 255.0f);
+                        pr = int(pr * (1.0f - t) + behind[0] * t);
+                        pg = int(pg * (1.0f - t) + behind[1] * t);
+                        pb = int(pb * (1.0f - t) + behind[2] * t);
                     }
-                    canvas->SetPixel(px, py, pr, pg, pb);
+                    render::SetPixel(canvas, px, py, pr, pg, pb);
                 }
             }
         }
@@ -400,19 +399,20 @@ private:
         for (int i = 0; i < length; ++i) {
             int py = y + i;
             if (x >= 0 && x < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(x, py, cr, cg, cb);
+                render::SetPixel(canvas, x, py, cr, cg, cb);
         }
     }
 
     void _dot(rgb_matrix::FrameCanvas* canvas, int x, int y, int cr, int cg, int cb) {
         if (x >= 0 && x < _w && y >= _at && y <= _ab)
-            canvas->SetPixel(x, y, cr, cg, cb);
+            render::SetPixel(canvas, x, y, cr, cg, cb);
     }
 
     void _drawBolt(rgb_matrix::FrameCanvas* canvas,
                    const std::vector<std::pair<int,int>>& points,
                    int cr, int cg, int cb)
     {
+        float alpha = std::min(1.0f, std::max(0.15f, float(_boltLife) / 3.0f));
         for (int i = 0; i + 1 < int(points.size()); ++i) {
             int x1 = points[i].first,   y1 = points[i].second;
             int x2 = points[i+1].first, y2 = points[i+1].second;
@@ -422,7 +422,7 @@ private:
             int err = adx - ady;
             while (true) {
                 if (x1 >= 0 && x1 < _w && y1 >= _at && y1 <= _ab)
-                    canvas->SetPixel(x1, y1, cr, cg, cb);
+                    render::BlendPixel(canvas, x1, y1, cr, cg, cb, alpha);
                 if (x1 == x2 && y1 == y2) break;
                 int e2 = 2 * err;
                 if (e2 > -ady) { err -= ady; x1 += sx; }

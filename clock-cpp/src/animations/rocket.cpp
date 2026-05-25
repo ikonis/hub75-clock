@@ -51,7 +51,7 @@ public:
         for (const auto& p : BODY) {
             int px = ox + p.dx, py = oy + p.dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, p.r, p.g, p.b);
+                render::SetPixel(canvas, px, py, p.r, p.g, p.b);
         }
 
         // Flame trail below rocket
@@ -60,15 +60,14 @@ public:
             int fy = flame_y + fi;
             if (fy < _at || fy > _ab) continue;
             float fade = 1.0f - float(fi) / 4.0f;
-            int   fr   = int(255 * fade);
-            int   fg   = int(120 * fade * (1.0f - fi * 0.2f));
+            float alpha = fade * (1.0f - fi * 0.2f);
             if (ox + 1 >= 0 && ox + 1 < _w)
-                canvas->SetPixel(ox + 1, fy, fr, fg, 0);
+                render::BlendPixel(canvas, ox + 1, fy, 255, 120, 0, alpha);
             if (fi < 2) {
                 if (ox >= 0 && ox < _w)
-                    canvas->SetPixel(ox, fy, int(fr*0.6f), int(fg*0.4f), 0);
+                    render::BlendPixel(canvas, ox, fy, 255, 120, 0, alpha * 0.35f);
                 if (ox + 2 >= 0 && ox + 2 < _w)
-                    canvas->SetPixel(ox + 2, fy, int(fr*0.6f), int(fg*0.4f), 0);
+                    render::BlendPixel(canvas, ox + 2, fy, 255, 120, 0, alpha * 0.35f);
             }
         }
     }

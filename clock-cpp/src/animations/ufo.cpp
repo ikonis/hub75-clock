@@ -103,7 +103,8 @@ public:
                     int br = int(float(intensity) * BEAM_AF[row]);
                     for (int bx = cx - BEAM_HW[row]; bx <= cx + BEAM_HW[row]; ++bx) {
                         if (bx >= 0 && bx < _w && by >= _at && by <= _ab)
-                            canvas->SetPixel(bx, by, 0, br, br / 2);
+                            render::BlendPixel(canvas, bx, by, 0, 120, 70,
+                                               std::min(0.65f, float(br) / 80.0f));
                     }
                 }
             }
@@ -118,7 +119,7 @@ public:
                 for (const auto& f : FIGURE) {
                     int px = fx + f.ddx, py = fy + f.ddy;
                     if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                        canvas->SetPixel(px, py, 200, 200, 200);
+                        render::SetPixel(canvas, px, py, 200, 200, 200);
                 }
             }
         }
@@ -127,7 +128,7 @@ public:
         for (const auto& p : BODY) {
             int px = ox + p.dx, py = oy + p.dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, p.r, p.g, p.b);
+                render::SetPixel(canvas, px, py, p.r, p.g, p.b);
         }
 
         // Cycling belly lights
@@ -136,8 +137,8 @@ public:
         for (int i = 0; i < 3; ++i) {
             int px = ox + LIGHTS[i].dx, py = oy + LIGHTS[i].dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab) {
-                if (i == li) canvas->SetPixel(px, py, 0, 255, 180);
-                else         canvas->SetPixel(px, py, 0,  60,  40);
+                if (i == li) render::SetPixel(canvas, px, py, 0, 255, 180);
+                else         render::SetPixel(canvas, px, py, 0,  60,  40);
             }
         }
 
@@ -147,7 +148,7 @@ public:
                 int gx = ox + 9 + i;
                 int gb = std::max(0, 20 - i * 5);
                 if (gx >= 0 && gx < _w && oy + 2 >= _at && oy + 2 <= _ab)
-                    canvas->SetPixel(gx, oy + 2, 0, gb, gb / 2);
+                    render::BlendPixel(canvas, gx, oy + 2, 0, 120, 70, float(gb) / 60.0f);
             }
         }
     }

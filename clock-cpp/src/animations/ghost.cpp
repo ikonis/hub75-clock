@@ -73,18 +73,18 @@ public:
         for (const auto& p : BODY) {
             int px = ox + p.dx, py = oy + p.dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, _r, _g, _b);
+                render::SetPixel(canvas, px, py, _r, _g, _b);
         }
         for (const auto& p : EYES_WHITE) {
             int px = ox + p.dx, py = oy + p.dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, 240, 240, 240);
+                render::SetPixel(canvas, px, py, 240, 240, 240);
         }
         const auto* pupils = _right ? PUPILS_R : PUPILS_L;
         for (int i = 0; i < 2; ++i) {
             int px = ox + pupils[i].dx, py = oy + pupils[i].dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, 30, 30, 200);
+                render::SetPixel(canvas, px, py, 30, 30, 200);
         }
     }
 

@@ -56,7 +56,7 @@ public:
         for (const auto& p : STRIPES) {
             int px = ox + p.dx, py = oy + p.dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, PAL[p.ci][0], PAL[p.ci][1], PAL[p.ci][2]);
+                render::SetPixel(canvas, px, py, PAL[p.ci][0], PAL[p.ci][1], PAL[p.ci][2]);
         }
     }
 

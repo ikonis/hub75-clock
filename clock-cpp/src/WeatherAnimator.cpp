@@ -1,5 +1,6 @@
 #include "WeatherAnimator.h"
 #include "CameoManager.h"
+#include "Animation.h"
 #include <algorithm>
 #include <cmath>
 #include <random>
@@ -46,6 +47,7 @@ void WeatherAnimator::update() {
 }
 
 void WeatherAnimator::draw(rgb_matrix::FrameCanvas* canvas) {
+    render::BeginFrame(width, height);
     _drawBackground(canvas);
     _cameos->drawCelestial(canvas);
     if (currentTheme && currentTheme->sunEnabled)  _drawSun(canvas);
@@ -64,7 +66,7 @@ void WeatherAnimator::_drawBackground(rgb_matrix::FrameCanvas* canvas) {
             cfg.value("/colors/sky_day"_json_pointer, nlohmann::json("#000820"))));
         for (int y = animTop; y <= animBottom; ++y)
             for (int x = 0; x < width; ++x)
-                canvas->SetPixel(x, y, col[0], col[1], col[2]);
+                render::SetPixel(canvas, x, y, col[0], col[1], col[2]);
         return;
     }
 
@@ -90,7 +92,7 @@ void WeatherAnimator::_drawBackground(rgb_matrix::FrameCanvas* canvas) {
     int zoneH = animBottom - animTop;
 
     auto setRow = [&](int y, int r, int g, int b) {
-        for (int x = 0; x < width; ++x) canvas->SetPixel(x, y, r, g, b);
+        for (int x = 0; x < width; ++x) render::SetPixel(canvas, x, y, r, g, b);
     };
 
     if (bgType == "solid") {
@@ -236,7 +238,7 @@ void WeatherAnimator::_drawCondition(rgb_matrix::FrameCanvas* canvas) {
             int cx_ = x1, cy_ = y1;
             while (true) {
                 if (cx_ >= 0 && cx_ < width && cy_ >= animTop && cy_ <= animBottom)
-                    canvas->SetPixel(cx_, cy_, cr, cg, cb);
+                    render::SetPixel(canvas, cx_, cy_, cr, cg, cb);
                 if (cx_ == x2 && cy_ == y2) break;
                 int e2 = 2 * err;
                 if (e2 > -ady) { err -= ady; cx_ += sx; }
@@ -258,18 +260,18 @@ void WeatherAnimator::_drawSun(rgb_matrix::FrameCanvas* canvas) {
     constexpr int GLOW_RADIUS = 20;
 
     for (int y = oy; y <= oy + GLOW_RADIUS; ++y) {
-        auto sky = _backgroundColorAt(y);
         for (int x = ox - GLOW_RADIUS; x <= ox; ++x) {
             if (x < 0 || x >= width || y < animTop || y > animBottom) continue;
             float dist = std::sqrt(float((ox - x) * (ox - x) + (y - oy) * (y - oy)));
             if (dist <= RADIUS) {
-                canvas->SetPixel(x, y, sunColor[0], sunColor[1], sunColor[2]);
+                render::SetPixel(canvas, x, y, sunColor[0], sunColor[1], sunColor[2]);
             } else if (dist <= GLOW_RADIUS) {
                 float fade = 1.0f - (dist - RADIUS) / (GLOW_RADIUS - RADIUS);
-                int r = int(sunColor[0] * fade + sky[0] * (1.0f - fade));
-                int g = int(sunColor[1] * fade + sky[1] * (1.0f - fade));
-                int b = int(sunColor[2] * fade + sky[2] * (1.0f - fade));
-                canvas->SetPixel(x, y, r, g, b);
+                auto base = render::GetPixel(x, y);
+                int r = int(sunColor[0] * fade + base[0] * (1.0f - fade));
+                int g = int(sunColor[1] * fade + base[1] * (1.0f - fade));
+                int b = int(sunColor[2] * fade + base[2] * (1.0f - fade));
+                render::SetPixel(canvas, x, y, r, g, b);
             }
         }
     }
@@ -290,13 +292,14 @@ void WeatherAnimator::_drawMoon(rgb_matrix::FrameCanvas* canvas) {
             float dist = std::sqrt(float(dx * dx + dy * dy));
             if (dist > RADIUS && dist <= GLOW_R) {
                 float fade = 1.0f - (dist - RADIUS) / (GLOW_R - RADIUS);
-                auto sky = _backgroundColorAt(cy + dy);
-                int r = int(200 * fade * 0.4f + sky[0] * (1.0f - fade * 0.4f));
-                int g = int(200 * fade * 0.4f + sky[1] * (1.0f - fade * 0.4f));
-                int b = int(160 * fade * 0.3f + sky[2] * (1.0f - fade * 0.3f));
                 int px = cx + dx, py = cy + dy;
-                if (px >= 0 && px < width && py >= animTop && py <= animBottom)
-                    canvas->SetPixel(px, py, r, g, b);
+                if (px >= 0 && px < width && py >= animTop && py <= animBottom) {
+                    auto base = render::GetPixel(px, py);
+                    int r = int(200 * fade * 0.4f + base[0] * (1.0f - fade * 0.4f));
+                    int g = int(200 * fade * 0.4f + base[1] * (1.0f - fade * 0.4f));
+                    int b = int(160 * fade * 0.3f + base[2] * (1.0f - fade * 0.3f));
+                    render::SetPixel(canvas, px, py, r, g, b);
+                }
             }
         }
     }
@@ -309,7 +312,7 @@ void WeatherAnimator::_drawMoon(rgb_matrix::FrameCanvas* canvas) {
                 shade = std::max(80, std::min(220, shade));
                 int px = cx + dx, py = cy + dy;
                 if (px >= 0 && px < width && py >= animTop && py <= animBottom)
-                    canvas->SetPixel(px, py, shade, shade, int(shade * 0.85f));
+                    render::SetPixel(canvas, px, py, shade, shade, int(shade * 0.85f));
             }
         }
     }

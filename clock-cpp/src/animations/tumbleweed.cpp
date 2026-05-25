@@ -55,7 +55,7 @@ public:
             int py = oy + 2 + int(std::round(ry));
             if (px >= 0 && px < _w && py >= _at && py <= _ab) {
                 int shade = 140 + int(30.0f * std::sin(_roll + float(p.dx)));
-                canvas->SetPixel(px, py, shade, int(shade * 0.7f), int(shade * 0.3f));
+                render::SetPixel(canvas, px, py, shade, int(shade * 0.7f), int(shade * 0.3f));
             }
         }
     }

@@ -44,15 +44,11 @@ public:
                 float arc_h = std::sqrt(std::max(0.0f, r2*r2 - dx*dx));
                 int py = int(std::round(baseY - arc_h));
                 if (py >= _at && py <= _ab)
-                    canvas->SetPixel(px, py,
-                        int(BANDS[bi].r * alpha),
-                        int(BANDS[bi].g * alpha),
-                        int(BANDS[bi].b * alpha));
+                    render::BlendPixel(canvas, px, py,
+                        BANDS[bi].r, BANDS[bi].g, BANDS[bi].b, alpha * 0.78f);
                 if (py + 1 >= _at && py + 1 <= _ab)
-                    canvas->SetPixel(px, py + 1,
-                        int(BANDS[bi].r * alpha),
-                        int(BANDS[bi].g * alpha),
-                        int(BANDS[bi].b * alpha));
+                    render::BlendPixel(canvas, px, py + 1,
+                        BANDS[bi].r, BANDS[bi].g, BANDS[bi].b, alpha * 0.58f);
             }
         }
     }

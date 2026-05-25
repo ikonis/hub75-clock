@@ -57,12 +57,12 @@ public:
             int cx = int(std::round(_ox + bird[0]));
             int cy = int(std::round(_oy + bird[1]));
             if (cx >= 0 && cx < _w && cy >= _at && cy <= _ab)
-                canvas->SetPixel(cx, cy, 30, 30, 30);
+                render::SetPixel(canvas, cx, cy, 30, 30, 30);
             int wy = cy - (wing_up ? 1 : 0);
             if (cx - 1 >= 0 && cx - 1 < _w && wy >= _at && wy <= _ab)
-                canvas->SetPixel(cx - 1, wy, 40, 40, 40);
+                render::SetPixel(canvas, cx - 1, wy, 40, 40, 40);
             if (cx + 1 >= 0 && cx + 1 < _w && wy >= _at && wy <= _ab)
-                canvas->SetPixel(cx + 1, wy, 40, 40, 40);
+                render::SetPixel(canvas, cx + 1, wy, 40, 40, 40);
         }
     }
 

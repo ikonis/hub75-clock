@@ -77,7 +77,7 @@ private:
 
     void _px(rgb_matrix::FrameCanvas* canvas, int x, int y, int b) const {
         if (x >= 0 && x < _w && y >= _at && y <= _ab)
-            canvas->SetPixel(x, y, b, b, b);
+            render::BlendPixel(canvas, x, y, 230, 230, 230, float(b) / 230.0f);
     }
 };
 

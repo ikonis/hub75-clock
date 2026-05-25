@@ -54,25 +54,25 @@ public:
         for (const auto& p : BODY) {
             int px = ox + p.dx, py = oy + p.dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, int(p.r*alpha), int(p.g*alpha), int(p.b*alpha));
+                render::BlendPixel(canvas, px, py, p.r, p.g, p.b, alpha);
         }
-        int eye_r = int((200 + _flicker * 20) * alpha);
-        int eye_g = int((160 + _flicker * 15) * alpha);
+        int eye_r = 200 + _flicker * 20;
+        int eye_g = 160 + _flicker * 15;
         for (const auto& e : EYES) {
             int px = ox + e.dx, py = oy + e.dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, eye_r, eye_g, 0);
+                render::BlendPixel(canvas, px, py, eye_r, eye_g, 0, alpha);
         }
-        int nose_r = int(180 * alpha), nose_g = int(140 * alpha);
+        int nose_r = 180, nose_g = 140;
         for (const auto& n : NOSE) {
             int px = ox + n.dx, py = oy + n.dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, nose_r, nose_g, 0);
+                render::BlendPixel(canvas, px, py, nose_r, nose_g, 0, alpha);
         }
         for (const auto& m : MOUTH) {
             int px = ox + m.dx, py = oy + m.dy;
             if (px >= 0 && px < _w && py >= _at && py <= _ab)
-                canvas->SetPixel(px, py, 0, 0, 0);
+                render::BlendPixel(canvas, px, py, 0, 0, 0, alpha);
         }
     }
 
