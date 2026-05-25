@@ -1,6 +1,6 @@
 # Themes
 
-Themes control the background, text colors, and animation behavior of the clock face. Each theme is a JSON file. The clock loads all `.json` files from its themes directory at startup and watches for changes. Drop a new file in and the clock picks it up within seconds, no restart required.
+Themes control the background, text colors, and animation behavior of the clock face. Each theme is a JSON file. The clock loads all `.json` files from its themes directory at startup. The Python runtime watches for file changes and reloads themes within seconds; the C++ runtime currently reloads themes on service restart.
 
 ---
 
@@ -92,7 +92,7 @@ Animations are configured through the `cameos` array. One-shot cameos fire at a 
 
 | Field | Type | Description |
 |---|---|---|
-| `name` | string | Which animation to spawn. Must match the `name` attribute of an animation file in `/etc/hub75-clock/animations/`. |
+| `name` | string | Which animation to spawn. For Python, this must match the `name` attribute of an animation file in `/etc/hub75-clock/animations/`. For C++, it must match a compiled animation registered in `clock-cpp/src/CameoManager.cpp`. |
 | `chance_per_minute` | float | Expected spawns per minute on average for one-shot cameos. Omit for persistent animations. |
 
 Example:
@@ -105,7 +105,7 @@ Example:
 ]
 ```
 
-**Built-in animations** (installed to `/etc/hub75-clock/animations/` by `install.sh`):
+**Built-in animations**:
 
 | Name | Layer | Conditions | Themes | Description |
 |---|---|---|---|---|
@@ -168,11 +168,15 @@ All particles are owned by the cloud that spawned them. They fall downward and w
 | `sun_enabled` | bool | `true` | Draw the sun quarter-circle glow in the top-right corner when the condition is SUNNY and night mode is off. Set to `false` for themes where the background already represents the sun (e.g. sunrise gradient, sunset gradient), so the glow doesn't stack on top of the coloured sky. |
 | `moon_enabled` | bool | `false` | Draw a small moon disk (radius 3, ~7×7px) in the upper-left corner of the animation zone with a mottled gray surface and a dim glow border. Intended for night and late-evening themes. |
 
-### Condition overrides
+### Legacy condition overrides
+
+`condition_overrides` is still accepted by both runtimes for older themes, but the built-in themes and theme builder no longer use it. The recommended approach is to let Home Assistant choose a specific theme for each bucket/condition combination. That keeps a theme from unexpectedly changing its background just because the weather condition changes.
+
+Legacy field:
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `condition_overrides` | object | `{}` | Per-condition background overrides. Keys are condition strings (see below). Values are objects containing any subset of the background fields (`background_type`, `background_color`, `background_top`, `background_bottom`, `background_split`, `background_gradient_direction`). Text colors, `cameos`, `sun_enabled`, and `moon_enabled` cannot be overridden per-condition. |
+| `condition_overrides` | object | `{}` | Per-condition background overrides. Keys are condition strings. Values are objects containing any subset of the background fields (`background_type`, `background_color`, `background_top`, `background_bottom`, `background_split`, `background_gradient_direction`). Text colors, `cameos`, `sun_enabled`, and `moon_enabled` cannot be overridden per-condition. |
 
 Example:
 
@@ -193,7 +197,7 @@ Example:
 
 ---
 
-## Valid condition strings for overrides
+## Valid condition strings for legacy overrides
 
 ```
 CLEAR           SUNNY           PARTLYCLOUDY    CLOUDY
@@ -239,10 +243,10 @@ sunrise:                    sunset:
    ```bash
    sudo cp stormy_night.json /etc/hub75-clock/themes/
    ```
-3. The clock detects the new file within a few seconds and adds it to the available themes list.
+3. Python runtime: the clock detects the new file within a few seconds and adds it to the available themes list. C++ runtime: restart `hub75-clock` to reload the theme list.
 4. Select it from the HA device page or via MQTT.
 
-No restart required.
+When using the theme builder on a C++ clock, restart the clock service after saving if you need the new file loaded immediately.
 
 ---
 
@@ -292,10 +296,10 @@ No restart required.
 
 - **Keep colors dim for night themes.** Time and temperature colors in the `#303030`–`#606060` range are readable without lighting up a dark room. Use `#F0F0F0` only for daytime themes.
 
-- **Condition overrides are the right place for weather-reactive backgrounds.** A day theme might have a bright blue sky by default but darken to near-black during TSTORM. That way you get one theme that adapts rather than needing separate themes for every combination of time-of-day and weather.
+- **Prefer explicit themes over condition overrides.** Home Assistant can pick `Day - Rain`, `Night - Clear`, `Evening - Storm`, and so on. That avoids surprising overrides when you intentionally design a theme around a specific look.
 
 - **Theme names must be unique** across all `.json` files in the themes folder. If two files declare the same `name`, the second one loaded wins (load order is filesystem-alphabetical). Use a clear, descriptive name.
 
 - **You can have as many themes as you want.** The HA select entity updates its options list automatically. There is no limit.
 
-- **Drop a theme file in place to update it.** The watchdog detects the write and reloads. If the active theme was modified, it stays active with the new settings applied immediately.
+- **Drop a theme file in place to update it.** The Python runtime detects the write and reloads. If the active theme was modified, it stays active with the new settings applied immediately. The C++ runtime needs a service restart to pick up file changes.

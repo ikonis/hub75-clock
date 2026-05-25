@@ -236,7 +236,7 @@ bash install.sh
 
 ### update scripts
 
-Pulls the latest code from GitHub, copies updated files to `/opt/hub75-clock/`, and restarts the service. `install.sh` installs either `scripts/update-clock-python.sh` or `scripts/update-clock-cpp.sh` as `~/update-clock.sh`, matching the runtime you selected.
+Pulls the latest code from GitHub, copies updated files to `/opt/hub75-clock/`, and restarts the service. `install.sh` installs either `scripts/update-clock-python.sh` or `scripts/update-clock-cpp.sh` as `~/update-clock.sh`, matching the runtime you selected. The updater pulls the branch currently checked out in the repo.
 
 ```bash
 make update
@@ -314,7 +314,7 @@ make update
 # or: ~/update-clock.sh
 ```
 
-This pulls from the `main` branch, copies the updated files to `/opt/hub75-clock/`, and restarts the service.
+This pulls from the branch currently checked out in your repo, copies the updated files to `/opt/hub75-clock/`, and restarts the service. For the C++ runtime it also rebuilds the binary before reinstalling it.
 
 ---
 
@@ -423,6 +423,12 @@ With defaults (`client_id: hub75_clock`, `ha_discovery_name: "HUB75 Clock"`):
 | `binary_sensor.hub75_clock_pir` | PIR motion (shown as "Motion" in HA) |
 | `binary_sensor.hub75_clock_presence` | LD2410C occupancy |
 | `number.hub75_clock_brightness` | Brightness control (1–100) |
+| `select.hub75_clock_theme` | Active theme selector, populated from loaded theme JSON files |
+| `button.hub75_clock_update` | Runs the configured update command |
+| `switch.hub75_clock_engineering_mode` | Enables LD2410 engineering mode while tuning gates |
+| `switch.hub75_clock_theme_builder` | Starts/stops the theme builder service when `theme_builder.mode: ha` |
+| `sensor.hub75_clock_theme_builder_url` | Browser URL for the theme builder when HA-controlled |
+| `sensor.hub75_clock_version` | Installed version/commit information when published |
 
 Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registered.
 
@@ -435,6 +441,10 @@ Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registere
 | `clock/weather` | `{"low_temp": 68, "high_temp": 88, "condition": "TSTORM", "outdoor_temp": 64}` |
 | `clock/config` | `{"brightness": 40}` — brightness; additional config keys documented in `config.example.yaml` |
 | `{client_id}/theme/set` | Theme name string, e.g. `"Rainy Night"` — per-clock, uses `mqtt.client_id` from config |
+| `{client_id}/gates` | LD2410 gate threshold updates |
+| `{client_id}/engineering_mode` | `{"engineering_mode": true}` / `false` |
+| `{client_id}/bucket` | Current HA time bucket string or `{"bucket":"Night"}` |
+| `{client_id}/update/install` | Trigger update/install action |
 | `clock/alert` | `{"message": "Tornado Warning - County - until 4:45 PM", "expires": "2026-04-25T16:45:00-05:00"}` |
 | `clock/alert` | `{"clear": true}` to dismiss |
 
@@ -447,6 +457,11 @@ Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registere
 | `hub75_clock/presence` | `{"presence": true, "target_state": 3, "move_distance": 85, "still_distance": 120}` |
 | `hub75_clock/motion` | `{"move_energy": 45, "still_energy": 30}` |
 | `hub75_clock/status` | `online` or `offline` |
+| `hub75_clock/theme/state` | Active theme name, retained |
+| `hub75_clock/themes/available` | JSON array of available theme names, retained |
+| `hub75_clock/fonts_available` | JSON array of installed font names, retained |
+| `hub75_clock/engineering_mode/state` | `on` or `off`, retained |
+| `hub75_clock/update/latest` | Latest update/version payload when available |
 
 ### Weather conditions
 
@@ -534,9 +549,10 @@ hub75-clock/
 ├── README.md
 ├── config.example.yaml         Reference config; configure.sh writes the real config
 ├── install.sh                  One-shot installer, run once on a fresh Pi
-├── update.sh                   Installed to ~/update-clock.sh; called by make update
 ├── scripts/
 │   ├── configure.sh            Interactive config wizard; run by install.sh
+│   ├── update-clock-python.sh  Python runtime updater, installed to ~/update-clock.sh
+│   ├── update-clock-cpp.sh     C++ runtime updater, installed to ~/update-clock.sh
 │   └── test_display.py         Panel pixel test (make rgb)
 ├── clock/
 │   ├── hub75_clock.py          Main application
@@ -545,8 +561,9 @@ hub75-clock/
 ├── themes/
 │   └── *.json                  Built-in themes; copied to /etc/hub75-clock/themes/ on first install
 ├── animations/
-│   └── *.py                    Built-in drop-in animations; copied to /etc/hub75-clock/animations/
-│                               Drop your own .py files there to add custom animations at runtime
+│   └── *.py                    Built-in Python drop-in animations
+├── clock-cpp/
+│   └── src/animations/*.cpp    Built-in C++ animations compiled into the C++ runtime
 └── automations/
     ├── 01_set_theme.yaml            Set brightness + call theme script on bucket/condition change
     ├── 01b_select_theme_script.yaml Script: maps bucket + condition → theme, publishes to both clocks
@@ -555,7 +572,7 @@ hub75-clock/
     └── 04_online_offline.yaml       Offline notification for both clocks
 ```
 
-Custom animations can be added at runtime by dropping a `.py` file into `/etc/hub75-clock/animations/`. The clock detects the new file within seconds and makes it available for use in theme `cameos` lists without a restart. See `docs/animations.md` for the full interface.
+With the Python runtime, custom animations can be added at runtime by dropping a `.py` file into `/etc/hub75-clock/animations/`. The Python clock detects the new file within seconds and makes it available for use in theme `cameos` lists without a restart. With the C++ runtime, animations live in `clock-cpp/src/animations/` and require a rebuild. See `docs/animations.md` for both paths.
 
 ---
 

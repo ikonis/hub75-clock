@@ -17,14 +17,25 @@ The Pi Zero W uses an ARMv6 processor. Recent versions of the `rpi-rgb-led-matri
 | Architecture | ARMv6 32-bit | ARMv8 64-bit |
 | gpio_slowdown | 2 | 4 |
 | UART port | /dev/serial0 | /dev/ttyAMA0 |
-| Performance | Slower, some lag on config changes | Fast, very responsive |
-| Build process | Requires RP1 stub hack | Standard build |
+| Performance | Best with the C++ runtime | Very responsive with either runtime |
+| Build process | Installer pins an older matrix library commit and can build the C++ runtime | Standard build |
 
 ---
 
 ## OS
 
 Use **Raspberry Pi OS Lite (32-bit, Bookworm)**. Do NOT use 64-bit on Pi Zero W. It is not supported on ARMv6.
+
+---
+
+## Installer Runtime Choice
+
+`install.sh` asks which runtime to install:
+
+- `python` is the suggested default for multicore Pis.
+- `cpp` is the suggested default on Pi Zero W and has the lowest CPU overhead.
+
+The selected runtime controls both the systemd service and which updater gets installed to `~/update-clock.sh`. The C++ updater rebuilds `clock-cpp` during `make update`, then stops the service, swaps in the new binary, and restarts it.
 
 ---
 

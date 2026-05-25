@@ -6,7 +6,7 @@
 # your live settings.
 #
 # The live config at /etc/hub75-clock/config.yaml is gitignored.
-# Update workflow: git pull && make restart
+# Update workflow: make update
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -31,6 +31,16 @@ mqtt:
     motion:       hub75_clock/motion
     pir:          hub75_clock/pir
     availability: hub75_clock/status
+    theme:        hub75_clock/theme/set
+    theme_state:  hub75_clock/theme/state
+    themes_available: hub75_clock/themes/available
+    fonts_available: hub75_clock/fonts_available
+    gates:        hub75_clock/gates
+    engineering_mode: hub75_clock/engineering_mode
+    bucket:       hub75_clock/bucket
+    version_state: hub75_clock/version
+    update:       hub75_clock/update/install
+    update_latest: hub75_clock/update/latest
 
 # -----------------------------------------------------------------------------
 # Home Assistant MQTT Discovery
@@ -41,6 +51,17 @@ ha_discovery:
   prefix: homeassistant            # must match HA's discovery prefix (default: homeassistant)
   ha_discovery_name: "HUB75 Clock" # friendly name shown in Home Assistant
   ha_discovery_area: ""            # optional, sets the HA device area (e.g. "Bedroom")
+
+# -----------------------------------------------------------------------------
+# Theme builder web UI
+# mode: off, ha, or always. In ha mode, MQTT discovery exposes a switch and URL.
+# -----------------------------------------------------------------------------
+theme_builder:
+  mode: ha
+  service_name: hub75-theme-builder
+  host: 0.0.0.0
+  port: 8765
+  url: http://hub75-clock.local:8765/
 
 # -----------------------------------------------------------------------------
 # Panel hardware - adjust to match your specific panel and Pi model
@@ -58,6 +79,7 @@ panel:
   pwm_bits: 11
   pwm_lsb_nanoseconds: 130
   brightness: 60      # 1-100, live-overridable via MQTT
+  led_rgb_sequence: RBG
 
 # -----------------------------------------------------------------------------
 # Fonts - path to BDF fonts bundled with rpi-rgb-led-matrix
@@ -65,27 +87,34 @@ panel:
 # IMPORTANT: update *_w and *_h to match the font file you choose.
 # -----------------------------------------------------------------------------
 fonts:
-  banner_path: /home/YOUR_USERNAME/hub75-fonts/5x7.bdf
-  banner_w: 5
-  banner_h: 7
+  fonts_dir: /home/YOUR_USERNAME/hub75-fonts
 
-  time_path: /home/YOUR_USERNAME/hub75-fonts/10x20.bdf
-  time_w: 10
-  time_h: 20
+  banner_name: 4x6.bdf
+  banner_w: 4
+  banner_h: 6
 
-  alert_path: /home/YOUR_USERNAME/hub75-fonts/5x7.bdf
-  alert_w: 5
-  alert_h: 7
+  time_name: spleen-12x24.bdf
+  time_w: 12
+  time_h: 24
+
+  alert_name: 4x6.bdf
+  alert_w: 4
+  alert_h: 6
 
 # -----------------------------------------------------------------------------
-# Colors (RGB tuples 0-255)
-# Day values are used when lux is above the night threshold; night values below.
+# Colors
+# Hex strings and RGB tuples are both accepted. Theme JSON files can override
+# time/temperature/condition/cloud colors per theme.
 # -----------------------------------------------------------------------------
 colors:
-  banner_day:   [200, 200, 200]
-  banner_night: [60, 60, 60]
-  time_day:     [240, 240, 240]
-  time_night:   [80, 80, 80]
+  time_day:     "#F0F0F0"
+  time_night:   "#505050"
+  low_temp_day: "#00CCFF"
+  low_temp_night: "#004455"
+  high_temp_day: "#FF8C00"
+  high_temp_night: "#552E00"
+  condition_day: "#909090"
+  condition_night: "#303030"
   outline:      [0, 0, 0]
   rain_day:     [22, 42, 115]
   rain_night:   [10, 18, 50]
@@ -108,6 +137,7 @@ colors:
 # -----------------------------------------------------------------------------
 animation:
   fps: 90
+  fps_night: 90
   rain_count:         [5, 8]
   snow_count:         [6, 10]
   sleet_count:        [6, 10]
@@ -160,8 +190,8 @@ update:
 
 # -----------------------------------------------------------------------------
 # Themes - background, color, and animation presets loaded from JSON files
-# Built-in themes live in themes_dir. Drop your own .json files there and
-# the clock picks them up live (no restart needed).
+# Built-in themes live in themes_dir. Python watches this directory live.
+# C++ reloads theme files when the service restarts.
 # -----------------------------------------------------------------------------
 themes:
   themes_dir: /etc/hub75-clock/themes
