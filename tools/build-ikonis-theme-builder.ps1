@@ -6,15 +6,26 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $RepoRoot
 
-$PythonExe = "python"
+$PythonExe = $null
 $PythonArgs = @()
-if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
-    if (Get-Command py -ErrorAction SilentlyContinue) {
+
+if (Get-Command py -ErrorAction SilentlyContinue) {
+    & py -3 --version *> $null
+    if ($LASTEXITCODE -eq 0) {
         $PythonExe = "py"
         $PythonArgs = @("-3")
-    } else {
-        throw "Python was not found. Install Python 3 first."
     }
+}
+
+if (-not $PythonExe -and (Get-Command python -ErrorAction SilentlyContinue)) {
+    & python --version *> $null
+    if ($LASTEXITCODE -eq 0) {
+        $PythonExe = "python"
+    }
+}
+
+if (-not $PythonExe) {
+    throw "Python 3 was not found. The Windows Store python alias may be enabled; try running this with py -3 available."
 }
 
 if (-not $SkipInstall) {
