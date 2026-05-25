@@ -55,16 +55,13 @@ class Animation:
             if not (0 <= tx < self._w and self._at <= ty <= self._ab):
                 continue
             t = i / self._tail_len
-            r = int(self.TAIL_R * (1 - t))
-            g = int(self.TAIL_G * (1 - t * 0.6))
-            b = int(self.TAIL_B * (1 - t * 0.3))
-            canvas.SetPixel(tx, ty, r, g, b)
+            alpha = max(0.0, 1.0 - t)
+            canvas.BlendPixel(tx, ty, self.TAIL_R, self.TAIL_G, self.TAIL_B, alpha)
             if i < self._tail_len // 2:
-                dim = int((1 - t) * 80)
                 for off in (-1, 1):
                     ny = ty + off
                     if self._at <= ny <= self._ab:
-                        canvas.SetPixel(tx, ny, dim // 2, dim // 2, dim)
+                        canvas.BlendPixel(tx, ny, 80, 100, 180, alpha * 0.35)
 
         # Bright blue-white head
         if 0 <= hx < self._w and self._at <= hy <= self._ab:
@@ -72,7 +69,7 @@ class Animation:
             for ddx, ddy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                 gx, gy = hx + ddx, hy + ddy
                 if 0 <= gx < self._w and self._at <= gy <= self._ab:
-                    canvas.SetPixel(gx, gy, *self.COLOR_HEAD_GLOW)
+                    canvas.BlendPixel(gx, gy, *self.COLOR_HEAD_GLOW, 0.55)
 
     def is_done(self) -> bool:
         return (self.x < -self._tail_len - 4 or

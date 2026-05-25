@@ -56,9 +56,10 @@ class Animation:
             if b > 20:
                 px, py = int(round(fx)), int(round(fy))
                 if 0 <= px < self._w and self._at <= py <= self._ab:
-                    canvas.SetPixel(px, py, b, b, int(b * self.GREEN_RATIO))
+                    alpha = min(1.0, b / self.MAX_BRIGHTNESS)
+                    canvas.BlendPixel(px, py, 220, 220, int(220 * self.GREEN_RATIO), alpha)
                     if self._at <= py + 1 <= self._ab:
-                        canvas.SetPixel(px, py + 1, b // 2, b // 2, int(b * self.GREEN_RATIO / 2))
+                        canvas.BlendPixel(px, py + 1, 180, 180, int(180 * self.GREEN_RATIO), alpha * 0.35)
 
     def is_done(self) -> bool:
         return self._frame >= self._total

@@ -103,7 +103,7 @@ class Animation:
             br = int(intensity * af)
             for bx in range(cx - hw, cx + hw + 1):
                 if 0 <= bx < self._w:
-                    canvas.SetPixel(bx, by, 0, br, br // 2)
+                    canvas.BlendPixel(bx, by, 0, 120, 70, min(0.65, br / 80.0))
 
     def draw(self, canvas):
         ox = int(round(self.x))
@@ -151,7 +151,7 @@ class Animation:
                 gy = oy + 2
                 gb = max(0, 20 - i * 5)
                 if 0 <= gx < self._w and self._at <= gy <= self._ab:
-                    canvas.SetPixel(gx, gy, 0, gb, gb // 2)
+                    canvas.BlendPixel(gx, gy, 0, 120, 70, gb / 60.0)
 
     def is_done(self) -> bool:
         return self.x < -10

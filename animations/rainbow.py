@@ -62,15 +62,9 @@ class Animation:
                 arc_h = math.sqrt(max(0, r2 * r2 - dx * dx))
                 py = int(round(base_y - arc_h))
                 if self._at <= py <= self._ab:
-                    canvas.SetPixel(
-                        px, py,
-                        int(br * alpha), int(bg2 * alpha), int(bb * alpha)
-                    )
+                    canvas.BlendPixel(px, py, br, bg2, bb, alpha * 0.78)
                 if self._at <= py + 1 <= self._ab:
-                    canvas.SetPixel(
-                        px, py + 1,
-                        int(br * alpha), int(bg2 * alpha), int(bb * alpha)
-                    )
+                    canvas.BlendPixel(px, py + 1, br, bg2, bb, alpha * 0.58)
 
     def is_done(self) -> bool:
         return self._frame >= self._total

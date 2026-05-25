@@ -59,12 +59,11 @@ class Animation:
             fy = flame_y + fi
             if self._at <= fy <= self._ab:
                 fade = 1.0 - fi / 4.0
-                fr = int(self.FLAME_CORE_R * fade)
-                fg = int(self.FLAME_CORE_G * fade * (1 - fi * 0.2))
-                canvas.SetPixel(ox + 1, fy, fr, fg, 0)
+                fg_alpha = fade * (1 - fi * 0.2)
+                canvas.BlendPixel(ox + 1, fy, self.FLAME_CORE_R, self.FLAME_CORE_G, 0, fg_alpha)
                 if fi < 2:
-                    canvas.SetPixel(ox, fy, int(fr * 0.6), int(fg * 0.4), 0)
-                    canvas.SetPixel(ox + 2, fy, int(fr * 0.6), int(fg * 0.4), 0)
+                    canvas.BlendPixel(ox, fy, self.FLAME_CORE_R, self.FLAME_CORE_G, 0, fg_alpha * 0.35)
+                    canvas.BlendPixel(ox + 2, fy, self.FLAME_CORE_R, self.FLAME_CORE_G, 0, fg_alpha * 0.35)
 
     def is_done(self) -> bool:
         return self.y < self._at - 10

@@ -54,15 +54,14 @@ class Animation:
     def draw(self, canvas):
         for i, (tx, ty) in enumerate(self._trail):
             fade = (i + 1) / len(self._trail)
-            b = int(85 * fade)
-            if b <= 4:
+            alpha = 0.42 * fade
+            if alpha <= 0.02:
                 continue
             px, py = int(round(tx)), int(round(ty))
             if 0 <= px < self._w and self._at <= py <= self._ab:
-                canvas.SetPixel(px, py, b, b, b)
+                canvas.BlendPixel(px, py, 175, 175, 180, alpha)
                 if i % 3 == 0 and self._at <= py + 1 <= self._ab:
-                    dim = b // 2
-                    canvas.SetPixel(px, py + 1, dim, dim, dim)
+                    canvas.BlendPixel(px, py + 1, 150, 150, 155, alpha * 0.45)
 
         ox = int(round(self.x))
         oy = int(round(self.y))

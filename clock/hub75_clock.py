@@ -497,6 +497,72 @@ class CameoManager:
                 self._active = None
 
 
+class _TrackedCanvas:
+    """Small SetPixel proxy that lets animations blend against pixels already drawn."""
+
+    def __init__(self, canvas, width: int, height: int):
+        self._canvas = canvas
+        self._w = width
+        self._h = height
+        self._pix = [(0, 0, 0)] * (width * height)
+
+    def _idx(self, x: int, y: int):
+        if 0 <= x < self._w and 0 <= y < self._h:
+            return y * self._w + x
+        return None
+
+    def SetPixel(self, x: int, y: int, r: int, g: int, b: int):
+        idx = self._idx(x, y)
+        if idx is None:
+            return
+        color = (
+            max(0, min(255, int(r))),
+            max(0, min(255, int(g))),
+            max(0, min(255, int(b))),
+        )
+        self._pix[idx] = color
+        self._canvas.SetPixel(x, y, color[0], color[1], color[2])
+
+    def GetPixel(self, x: int, y: int):
+        idx = self._idx(x, y)
+        if idx is None:
+            return (0, 0, 0)
+        return self._pix[idx]
+
+    def BlendPixel(self, x: int, y: int, r: int, g: int, b: int, alpha: float):
+        idx = self._idx(x, y)
+        if idx is None:
+            return
+        a = max(0.0, min(1.0, float(alpha)))
+        if a <= 0.0:
+            return
+        if a >= 1.0:
+            self.SetPixel(x, y, r, g, b)
+            return
+        br, bg, bb = self._pix[idx]
+        self.SetPixel(
+            x, y,
+            int(br * (1.0 - a) + r * a),
+            int(bg * (1.0 - a) + g * a),
+            int(bb * (1.0 - a) + b * a),
+        )
+
+    def AddPixel(self, x: int, y: int, r: int, g: int, b: int, alpha: float = 1.0):
+        idx = self._idx(x, y)
+        if idx is None:
+            return
+        a = max(0.0, min(1.0, float(alpha)))
+        if a <= 0.0:
+            return
+        br, bg, bb = self._pix[idx]
+        self.SetPixel(
+            x, y,
+            min(255, int(br + r * a)),
+            min(255, int(bg + g * a)),
+            min(255, int(bb + b * a)),
+        )
+
+
 class WeatherAnimator:
     def __init__(self, cfg: dict, layout: dict, animation_loader: "AnimationLoader" = None):
         self.cfg = cfg
@@ -709,6 +775,7 @@ class WeatherAnimator:
 
     def draw(self, canvas, alert_active: bool = False):
         """Draw background animation. Banner area never touched."""
+        canvas = _TrackedCanvas(canvas, self.width, self.height)
         if alert_active:
             self._draw_hazard_stripes(canvas)
             return

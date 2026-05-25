@@ -101,6 +101,11 @@ class Animation:
                             max(0, min(255, g)),
                             max(0, min(255, b)))
 
+    def _blend(self, canvas, x, y, r, g, b, alpha):
+        px, py = int(round(x)), int(round(y))
+        if 0 <= px < self._w and self._at <= py <= self._ab:
+            canvas.BlendPixel(px, py, r, g, b, alpha)
+
     def draw(self, canvas):
         for rk in self._rockets:
             if rk["phase"] == "launch":
@@ -114,22 +119,19 @@ class Animation:
                     if sp["life"] <= 0:
                         continue
                     alpha = sp["life"] / float(sp["max"])
-                    r = int(sp["r"] * alpha)
-                    g = int(sp["g"] * alpha)
-                    b = int(sp["b"] * alpha)
                     # Head at full brightness
-                    self._px(canvas, sp["x"], sp["y"], r, g, b)
+                    self._blend(canvas, sp["x"], sp["y"], sp["r"], sp["g"], sp["b"], alpha)
                     # Tail: 2 pixels behind in the opposite direction of travel
                     spd = math.sqrt(sp["vx"] ** 2 + sp["vy"] ** 2)
                     if spd > 0.01:
                         uvx = sp["vx"] / spd
                         uvy = sp["vy"] / spd
-                        self._px(canvas,
-                                 sp["x"] - uvx, sp["y"] - uvy,
-                                 int(r * 0.6), int(g * 0.6), int(b * 0.6))
-                        self._px(canvas,
-                                 sp["x"] - 2 * uvx, sp["y"] - 2 * uvy,
-                                 int(r * 0.3), int(g * 0.3), int(b * 0.3))
+                        self._blend(canvas,
+                                    sp["x"] - uvx, sp["y"] - uvy,
+                                    sp["r"], sp["g"], sp["b"], alpha * 0.45)
+                        self._blend(canvas,
+                                    sp["x"] - 2 * uvx, sp["y"] - 2 * uvy,
+                                    sp["r"], sp["g"], sp["b"], alpha * 0.22)
 
     def is_done(self) -> bool:
         return all(rk["phase"] == "done" for rk in self._rockets)

@@ -77,7 +77,7 @@ class Animation:
         for dx, dy, r, g, b in self._SPRITE:
             px, py = self._ox + dx, self._oy + dy
             if 0 <= px < self._w and self._at <= py <= self._ab:
-                canvas.SetPixel(px, py, int(r * alpha), int(g * alpha), int(b * alpha))
+                canvas.BlendPixel(px, py, r, g, b, alpha)
 
     def is_done(self) -> bool:
         return self._frame >= self._total

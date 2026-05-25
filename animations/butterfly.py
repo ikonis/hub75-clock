@@ -87,8 +87,7 @@ class Animation:
             for dx, dy, brt in sprite:
                 px, py = ox + dx, oy + dy
                 if 0 <= px < self._w and self._at <= py <= self._ab:
-                    canvas.SetPixel(px, py,
-                                    int(cr * brt), int(cg * brt), int(cb * brt))
+                    canvas.BlendPixel(px, py, cr, cg, cb, brt)
             for dx, dy in self._BODY_PIXELS:
                 px, py = ox + dx, oy + dy
                 if 0 <= px < self._w and self._at <= py <= self._ab:

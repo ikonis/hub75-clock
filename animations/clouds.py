@@ -9,7 +9,7 @@ COLOR_HEAVY_RAIN = (10, 18, 80)    # heavy rain / tstorm streaks
 COLOR_SNOW       = (180, 180, 200) # snowflakes
 COLOR_SLEET      = (120, 160, 180) # sleet fast particles (slow ones use COLOR_SNOW)
 COLOR_LIGHTNING  = (232, 232, 64)  # lightning bolt color
-COLOR_FLASH      = (20, 20, 60)    # brief background flash during tstorm strike
+COLOR_FLASH      = (45, 45, 120)   # brief additive tint during tstorm strike
 # ------------------------------------------------
 
 
@@ -250,9 +250,10 @@ class Animation:
         # Background flash during tstorm strike
         if self._flash_life > 0:
             fr, fg, fb = COLOR_FLASH
+            alpha = min(0.65, 0.28 * self._flash_life)
             for fy in range(self._at, self._ab + 1):
                 for fx in range(self._w):
-                    canvas.SetPixel(fx, fy, fr, fg, fb)
+                    canvas.AddPixel(fx, fy, fr, fg, fb, alpha)
 
         for c in self._clouds:
             cy = int(round(c["y"]))
@@ -290,10 +291,7 @@ class Animation:
 
         # Lightning bolt
         if self._bolt_life > 0 and self._bolt:
-            fade = self._bolt_life / 3.0
-            lc = (int(COLOR_LIGHTNING[0] * fade),
-                  int(COLOR_LIGHTNING[1] * fade),
-                  int(COLOR_LIGHTNING[2] * fade))
+            lc = COLOR_LIGHTNING
             self._draw_bolt(canvas, self._bolt, lc)
             dim = (lc[0] // 2, lc[1] // 2, lc[2] // 2)
             for branch in self._bolt_branches:
@@ -310,18 +308,14 @@ class Animation:
                     px, py = cx + dx, cy + dy
                     if 0 <= px < self._w and self._at <= py <= self._ab:
                         pr, pg, pb = cr, cg, cb
-                        # EXPERIMENTAL: sun-cloud blending - remove from here...
-                        if self._sun_ox is not None:
-                            sdx = px - self._sun_ox
-                            sdy = py - self._sun_oy
-                            dist = math.sqrt(sdx * sdx + sdy * sdy)
-                            if dist < self._sun_glow:
-                                t = min(0.35, (1.0 - dist / self._sun_glow) ** 2)
-                                sr, sg, sb = self._sun_color
-                                pr = int(pr * (1.0 - t) + sr * t)
-                                pg = int(pg * (1.0 - t) + sg * t)
-                                pb = int(pb * (1.0 - t) + sb * t)
-                        # ...to here to disable sun-cloud blending
+                        behind = canvas.GetPixel(px, py)
+                        cloud_luma = pr * 0.299 + pg * 0.587 + pb * 0.114
+                        back_luma = behind[0] * 0.299 + behind[1] * 0.587 + behind[2] * 0.114
+                        if back_luma > cloud_luma:
+                            t = min(0.42, (back_luma - cloud_luma) / 255.0)
+                            pr = int(pr * (1.0 - t) + behind[0] * t)
+                            pg = int(pg * (1.0 - t) + behind[1] * t)
+                            pb = int(pb * (1.0 - t) + behind[2] * t)
                         canvas.SetPixel(px, py, pr, pg, pb)
 
     def _vline(self, canvas, x, y, length, col):
@@ -337,6 +331,7 @@ class Animation:
 
     def _draw_bolt(self, canvas, points, color):
         cr, cg, cb = color
+        alpha = min(1.0, max(0.15, self._bolt_life / 3.0))
         for i in range(len(points) - 1):
             x1, y1 = points[i]
             x2, y2 = points[i + 1]
@@ -346,7 +341,7 @@ class Animation:
             err = dx - dy
             while True:
                 if 0 <= x1 < self._w and self._at <= y1 <= self._ab:
-                    canvas.SetPixel(x1, y1, cr, cg, cb)
+                    canvas.BlendPixel(x1, y1, cr, cg, cb, alpha)
                 if x1 == x2 and y1 == y2:
                     break
                 e2 = 2 * err

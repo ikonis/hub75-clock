@@ -47,7 +47,7 @@ class Animation:
             level = (math.sin(phase) + 1.0) * 0.5
             b = int(s.max_brightness * level)
             if b > 5:
-                canvas.SetPixel(s.x, s.y, b, b, b)
+                canvas.BlendPixel(s.x, s.y, 220, 220, 220, b / 220.0)
 
     def is_done(self) -> bool:
         return False

@@ -85,26 +85,26 @@ class Animation:
         for dx, dy, r, g, b in self._BODY:
             px, py = ox + dx, oy + dy
             if 0 <= px < self._w and self._at <= py <= self._ab:
-                canvas.SetPixel(px, py, int(r * alpha), int(g * alpha), int(b * alpha))
+                canvas.BlendPixel(px, py, r, g, b, alpha)
         # Eyes: bright yellow/orange glow with flicker, drawn as cut-outs
-        eye_r = int((self.EYE_BASE_R + self._flicker * 20) * alpha)
-        eye_g = int((self.EYE_BASE_G + self._flicker * 15) * alpha)
+        eye_r = self.EYE_BASE_R + self._flicker * 20
+        eye_g = self.EYE_BASE_G + self._flicker * 15
         for ex, ey in self._EYES:
             px, py = ox + ex, oy + ey
             if 0 <= px < self._w and self._at <= py <= self._ab:
-                canvas.SetPixel(px, py, eye_r, eye_g, 0)
+                canvas.BlendPixel(px, py, eye_r, eye_g, 0, alpha)
         # Nose: yellow glow
-        nose_r = int(self.NOSE_R * alpha)
-        nose_g = int(self.NOSE_G * alpha)
+        nose_r = self.NOSE_R
+        nose_g = self.NOSE_G
         for nx, ny in self._NOSE:
             px, py = ox + nx, oy + ny
             if 0 <= px < self._w and self._at <= py <= self._ab:
-                canvas.SetPixel(px, py, nose_r, nose_g, 0)
+                canvas.BlendPixel(px, py, nose_r, nose_g, 0, alpha)
         # Mouth: black cutout
         for mx, my in self._MOUTH:
             px, py = ox + mx, oy + my
             if 0 <= px < self._w and self._at <= py <= self._ab:
-                canvas.SetPixel(px, py, 0, 0, 0)
+                canvas.BlendPixel(px, py, 0, 0, 0, alpha)
 
     def is_done(self) -> bool:
         return self._frame >= self._total
