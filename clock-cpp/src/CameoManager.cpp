@@ -15,6 +15,7 @@ extern "C" std::unique_ptr<Animation> create_comet(int, int, const nlohmann::jso
 extern "C" std::unique_ptr<Animation> create_easter_egg(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_firefly(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_fireworks(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_flutterflies(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_ghost(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_hot_air_balloon(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_jack_o_lantern(int, int, const nlohmann::json&, WeatherAnimator*);
@@ -57,6 +58,7 @@ void CameoManager::loadPlugins() {
         { "easter_egg",      "foreground", false, create_easter_egg      },
         { "firefly",         "foreground", false, create_firefly         },
         { "fireworks",       "foreground", false, create_fireworks       },
+        { "flutterflies",    "foreground", true,  create_flutterflies    },
         { "ghost",           "foreground", false, create_ghost           },
         { "hot_air_balloon", "foreground", false, create_hot_air_balloon },
         { "jack_o_lantern",  "foreground", false, create_jack_o_lantern  },

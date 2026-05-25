@@ -22,6 +22,9 @@ tumbleweed:
 fireworks:
   speed: 1.0
 
+flutterflies:
+  speed: 1.0
+
 clouds:
   speed: 1.0             # cloud drift
   particle_speed: 1.0    # all rain/snow/sleet particles
