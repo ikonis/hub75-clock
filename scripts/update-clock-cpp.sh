@@ -33,6 +33,27 @@ git -C "$REPO_DIR" pull --ff-only origin "$BRANCH"
 echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
 
 sudo mkdir -p "$CLOCK_DIR" "$CLOCK_DIR/tools" "$CONFIG_DIR/themes"
+mkdir -p "$REPO_DIR/themes"
+
+if [ "${PRESERVE_LOCAL_THEMES:-true}" = "true" ] && compgen -G "$CONFIG_DIR/themes/*.json" > /dev/null; then
+    echo "[update] preserving locally installed themes into repo..."
+    sudo rsync -av --exclude='__pycache__' \
+        "$CONFIG_DIR/themes/" \
+        "$REPO_DIR/themes/"
+    sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/themes"
+
+    if [ "${COMMIT_LOCAL_THEMES:-true}" = "true" ] && ! git -C "$REPO_DIR" diff --quiet -- themes; then
+        echo "[update] committing locally installed theme changes..."
+        git -C "$REPO_DIR" add themes
+        if git -C "$REPO_DIR" commit -m "Add user made themes"; then
+            if [ "${PUSH_LOCAL_THEMES:-true}" = "true" ]; then
+                git -C "$REPO_DIR" push origin "$BRANCH" || echo "[update] warning: theme commit push failed"
+            fi
+        else
+            echo "[update] warning: theme commit failed; themes are preserved locally but repo is dirty"
+        fi
+    fi
+fi
 
 echo "[update] installing theme builder files..."
 sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
