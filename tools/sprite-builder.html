@@ -22,7 +22,7 @@ input[type=range]{accent-color:var(--accent)}
 .sec{border-bottom:1px solid var(--border)}.sec-h{padding:7px 10px;background:var(--bg3);font-size:10px;letter-spacing:.9px;text-transform:uppercase;color:var(--dim);font-weight:600}
 .sec-b{padding:10px;display:flex;flex-direction:column;gap:8px}
 .f{display:flex;align-items:center;gap:7px}.f label{flex:0 0 82px;color:var(--dim);font-size:11px}.f input,.f select{min-width:0;flex:1}
-.alpha-val{width:24px;text-align:right;color:var(--dim);font-family:Consolas,monospace}
+.alpha-val,.pct-val{width:36px;text-align:right;color:var(--dim);font-family:Consolas,monospace}
 .swatches{display:grid;grid-template-columns:repeat(5,28px);gap:6px}.sw{width:28px;height:28px;border:1px solid var(--border2);border-radius:var(--r);cursor:pointer;background-color:transparent;background-image:linear-gradient(45deg,#101018 25%,transparent 25%),linear-gradient(-45deg,#101018 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#101018 75%),linear-gradient(-45deg,transparent 75%,#101018 75%);background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0;overflow:hidden;position:relative}
 .sw::after{content:"";position:absolute;inset:0;background:var(--swatch,#fff)}.sw.active{outline:2px solid var(--accent)}.sw.custom{border-color:#55557a}.subtle{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.7px}
 .stage{overflow:auto;display:flex;align-items:center;justify-content:center;padding:18px;background:var(--bg)}
@@ -57,6 +57,7 @@ input[type=range]{accent-color:var(--accent)}
         <div class="f"><label>Height</label><input id="i-height" type="number" min="1" max="25" value="8"></div>
         <div class="f"><label>Motion</label><select id="i-motion"><option value="left">left</option><option value="right">right</option><option value="up">up</option></select></div>
         <div class="f"><label>Speed</label><input id="i-speed" type="number" min="0.05" max="5" step="0.05" value="0.5"></div>
+        <div class="f"><label>Zoom</label><input type="range" id="zoom" min="10" max="100" step="5" value="25"><span class="pct-val" id="zoom-v">25%</span></div>
         <button class="btn" id="btn-resize">Resize Grid</button>
       </div>
     </div>
@@ -101,6 +102,7 @@ input[type=range]{accent-color:var(--accent)}
 'use strict';
 let sprite={name:'new_sprite',width:8,height:8,motion:'left',speed:0.5,pixels:[]};
 let currentFile='', selectedFile='', color='#dcdce6', alpha=255, tool='paint', dirty=false, syncing=false;
+let zoom=parseInt(localStorage.getItem('hub75-sprite-zoom')||'25',10)||25;
 const builtinPalette=['#dcdce6','#c8c8d2','#a0c8ff','#c83c3c','#dc4646','#ff7800','#ffd050','#bebed2','#ffffff','#000000'];
 const customPaletteKey='hub75-sprite-custom-colors';
 let customPalette=loadCustomPalette();
@@ -111,6 +113,16 @@ const blank=(name='new_sprite',w=8,h=8)=>({name,width:w,height:h,motion:'left',s
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
 function markDirty(v=true){dirty=v; el('status').textContent=v?'Unsaved':'Ready';}
+function cellSize(){return Math.max(8,Math.round(24*(zoom/25)))}
+function setZoom(v){
+  zoom=clamp(parseInt(v)||25,10,100);
+  try{localStorage.setItem('hub75-sprite-zoom',String(zoom))}catch(e){}
+  if(el('zoom'))el('zoom').value=zoom;
+  if(el('zoom-v'))el('zoom-v').textContent=zoom+'%';
+  const size=cellSize(), g=el('grid');
+  if(g)g.style.gridTemplateColumns=`repeat(${sprite.width},${size}px)`;
+  document.querySelectorAll('.cell').forEach(c=>{c.style.width=size+'px';c.style.height=size+'px'});
+}
 function hex2(n){return clamp(Math.round(n)||0,0,255).toString(16).padStart(2,'0').toUpperCase()}
 function normHex(h,allowAlpha=false){
   h=(h||'').toString().trim().replace('#','');
@@ -139,9 +151,11 @@ function normalizePixels(){let rows=sprite.pixels||[];let out=[];for(let y=0;y<s
 
 function buildGrid(){
   normalizePixels();
-  const g=el('grid'); g.innerHTML=''; g.style.gridTemplateColumns=`repeat(${sprite.width},24px)`;
+  const size=cellSize();
+  const g=el('grid'); g.innerHTML=''; g.style.gridTemplateColumns=`repeat(${sprite.width},${size}px)`;
   for(let y=0;y<sprite.height;y++)for(let x=0;x<sprite.width;x++){
     const c=document.createElement('div'); c.className='cell'; c.dataset.x=x; c.dataset.y=y; paintCellStyle(c,sprite.pixels[y][x]);
+    c.style.width=size+'px';c.style.height=size+'px';
     c.addEventListener('click',paint); c.addEventListener('contextmenu',e=>{e.preventDefault();sprite.pixels[y][x]=null;paintCellStyle(c,null);updateAll()});
     g.appendChild(c);
   }
@@ -198,9 +212,12 @@ async function loadSprite(file){const f=file||el('sprite-select').value;if(!f)re
 async function saveSprite(file=''){fromFields();const f=file||currentFile||fileName();const r=await fetch('/api/sprite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:f,sprite})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'save failed');currentFile=selectedFile=d.file;await refresh(currentFile);markDirty(false);el('status').textContent=`Saved ${d.file}`}
 
 function wire(){
+  setZoom(zoom);
   buildSwatches();
   ['i-name','i-motion','i-speed'].forEach(id=>el(id).addEventListener('input',updateAll));
   el('btn-resize').onclick=()=>{sprite.width=Math.max(1,Math.min(32,parseInt(el('i-width').value)||8));sprite.height=Math.max(1,Math.min(25,parseInt(el('i-height').value)||8));normalizePixels();buildGrid();updateAll()};
+  el('zoom').oninput=e=>setZoom(e.target.value);
+  document.querySelector('.stage').addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom+(e.deltaY<0?5:-5))},{passive:false});
   el('pick').oninput=e=>{color=normHex(e.target.value);setTool('paint');buildSwatches()};
   el('alpha').oninput=e=>{alpha=clamp(parseInt(e.target.value)||0,0,255);el('alpha-v').textContent=hex2(alpha);setTool('paint');buildSwatches()};
   el('btn-add-color').onclick=()=>{const c=currentValue();customPalette=customPalette.filter(v=>v!==c);customPalette.push(c);if(customPalette.length>5)customPalette.shift();saveCustomPalette();buildSwatches()};
