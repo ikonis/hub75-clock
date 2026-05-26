@@ -100,6 +100,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     <button class="btn server-only" id="btn-server-new">New</button>
     <button class="btn btn-p server-only" id="btn-server-save">Save</button>
     <button class="btn server-only" id="btn-server-save-as">Save As</button>
+    <a class="btn server-only" href="/sprite-builder.html">Sprites</a>
     <span id="server-status" class="server-only"></span>
     <label class="btn">
       <input type="file" id="file-load" accept=".json" style="display:none"> Load JSON
@@ -232,6 +233,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
           <option value="santa">santa</option>
           <option value="satellite">satellite</option>
           <option value="snowman">snowman</option>
+          <option value="sprite">sprite</option>
           <option value="submarine">submarine</option>
           <option value="tractor">tractor</option>
           <option value="tumbleweed">tumbleweed</option>
@@ -1282,7 +1284,7 @@ const ALL_ANIMATIONS = [
   'shooting_star','airplane','biplane','bird_flock','butterfly','comet',
   'easter_egg','firefly','fireworks','fish','flutterflies','ghost','hot_air_balloon',
   'jack_o_lantern','meteor','rainbow','rocket','santa','satellite',
-  'snowman','submarine','tractor','tumbleweed','ufo'
+  'snowman','sprite','submarine','tractor','tumbleweed','ufo'
 ];
 
 function buildCameoList() {

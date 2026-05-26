@@ -127,6 +127,8 @@ Default `False`. When `True`, the animation is instantiated once when the theme 
 
 Default `1.0`. Built-in animations use this as a simple multiplier for movement, twinkle, or drift speed so timing can be tuned without rewriting update logic.
 
+Python and C++ load runtime speed settings from `/etc/hub75-clock/animations.yaml` when present. The update scripts install the example file only if it is missing, so local speed tuning survives `make update`.
+
 ---
 
 ## `__init__` parameters
@@ -217,6 +219,7 @@ Celestial animations are drawn before sun/moon and clouds so meteors appear to f
 |---|---|---|---|---|
 | `clouds.py` | `clouds` | _(any)_ | Day, Sunrise, Sunset, Late Evening | **Persistent.** Drifting clouds plus optional precipitation particles. Count, size, and speed driven by `cloud_density`/`cloud_speed`. Precipitation type set by `precipitation` field (`"none"`, `"rain"`, `"heavy_rain"`, `"tstorm"`, `"snow"`, `"sleet"`). Tstorm mode adds random lightning bolts and background flash. All particles are owned by their parent cloud and wrap with it. |
 | `airplane.py` | `airplane` | _(any)_ | Day, Sunrise, Sunset | 8px fuselage + wings + windows, random left/right direction, mirrors sprite to face direction of travel. |
+| `sprite.py` | `sprite` | _(any)_ | _(any)_ | Generic Python-only JSON sprite cameo. Loads art from `/etc/hub75-clock/sprites/`; use theme JSON such as `{ "name": "sprite", "sprite": "rocket", "chance_per_minute": 4 }`. |
 | `bird_flock.py` | `bird_flock` | _(any)_ | Day | V-formation of 5–7 birds with alternating flap frames. |
 | `butterfly.py` | `butterfly` | CLEAR | Day | Open/closed wing frames every 5 ticks, sine wave vertical drift, orange. |
 | `flutterflies.py` | `flutterflies` | CLEAR | Day | **Persistent.** Small pastel butterfly group with gentle wandering motion. Add without `chance_per_minute`. |

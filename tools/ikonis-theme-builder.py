@@ -24,6 +24,7 @@ else:
     ROOT = APP_DIR
 
 CACHE_DIR = APP_DIR / ".theme-cache" / "ikonis"
+SPRITE_CACHE_DIR = APP_DIR / ".theme-cache" / "sprites"
 AUTH_FILE = APP_DIR / ".theme-cache" / "ikonis-auth.json"
 REMOTE_THEMES_DIR = "/etc/hub75-clock/themes"
 
@@ -206,7 +207,7 @@ class IkonisThemeHandler(theme_server.ThemeBuilderHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
         if parsed.path != "/api/theme":
-            return self.send_error(404, "Not found")
+            return super().do_POST()
 
         length = int(self.headers.get("Content-Length", "0"))
         raw = self.rfile.read(length)
@@ -330,6 +331,8 @@ def main():
 
     httpd = ThreadingHTTPServer((args.host, args.port), IkonisThemeHandler)
     httpd.themes_dir = cache_dir
+    SPRITE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    httpd.sprites_dir = SPRITE_CACHE_DIR
     httpd.ssh_user = ssh_user
     httpd.ssh_password = ssh_password
     httpd.paramiko = paramiko

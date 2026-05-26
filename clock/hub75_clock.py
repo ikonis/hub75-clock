@@ -211,6 +211,7 @@ DEFAULTS = {
     },
     "animations": {
         "animations_dir": "/etc/hub75-clock/animations",
+        "sprites_dir": "/etc/hub75-clock/sprites",
         "settings_path": "/etc/hub75-clock/animations.yaml",
     },
 }
@@ -432,6 +433,11 @@ class CameoManager:
     def reset(self):
         self._active = None
 
+    def _cfg_for_cameo(self, cameo_cfg: dict):
+        cfg = dict(self._cfg)
+        cfg["_cameo"] = dict(cameo_cfg or {})
+        return cfg
+
     def setup_persistent(self, cameos: list, animator):
         self._persistent_cloud = None
         self._persistent_others = []
@@ -440,7 +446,7 @@ class CameoManager:
             if cls is None or not getattr(cls, "persistent", False):
                 continue
             try:
-                inst = cls(animator.width, animator.height, self._cfg, animator)
+                inst = cls(animator.width, animator.height, self._cfg_for_cameo(cameo_cfg), animator)
                 if getattr(cls, "name", "") == "clouds":
                     self._persistent_cloud = inst
                 else:
@@ -478,11 +484,11 @@ class CameoManager:
                     continue
                 prob = cameo_cfg.get("chance_per_minute", 0) / 60.0 / fps
                 if random.random() < prob:
-                    winners.append(cls)
+                    winners.append((cls, cameo_cfg))
             if winners:
-                cls = random.choice(winners)
+                cls, cameo_cfg = random.choice(winners)
                 try:
-                    self._active = cls(animator.width, animator.height, self._cfg, animator)
+                    self._active = cls(animator.width, animator.height, self._cfg_for_cameo(cameo_cfg), animator)
                 except Exception as e:
                     print(f"[animations] warning: failed to spawn {cls}: {e}")
 

@@ -1,0 +1,13 @@
+{
+  "name": "airplane",
+  "width": 9,
+  "height": 4,
+  "motion": "right",
+  "speed": 0.6,
+  "pixels": [
+    [null, null, null, null, null, null, "#bebec8", "#b4b4be", null],
+    [null, "#c8c8d2", "#d2d2dc", "#d2d2dc", "#d2d2dc", "#c8c8d2", "#bebec8", "#b4b4be", null],
+    ["#dcdce6", "#c8c8d2", "#a0c8ff", "#d2d2dc", "#a0c8ff", "#c8c8d2", "#b4b4be", "#a0a0aa", null],
+    [null, null, "#b4b4be", "#c8c8d2", "#c8c8d2", "#b4b4be", null, null, null]
+  ]
+}

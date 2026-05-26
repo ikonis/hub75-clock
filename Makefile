@@ -2,7 +2,7 @@
 # Run from the repo root on the Pi
 # Usage: make <target>
 
-.PHONY: update logs restart status stop start test config install rgb theme-builder
+.PHONY: update logs restart status stop start test config install rgb theme-builder sprite-builder
 
 update:
 	~/update-clock.sh
@@ -35,4 +35,7 @@ install:
 	bash install.sh
 
 theme-builder:
-	python3 tools/theme-server.py --themes-dir themes
+	python3 tools/theme-server.py --themes-dir themes --sprites-dir sprites
+
+sprite-builder:
+	python3 tools/theme-server.py --themes-dir themes --sprites-dir sprites

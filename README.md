@@ -275,6 +275,7 @@ make test       # run test_sensors.py
 make config     # open config wizard (reconfigure)
 make rgb        # run test_display.py (panel pixel test)
 make theme-builder # edit repo themes in the browser
+make sprite-builder # edit sprite JSON files in the browser
 ```
 
 After editing `/etc/hub75-clock/config.yaml` directly:
@@ -302,6 +303,25 @@ sudo python3 tools/theme-server.py --themes-dir /etc/hub75-clock/themes --host 0
 Then browse to `http://<clock-ip>:8765/`. Only run it on a trusted network.
 
 During install, the theme builder can be disabled, left always running, or controlled from Home Assistant. In HA-controlled mode, the clock publishes a Theme Builder switch and a Theme Builder URL sensor through MQTT discovery. The switch starts/stops the `hub75-theme-builder` service; the URL sensor gives you the browser address.
+
+---
+
+## Sprite Builder
+
+The sprite builder edits small JSON sprites used by the generic Python `sprite` cameo:
+
+```bash
+make sprite-builder
+# open http://127.0.0.1:8766/
+```
+
+Sprites live in `sprites/` in the repo and `/etc/hub75-clock/sprites/` on clocks. Use them from a theme cameo like:
+
+```json
+{ "name": "sprite", "sprite": "rocket", "chance_per_minute": 4 }
+```
+
+The first implementation is Python runtime only. C++ can read the same sprite JSON format later.
 
 ---
 
@@ -547,6 +567,8 @@ hub75-clock/
 ├── animations/
 │   └── *.py                    Built-in drop-in animations; copied to /etc/hub75-clock/animations/
 │                               Drop your own .py files there to add custom animations at runtime
+├── sprites/
+│   └── *.json                  Sprite cameo art for the generic Python sprite animation
 └── automations/
     ├── 01_set_theme.yaml            Set brightness + call theme script on bucket/condition change
     ├── 01b_select_theme_script.yaml Script: maps bucket + condition → theme, publishes to both clocks

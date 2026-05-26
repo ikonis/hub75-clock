@@ -37,6 +37,7 @@ if (-not $SkipInstall) {
     --name ikonis-theme-builder `
     --add-data "tools/theme-server.py;tools" `
     --add-data "tools/theme-builder.html;tools" `
+    --add-data "tools/sprite-builder.html;tools" `
     tools/ikonis-theme-builder.py
 
 Write-Host ""

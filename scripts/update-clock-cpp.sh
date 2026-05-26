@@ -32,8 +32,8 @@ git -C "$REPO_DIR" pull --ff-only origin "$BRANCH"
 
 echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
 
-sudo mkdir -p "$CLOCK_DIR" "$CLOCK_DIR/tools" "$CONFIG_DIR/themes"
-mkdir -p "$REPO_DIR/themes"
+sudo mkdir -p "$CLOCK_DIR" "$CLOCK_DIR/tools" "$CONFIG_DIR/themes" "$CONFIG_DIR/sprites"
+mkdir -p "$REPO_DIR/themes" "$REPO_DIR/sprites"
 
 if [ "${PRESERVE_LOCAL_THEMES:-true}" = "true" ] && compgen -G "$CONFIG_DIR/themes/*.json" > /dev/null; then
     echo "[update] preserving locally installed themes into repo..."
@@ -42,22 +42,32 @@ if [ "${PRESERVE_LOCAL_THEMES:-true}" = "true" ] && compgen -G "$CONFIG_DIR/them
         "$REPO_DIR/themes/"
     sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/themes"
 
-    if [ "${COMMIT_LOCAL_THEMES:-true}" = "true" ] && ! git -C "$REPO_DIR" diff --quiet -- themes; then
-        echo "[update] committing locally installed theme changes..."
-        git -C "$REPO_DIR" add themes
-        if git -C "$REPO_DIR" commit -m "Add user made themes"; then
-            if [ "${PUSH_LOCAL_THEMES:-true}" = "true" ]; then
-                git -C "$REPO_DIR" push origin "$BRANCH" || echo "[update] warning: theme commit push failed"
-            fi
-        else
-            echo "[update] warning: theme commit failed; themes are preserved locally but repo is dirty"
+fi
+
+if [ "${PRESERVE_LOCAL_SPRITES:-true}" = "true" ] && compgen -G "$CONFIG_DIR/sprites/*.json" > /dev/null; then
+    echo "[update] preserving locally installed sprites into repo..."
+    sudo rsync -av --exclude='__pycache__' \
+        "$CONFIG_DIR/sprites/" \
+        "$REPO_DIR/sprites/"
+    sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/sprites"
+fi
+
+if [ "${COMMIT_LOCAL_THEMES:-true}" = "true" ] && ! git -C "$REPO_DIR" diff --quiet -- themes sprites; then
+    echo "[update] committing locally installed theme/sprite changes..."
+    git -C "$REPO_DIR" add themes sprites
+    if git -C "$REPO_DIR" commit -m "Add user made themes and sprites"; then
+        if [ "${PUSH_LOCAL_THEMES:-true}" = "true" ]; then
+            git -C "$REPO_DIR" push origin "$BRANCH" || echo "[update] warning: theme/sprite commit push failed"
         fi
+    else
+        echo "[update] warning: theme/sprite commit failed; files are preserved locally but repo is dirty"
     fi
 fi
 
 echo "[update] installing theme builder files..."
 sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
 sudo cp "$REPO_DIR/tools/theme-server.py" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/sprite-builder.html" "$CLOCK_DIR/tools/"
 if [ ! -f "$CONFIG_DIR/animations.yaml" ] && [ -f "$REPO_DIR/clock-cpp/animations.example.yaml" ]; then
     echo "[update] installing default animation settings..."
     sudo cp "$REPO_DIR/clock-cpp/animations.example.yaml" "$CONFIG_DIR/animations.yaml"
@@ -73,7 +83,7 @@ Wants=network-online.target
 Type=simple
 User=root
 WorkingDirectory=$CLOCK_DIR
-ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --host 0.0.0.0 --port 8765
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --sprites-dir $CONFIG_DIR/sprites --host 0.0.0.0 --port 8765
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
@@ -88,6 +98,11 @@ echo "[update] syncing themes..."
 sudo rsync -av --delete --exclude='__pycache__' \
     "$REPO_DIR/themes/" \
     "$CONFIG_DIR/themes/"
+
+echo "[update] syncing sprites..."
+sudo rsync -av --delete --exclude='__pycache__' \
+    "$REPO_DIR/sprites/" \
+    "$CONFIG_DIR/sprites/"
 
 echo "[update] building C++ clock..."
 cmake -S "$REPO_DIR/clock-cpp" -B "$REPO_DIR/clock-cpp/build"

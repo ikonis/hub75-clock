@@ -166,3 +166,14 @@ update:
 themes:
   themes_dir: /etc/hub75-clock/themes
   default_theme: Day
+
+# -----------------------------------------------------------------------------
+# Animations and sprites
+# Python animations are loaded from animations_dir. The generic "sprite" cameo
+# loads JSON sprites from sprites_dir. Speed settings live outside config.yaml
+# so local tuning survives updates.
+# -----------------------------------------------------------------------------
+animations:
+  animations_dir: /etc/hub75-clock/animations
+  sprites_dir: /etc/hub75-clock/sprites
+  settings_path: /etc/hub75-clock/animations.yaml
