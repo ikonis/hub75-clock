@@ -312,16 +312,18 @@ The sprite builder edits small JSON sprites used by the generic Python `sprite` 
 
 ```bash
 make sprite-builder
-# open http://127.0.0.1:8766/
+# open http://127.0.0.1:8765/sprite-builder.html
 ```
 
-Sprites live in `sprites/` in the repo and `/etc/hub75-clock/sprites/` on clocks. Use them from a theme cameo like:
+Sprites live in `sprites/` in the repo and `/etc/hub75-clock/sprites/` on clocks. The same page also includes early animation scaffolding for frame-based sprite animation JSON in `sprite-animations/` and `/etc/hub75-clock/sprite-animations/`.
+
+Use sprites from a theme cameo like:
 
 ```json
 { "name": "sprite", "sprite": "rocket", "chance_per_minute": 4 }
 ```
 
-Sprite pixels use `null` for transparent cells, `#RRGGBB` for solid color, or `#RRGGBBAA` for alpha-blended pixels. The first implementation is Python runtime only. C++ can read the same sprite JSON format later.
+Sprite pixels use `null` for transparent cells, `#RRGGBB` for solid color, or `#RRGGBBAA` for alpha-blended pixels. The first sprite cameo implementation is Python runtime only. Animation JSON editing is scaffolded for design work; runtime playback comes later.
 
 ---
 

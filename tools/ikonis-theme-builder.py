@@ -25,9 +25,11 @@ else:
 
 CACHE_DIR = APP_DIR / ".theme-cache" / "ikonis"
 SPRITE_CACHE_DIR = APP_DIR / ".theme-cache" / "sprites"
+ANIMATION_CACHE_DIR = APP_DIR / ".theme-cache" / "sprite-animations"
 AUTH_FILE = APP_DIR / ".theme-cache" / "ikonis-auth.json"
 REMOTE_THEMES_DIR = "/etc/hub75-clock/themes"
 REMOTE_SPRITES_DIR = "/etc/hub75-clock/sprites"
+REMOTE_ANIMATIONS_DIR = "/etc/hub75-clock/sprite-animations"
 
 SOURCE_CLOCK = "hub75-clock.local"
 TARGET_CLOCKS = [
@@ -216,15 +218,20 @@ class IkonisThemeHandler(theme_server.ThemeBuilderHandler):
             return self._write_remote_json("theme", self.themes_dir, self.server.remote_themes_dir)
         if parsed.path == "/api/sprite":
             return self._write_remote_json("sprite", self.sprites_dir, self.server.remote_sprites_dir)
+        if parsed.path == "/api/animation":
+            return self._write_remote_json("animation", self.animations_dir, self.server.remote_animations_dir)
         return super().do_POST()
 
     def _write_remote_json(self, label, local_dir, remote_dir):
         if label == "theme":
             payload_key = "theme"
             safe_path = theme_server._safe_theme_path
-        else:
+        elif label == "sprite":
             payload_key = "sprite"
             safe_path = lambda base, name: theme_server._safe_json_path(base, name, "sprite")
+        else:
+            payload_key = "animation"
+            safe_path = lambda base, name: theme_server._safe_json_path(base, name, "animation")
 
         length = int(self.headers.get("Content-Length", "0"))
         raw = self.rfile.read(length)
@@ -299,8 +306,10 @@ def main():
     parser.add_argument("--source", default=SOURCE_CLOCK)
     parser.add_argument("--themes-dir", default=REMOTE_THEMES_DIR)
     parser.add_argument("--sprites-dir", default=REMOTE_SPRITES_DIR)
+    parser.add_argument("--animations-dir", default=REMOTE_ANIMATIONS_DIR)
     parser.add_argument("--cache-dir", default=str(CACHE_DIR))
     parser.add_argument("--sprite-cache-dir", default=str(SPRITE_CACHE_DIR))
+    parser.add_argument("--animation-cache-dir", default=str(ANIMATION_CACHE_DIR))
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-pull", action="store_true")
@@ -318,6 +327,7 @@ def main():
 
     cache_dir = Path(args.cache_dir).expanduser().resolve()
     sprite_cache_dir = Path(args.sprite_cache_dir).expanduser().resolve()
+    animation_cache_dir = Path(args.animation_cache_dir).expanduser().resolve()
     auth_file = AUTH_FILE
     if args.forget_password:
         try:
@@ -350,27 +360,34 @@ def main():
         if paramiko:
             pull_json_dir_paramiko(paramiko, ssh_user, args.source, ssh_password, args.themes_dir, cache_dir, "themes")
             pull_json_dir_paramiko(paramiko, ssh_user, args.source, ssh_password, args.sprites_dir, sprite_cache_dir, "sprites")
+            pull_json_dir_paramiko(paramiko, ssh_user, args.source, ssh_password, args.animations_dir, animation_cache_dir, "sprite animations")
         else:
             pull_json_dir_scp(ssh_user, args.source, args.themes_dir, cache_dir, "themes")
             pull_json_dir_scp(ssh_user, args.source, args.sprites_dir, sprite_cache_dir, "sprites")
+            pull_json_dir_scp(ssh_user, args.source, args.animations_dir, animation_cache_dir, "sprite animations")
 
     httpd = ThreadingHTTPServer((args.host, args.port), IkonisThemeHandler)
     httpd.themes_dir = cache_dir
     sprite_cache_dir.mkdir(parents=True, exist_ok=True)
+    animation_cache_dir.mkdir(parents=True, exist_ok=True)
     httpd.sprites_dir = sprite_cache_dir
+    httpd.animations_dir = animation_cache_dir
     httpd.ssh_user = ssh_user
     httpd.ssh_password = ssh_password
     httpd.paramiko = paramiko
     httpd.remote_themes_dir = args.themes_dir
     httpd.remote_sprites_dir = args.sprites_dir
+    httpd.remote_animations_dir = args.animations_dir
     httpd.targets = targets
 
     url = f"http://{args.host}:{args.port}/"
     print(f"[ikonis-theme-builder] serving {url}")
     print(f"[ikonis-theme-builder] local theme cache: {cache_dir}")
     print(f"[ikonis-theme-builder] local sprite cache: {sprite_cache_dir}")
+    print(f"[ikonis-theme-builder] local animation cache: {animation_cache_dir}")
     print(f"[ikonis-theme-builder] source: {args.source}:{args.themes_dir}")
     print(f"[ikonis-theme-builder] sprite source: {args.source}:{args.sprites_dir}")
+    print(f"[ikonis-theme-builder] animation source: {args.source}:{args.animations_dir}")
     print(f"[ikonis-theme-builder] auth backend: {'paramiko' if paramiko else 'scp/ssh'}")
     for target in targets:
         suffix = " + restart" if target["restart"] else ""

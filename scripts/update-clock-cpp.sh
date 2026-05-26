@@ -32,8 +32,8 @@ git -C "$REPO_DIR" pull --ff-only origin "$BRANCH"
 
 echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
 
-sudo mkdir -p "$CLOCK_DIR" "$CLOCK_DIR/tools" "$CONFIG_DIR/themes" "$CONFIG_DIR/sprites"
-mkdir -p "$REPO_DIR/themes" "$REPO_DIR/sprites"
+sudo mkdir -p "$CLOCK_DIR" "$CLOCK_DIR/tools" "$CONFIG_DIR/themes" "$CONFIG_DIR/sprites" "$CONFIG_DIR/sprite-animations"
+mkdir -p "$REPO_DIR/themes" "$REPO_DIR/sprites" "$REPO_DIR/sprite-animations"
 
 if [ "${PRESERVE_LOCAL_THEMES:-true}" = "true" ] && compgen -G "$CONFIG_DIR/themes/*.json" > /dev/null; then
     echo "[update] preserving locally installed themes into repo..."
@@ -52,10 +52,18 @@ if [ "${PRESERVE_LOCAL_SPRITES:-true}" = "true" ] && compgen -G "$CONFIG_DIR/spr
     sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/sprites"
 fi
 
-if [ "${COMMIT_LOCAL_THEMES:-true}" = "true" ] && ! git -C "$REPO_DIR" diff --quiet -- themes sprites; then
+if [ "${PRESERVE_LOCAL_SPRITE_ANIMATIONS:-true}" = "true" ] && compgen -G "$CONFIG_DIR/sprite-animations/*.json" > /dev/null; then
+    echo "[update] preserving locally installed sprite animations into repo..."
+    sudo rsync -av --exclude='__pycache__' \
+        "$CONFIG_DIR/sprite-animations/" \
+        "$REPO_DIR/sprite-animations/"
+    sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/sprite-animations"
+fi
+
+if [ "${COMMIT_LOCAL_THEMES:-true}" = "true" ] && ! git -C "$REPO_DIR" diff --quiet -- themes sprites sprite-animations; then
     echo "[update] committing locally installed theme/sprite changes..."
-    git -C "$REPO_DIR" add themes sprites
-    if git -C "$REPO_DIR" commit -m "Add user made themes and sprites"; then
+    git -C "$REPO_DIR" add themes sprites sprite-animations
+    if git -C "$REPO_DIR" commit -m "Add user made themes sprites and animations"; then
         if [ "${PUSH_LOCAL_THEMES:-true}" = "true" ]; then
             git -C "$REPO_DIR" push origin "$BRANCH" || echo "[update] warning: theme/sprite commit push failed"
         fi
@@ -83,7 +91,7 @@ Wants=network-online.target
 Type=simple
 User=root
 WorkingDirectory=$CLOCK_DIR
-ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --sprites-dir $CONFIG_DIR/sprites --host 0.0.0.0 --port 8765
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --sprites-dir $CONFIG_DIR/sprites --animations-dir $CONFIG_DIR/sprite-animations --host 0.0.0.0 --port 8765
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
@@ -132,6 +140,11 @@ echo "[update] syncing sprites..."
 sudo rsync -av --delete --exclude='__pycache__' \
     "$REPO_DIR/sprites/" \
     "$CONFIG_DIR/sprites/"
+
+echo "[update] syncing sprite animations..."
+sudo rsync -av --delete --exclude='__pycache__' \
+    "$REPO_DIR/sprite-animations/" \
+    "$CONFIG_DIR/sprite-animations/"
 
 echo "[update] building C++ clock..."
 cmake -S "$REPO_DIR/clock-cpp" -B "$REPO_DIR/clock-cpp/build"

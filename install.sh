@@ -203,13 +203,14 @@ sudo usermod -a -G dialout,gpio,i2c "$USERNAME"
 echo "      Added to dialout, gpio, i2c."
 
 echo "[8/11] Installing clock files..."
-sudo mkdir -p "$CLOCK_DIR" "$CONFIG_DIR" "$CONFIG_DIR/themes" "$CONFIG_DIR/animations" "$CONFIG_DIR/sprites"
+sudo mkdir -p "$CLOCK_DIR" "$CONFIG_DIR" "$CONFIG_DIR/themes" "$CONFIG_DIR/animations" "$CONFIG_DIR/sprites" "$CONFIG_DIR/sprite-animations"
 sudo mkdir -p "$CLOCK_DIR/tools"
 sudo chmod 755 /home/$USERNAME
 sudo chmod 755 "$CONFIG_DIR"
 sudo chmod 755 "$CONFIG_DIR/themes"
 sudo chmod 755 "$CONFIG_DIR/animations"
 sudo chmod 755 "$CONFIG_DIR/sprites"
+sudo chmod 755 "$CONFIG_DIR/sprite-animations"
 sudo cp "$REPO_DIR/scripts/test_display.py"  "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
 sudo cp "$REPO_DIR/tools/theme-server.py" "$CLOCK_DIR/tools/"
@@ -226,6 +227,12 @@ if [ -z "$(ls -A "$CONFIG_DIR/sprites" 2>/dev/null)" ]; then
     echo "      Built-in sprites installed to $CONFIG_DIR/sprites/"
 else
     echo "      Sprites dir already has files - skipping built-in sprite copy."
+fi
+if [ -z "$(ls -A "$CONFIG_DIR/sprite-animations" 2>/dev/null)" ]; then
+    sudo cp "$REPO_DIR/sprite-animations/"*.json "$CONFIG_DIR/sprite-animations/" 2>/dev/null || true
+    echo "      Built-in sprite animations installed to $CONFIG_DIR/sprite-animations/"
+else
+    echo "      Sprite animations dir already has files - skipping built-in animation copy."
 fi
 if [ "$CLOCK_RUNTIME" = "python" ]; then
     sudo cp "$REPO_DIR/clock/hub75_clock.py" "$CLOCK_DIR/"
@@ -286,7 +293,7 @@ Wants=network-online.target
 Type=simple
 User=root
 WorkingDirectory=$CLOCK_DIR
-ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --sprites-dir $CONFIG_DIR/sprites --host 0.0.0.0 --port 8765
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --sprites-dir $CONFIG_DIR/sprites --animations-dir $CONFIG_DIR/sprite-animations --host 0.0.0.0 --port 8765
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal

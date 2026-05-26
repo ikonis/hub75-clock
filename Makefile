@@ -35,7 +35,7 @@ install:
 	bash install.sh
 
 theme-builder:
-	python3 tools/theme-server.py --themes-dir themes --sprites-dir sprites
+	python3 tools/theme-server.py --themes-dir themes --sprites-dir sprites --animations-dir sprite-animations
 
 sprite-builder:
-	python3 tools/theme-server.py --themes-dir themes --sprites-dir sprites
+	python3 tools/theme-server.py --themes-dir themes --sprites-dir sprites --animations-dir sprite-animations

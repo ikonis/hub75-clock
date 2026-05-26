@@ -1,0 +1,49 @@
+{
+  "name": "airplane_pass",
+  "width": 64,
+  "height": 32,
+  "fps": 12,
+  "loop": true,
+  "frames": [
+    {
+      "duration_ms": 120,
+      "sprites": [
+        {
+          "sprite": "airplane",
+          "x": -10,
+          "y": 10
+        }
+      ]
+    },
+    {
+      "duration_ms": 120,
+      "sprites": [
+        {
+          "sprite": "airplane",
+          "x": 10,
+          "y": 10
+        }
+      ]
+    },
+    {
+      "duration_ms": 120,
+      "sprites": [
+        {
+          "sprite": "airplane",
+          "x": 30,
+          "y": 10
+        }
+      ]
+    },
+    {
+      "duration_ms": 120,
+      "sprites": [
+        {
+          "sprite": "airplane",
+          "x": 50,
+          "y": 10
+        }
+      ]
+    }
+  ]
+}
