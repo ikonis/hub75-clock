@@ -94,6 +94,35 @@ WantedBy=multi-user.target
 EOF
 sudo systemctl daemon-reload
 
+THEME_BUILDER_MODE="$(python3 - "$CONFIG_DIR/config.yaml" <<'PY'
+import sys
+try:
+    import yaml
+    with open(sys.argv[1], encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    print((cfg.get("theme_builder") or {}).get("mode", "off"))
+except Exception:
+    print("off")
+PY
+)"
+case "$THEME_BUILDER_MODE" in
+    always)
+        echo "[update] theme builder mode=always; enabling service..."
+        sudo systemctl enable hub75-theme-builder.service >/dev/null
+        sudo systemctl restart hub75-theme-builder.service
+        ;;
+    ha)
+        echo "[update] theme builder mode=ha; leaving service stopped for HA control..."
+        sudo systemctl disable hub75-theme-builder.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-theme-builder.service >/dev/null 2>&1 || true
+        ;;
+    *)
+        echo "[update] theme builder mode=off; disabling service..."
+        sudo systemctl disable hub75-theme-builder.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-theme-builder.service >/dev/null 2>&1 || true
+        ;;
+esac
+
 echo "[update] syncing themes..."
 sudo rsync -av --delete --exclude='__pycache__' \
     "$REPO_DIR/themes/" \
