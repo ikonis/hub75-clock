@@ -211,6 +211,7 @@ DEFAULTS = {
     },
     "animations": {
         "animations_dir": "/etc/hub75-clock/animations",
+        "settings_path": "/etc/hub75-clock/animations.yaml",
     },
 }
 
@@ -287,12 +288,28 @@ def save_config(config_path: str, cfg: dict):
         for key in ("banner_path", "time_path", "alert_path"):
             fonts_save.pop(key, None)
         save["fonts"] = fonts_save
+        save.pop("animation_settings", None)
         with open(config_path, 'w') as f:
             yaml.dump(save, f, default_flow_style=False, allow_unicode=True)
         print(f"[config] saved to {config_path}")
     except Exception as e:
         print(f"[config] save failed: {e}")
 
+
+def load_animation_settings(path: str) -> dict:
+    try:
+        with open(path) as f:
+            data = yaml.safe_load(f) or {}
+        if not isinstance(data, dict):
+            print(f"[config] animation settings ignored: {path} is not a mapping")
+            return {}
+        print(f"[config] loaded {path}")
+        return data
+    except FileNotFoundError:
+        return {}
+    except Exception as e:
+        print(f"[config] animation settings ignored: {e}")
+        return {}
 
 
 def get_available_fonts(fonts_dir: str) -> List[str]:
@@ -315,8 +332,9 @@ class AnimationLoader:
     """Drop-in animation loader. Watches a directory for .py files, imports each,
     and registers the Animation class found inside by its `name` attribute."""
 
-    def __init__(self, animations_dir: str):
+    def __init__(self, animations_dir: str, settings: dict = None):
         self._dir = animations_dir
+        self._settings = settings or {}
         self._registry: dict = {}
         self._observer = None
         os.makedirs(animations_dir, exist_ok=True)
@@ -347,10 +365,25 @@ class AnimationLoader:
             if not anim_name:
                 print(f"[animations] warning: Animation in {path} has no name — skipping")
                 return
+            self._apply_settings(anim_name, cls)
             self._registry[anim_name] = cls
             print(f"[animations] loaded: {anim_name}")
         except Exception as e:
             print(f"[animations] warning: failed to load {path}: {e}")
+
+    def _apply_settings(self, anim_name: str, cls):
+        settings = self._settings.get(anim_name, {})
+        if not isinstance(settings, dict):
+            return
+        applied = []
+        for key, value in settings.items():
+            if key.startswith("_") or not isinstance(value, (int, float)):
+                continue
+            if hasattr(cls, key):
+                setattr(cls, key, float(value))
+                applied.append(f"{key}={value}")
+        if applied:
+            print(f"[animations] settings {anim_name}: {', '.join(applied)}")
 
     def _reload(self):
         self._registry = {}
@@ -1236,7 +1269,8 @@ class HUB75Clock:
         self.weather_outdoor   = None
 
         self.animation_loader = AnimationLoader(
-            cfg.get("animations", {}).get("animations_dir", "/etc/hub75-clock/animations")
+            cfg.get("animations", {}).get("animations_dir", "/etc/hub75-clock/animations"),
+            cfg.get("animation_settings", {}),
         )
         self.animator = WeatherAnimator(cfg, layout, self.animation_loader)
         self.alert    = AlertOverlay(cfg, self.font_alert,
@@ -2005,6 +2039,8 @@ def main():
     config_path = os.environ.get("CLOCK_CONFIG", "/etc/hub75-clock/config.yaml")
 
     cfg   = load_config(config_path)
+    settings_path = cfg.get("animations", {}).get("settings_path", "/etc/hub75-clock/animations.yaml")
+    cfg["animation_settings"] = load_animation_settings(settings_path)
     clock = HUB75Clock(cfg, DEFAULT_LAYOUT, config_path)
 
     def handle_sig(signum, frame):

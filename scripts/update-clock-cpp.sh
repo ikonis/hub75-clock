@@ -58,6 +58,10 @@ fi
 echo "[update] installing theme builder files..."
 sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
 sudo cp "$REPO_DIR/tools/theme-server.py" "$CLOCK_DIR/tools/"
+if [ ! -f "$CONFIG_DIR/animations.yaml" ] && [ -f "$REPO_DIR/clock-cpp/animations.example.yaml" ]; then
+    echo "[update] installing default animation settings..."
+    sudo cp "$REPO_DIR/clock-cpp/animations.example.yaml" "$CONFIG_DIR/animations.yaml"
+fi
 
 sudo tee /etc/systemd/system/hub75-theme-builder.service > /dev/null << EOF
 [Unit]
