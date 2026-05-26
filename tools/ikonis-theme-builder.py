@@ -224,6 +224,7 @@ class IkonisThemeHandler(theme_server.ThemeBuilderHandler):
             os.replace(tmp, path)
 
             failures = []
+            saved_to = []
             for target in self.server.targets:
                 try:
                     if self.server.paramiko:
@@ -244,6 +245,10 @@ class IkonisThemeHandler(theme_server.ThemeBuilderHandler):
                             path,
                             target["restart"],
                         )
+                    label = target["host"]
+                    if target["restart"]:
+                        label += " + restart"
+                    saved_to.append(label)
                 except subprocess.CalledProcessError as exc:
                     failures.append(f"{target['host']}: exit {exc.returncode}")
                 except Exception as exc:
@@ -258,7 +263,11 @@ class IkonisThemeHandler(theme_server.ThemeBuilderHandler):
         except Exception as exc:
             return theme_server._json_response(self, 400, {"ok": False, "error": str(exc)})
 
-        return theme_server._json_response(self, 200, {"ok": True, "file": path.name})
+        return theme_server._json_response(
+            self,
+            200,
+            {"ok": True, "file": path.name, "saved_to": saved_to},
+        )
 
 
 def main():

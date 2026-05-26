@@ -74,7 +74,11 @@ class ThemeBuilderHandler(BaseHTTPRequestHandler):
         except Exception as exc:
             return _json_response(self, 400, {"ok": False, "error": str(exc)})
 
-        return _json_response(self, 200, {"ok": True, "file": path.name})
+        return _json_response(
+            self,
+            200,
+            {"ok": True, "file": path.name, "saved_to": [str(path)]},
+        )
 
     def _send_file(self, path):
         try:

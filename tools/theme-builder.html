@@ -32,6 +32,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 #server-theme-select{background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:var(--r);font:11px monospace;outline:none;min-width:190px;max-width:280px}
 #server-theme-select:focus{border-color:var(--accent)}
 #server-status{align-items:center;color:var(--dim);font-size:11px;min-width:72px}
+.dirty #server-status::after{content:" *";color:var(--danger)}
 /* Layout */
 .body{display:grid;grid-template-columns:320px 1fr;flex:1;min-height:0;overflow:hidden}
 /* Controls panel */
@@ -72,6 +73,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 .pv{display:flex;flex-direction:column;overflow:hidden;padding:12px;gap:10px;background:var(--bg)}
 .matrix-wrap{display:flex;justify-content:center;flex-shrink:0}
 #matrix{display:block;border:1px solid var(--border2);border-radius:3px;image-rendering:pixelated;image-rendering:crisp-edges}
+.legend-on #matrix{border-color:var(--accent)}
 .pv-ctrl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);flex-shrink:0}
 .pv-ctrl .f{flex-shrink:0}
 .pv-ctrl .f label{min-width:unset;flex:none}
@@ -95,7 +97,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
   <span class="hdr-title">HUB75 Theme Builder</span>
   <div class="hdr-btns">
     <select id="server-theme-select" class="server-only"></select>
-    <button class="btn server-only" id="btn-server-load">Load</button>
+    <button class="btn server-only" id="btn-server-new">New</button>
     <button class="btn btn-p server-only" id="btn-server-save">Save</button>
     <button class="btn server-only" id="btn-server-save-as">Save As</button>
     <span id="server-status" class="server-only"></span>
@@ -110,7 +112,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 <!-- ===== LEFT CONTROLS ===== -->
 <div class="ctrl">
   <!-- Identity -->
-  <div class="sec">
+  <div class="sec" data-help="Theme name and note. Save uses the loaded filename; new themes save from the name until you use Save As." data-highlight="banner">
     <div class="sec-hdr">Identity</div>
     <div class="sec-body">
       <div class="f"><label>Name</label><input type="text" id="i-name" value="My Theme"></div>
@@ -118,7 +120,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     </div>
   </div>
   <!-- Background -->
-  <div class="sec">
+  <div class="sec" data-help="The animation-zone background behind sun, moon, clouds, stars, and foreground cameos." data-highlight="animation">
     <div class="sec-hdr">Background</div>
     <div class="sec-body">
       <div class="f"><label>Type</label>
@@ -156,7 +158,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     </div>
   </div>
   <!-- Animations -->
-  <div class="sec">
+  <div class="sec" data-help="Built-in scene elements. Stars and clouds save as cameos; sun and moon are theme flags." data-highlight="scene">
     <div class="sec-hdr">Animations</div>
     <div class="sec-body">
       <div class="f"><label>Stars</label><input type="checkbox" id="i-stars"></div>
@@ -182,7 +184,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     </div>
   </div>
   <!-- Colors -->
-  <div class="sec">
+  <div class="sec" data-help="Banner text colors for time, low temperature, high temperature, and condition text." data-highlight="banner">
     <div class="sec-hdr">Colors</div>
     <div class="sec-body">
       <div class="f"><label>Time</label>
@@ -204,7 +206,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     </div>
   </div>
   <!-- Cameos -->
-  <div class="sec">
+  <div class="sec" data-help="Optional animations that can appear over the theme. Preview shows only the core scene and a simple shooting-star representation." data-highlight="animation">
     <div class="sec-hdr">Cameos</div>
     <div class="sec-body">
       <div id="cameo-list"></div>
@@ -268,6 +270,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     <div class="f"><label>High</label><input type="number" id="p-high" value="88"></div>
     <div class="f"><label>Condition text</label><input type="text" id="p-condtext" value="CLEAR" style="width:100px"></div>
     <div class="f"><label>Animate</label><input type="checkbox" id="p-animate"></div>
+    <div class="f"><label>Legend</label><input type="checkbox" id="p-legend"></div>
   </div>
   <div class="json-wrap">
     <div class="json-hdr">
@@ -309,6 +312,8 @@ const theme = {
 };
 
 const preview = { condition: 'CLEAR', nightMode: false, lowTemp: 68, highTemp: 88, condText: 'CLEAR', animate: false };
+let previewLegend = false;
+let previewHighlight = '';
 
 // =====================================================================
 // PIXEL BUFFER
@@ -815,6 +820,32 @@ function flushCanvas() {
   // Banner/animation separator line
   ctx.fillStyle = 'rgba(60,60,100,.4)';
   ctx.fillRect(0, BANNER_H * S, W * S, 1);
+
+  drawPreviewOverlay();
+}
+
+function overlayBox(x, y, w, h, label, color, active = true) {
+  ctx.save();
+  ctx.lineWidth = active ? 2 : 1;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.globalAlpha = active ? 0.95 : 0.38;
+  ctx.strokeRect(x * S + 1, y * S + 1, w * S - 2, h * S - 2);
+  ctx.font = '10px Segoe UI, sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.fillText(label, x * S + 4, y * S + 3);
+  ctx.restore();
+}
+
+function drawPreviewOverlay() {
+  if (!previewLegend && !previewHighlight) return;
+  const showAll = previewLegend;
+  const want = key => showAll || previewHighlight === key || (previewHighlight === 'scene' && ['sun','moon','clouds'].includes(key));
+  if (want('banner')) overlayBox(0, 0, W, BANNER_H, 'banner', '#4a80ff', previewHighlight === 'banner' || showAll);
+  if (want('animation')) overlayBox(0, ANIM_TOP, W, ANIM_BOT - ANIM_TOP + 1, 'animation', '#66c080', previewHighlight === 'animation' || showAll);
+  if (want('sun')) overlayBox(W - 21, ANIM_TOP, 21, 21, 'sun', '#ffaa33', previewHighlight === 'scene' || showAll);
+  if (want('moon')) overlayBox(0, ANIM_TOP, 10, 10, 'moon', '#d8d8c8', previewHighlight === 'scene' || showAll);
+  if (want('clouds')) overlayBox(0, ANIM_TOP + 4, W, 13, 'clouds', '#a0a0b8', previewHighlight === 'scene' || showAll);
 }
 
 // =====================================================================
@@ -913,14 +944,25 @@ function setServerStatus(msg) {
 
 let serverMode = false;
 let currentThemeFile = '';
+let selectedThemeFile = '';
 let syncingJSON = false;
 let jsonDirty = false;
+let themeDirty = false;
 
 function setJSONStatus(msg, cls = '') {
   const el = document.getElementById('json-status');
   if (!el) return;
   el.textContent = msg;
   el.className = cls;
+}
+
+function setThemeDirty(dirty) {
+  themeDirty = !!dirty;
+  document.body.classList.toggle('dirty', themeDirty || jsonDirty);
+}
+
+function hasUnsavedChanges() {
+  return themeDirty || jsonDirty;
 }
 
 function parseJSONEditor() {
@@ -938,10 +980,10 @@ function parseJSONEditor() {
   }
 }
 
-function applyJSONEditor() {
+function applyJSONEditor(markDirty = true) {
   const data = parseJSONEditor();
   if (!data) return false;
-  applyThemeData(data);
+  applyThemeData(data, markDirty);
   setJSONStatus('Applied', 'ok');
   return true;
 }
@@ -964,6 +1006,7 @@ async function refreshServerThemes(selectFile = currentThemeFile) {
   }
   if (selectFile && data.themes.includes(selectFile)) sel.value = selectFile;
   else if (data.themes.length) sel.value = data.themes[0];
+  selectedThemeFile = sel.value || '';
   setServerStatus(data.themes.length ? `${data.themes.length} themes` : 'No themes');
 }
 
@@ -972,6 +1015,9 @@ async function initServerMode() {
     await refreshServerThemes('');
     serverMode = true;
     document.body.classList.add('server-mode');
+    if (document.getElementById('server-theme-select').value) {
+      setServerStatus('Select a theme');
+    }
   } catch (err) {
     serverMode = false;
   }
@@ -985,10 +1031,11 @@ async function loadServerTheme(file) {
     const res = await fetch('/api/theme?file=' + encodeURIComponent(selected), { cache: 'no-store' });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || 'Unable to load theme');
-    applyThemeData(data.theme);
+    applyThemeData(data.theme, false);
     currentThemeFile = data.file;
+    selectedThemeFile = data.file;
     document.getElementById('server-theme-select').value = data.file;
-    setServerStatus('Loaded');
+    setServerStatus(`Loaded ${data.file}`);
   } catch (err) {
     setServerStatus('Load failed');
     alert('Load failed: ' + err.message);
@@ -1013,7 +1060,11 @@ async function saveServerTheme(fileOverride = '') {
     if (!res.ok || !data.ok) throw new Error(data.error || 'Unable to save theme');
     currentThemeFile = data.file;
     await refreshServerThemes(currentThemeFile);
-    setServerStatus('Saved');
+    setThemeDirty(false);
+    const savedTo = Array.isArray(data.saved_to) && data.saved_to.length
+      ? `Saved to ${data.saved_to.join(', ')}`
+      : `Saved ${data.file}`;
+    setServerStatus(savedTo);
   } catch (err) {
     setServerStatus('Save failed');
     alert('Save failed: ' + err.message);
@@ -1033,11 +1084,50 @@ async function saveServerThemeAs() {
   await saveServerTheme(file);
 }
 
-function updateJSON() {
+function makeBlankTheme(name = 'New Theme') {
+  return {
+    name,
+    description: '',
+    background_type: 'solid',
+    background_color: '#000000',
+    background_top: '#000000',
+    background_bottom: '#000000',
+    background_split: 0.5,
+    background_gradient_direction: 'sunset',
+    colors: {
+      time: '#F0F0F0',
+      low_temp: '#00CCFF',
+      high_temp: '#FF8C00',
+      condition: '#909090'
+    },
+    sun_enabled: false,
+    moon_enabled: false,
+    cloud_density: 'medium',
+    cloud_speed: 'medium',
+    cameos: []
+  };
+}
+
+function newServerTheme() {
+  if (hasUnsavedChanges() && !confirm('Discard unsaved changes and start a new theme?')) return;
+  const entered = prompt('New theme name:', 'New Theme');
+  if (entered === null) return;
+  const name = entered.trim() || 'New Theme';
+  currentThemeFile = '';
+  selectedThemeFile = '';
+  const sel = document.getElementById('server-theme-select');
+  if (sel) sel.selectedIndex = -1;
+  applyThemeData(makeBlankTheme(name), true);
+  setServerStatus('New unsaved theme');
+}
+
+function updateJSON(markDirty = true) {
+  if (markDirty) themeDirty = true;
   syncingJSON = true;
   document.getElementById('json-out').value = buildJSON();
   syncingJSON = false;
   jsonDirty = false;
+  setThemeDirty(themeDirty);
   setJSONStatus('Generated');
 }
 
@@ -1084,13 +1174,13 @@ function loadFile(file) {
   reader.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
-      applyThemeData(data);
+      applyThemeData(data, false);
     } catch(err) { alert('Invalid JSON: ' + err.message); }
   };
   reader.readAsText(file);
 }
 
-function applyThemeData(data) {
+function applyThemeData(data, markDirty = false) {
   const incomingCameos = Array.isArray(data.cameos) ? data.cameos : [];
   const defaults = {
     name: 'Imported', description: '',
@@ -1121,7 +1211,8 @@ function applyThemeData(data) {
   }
   syncFormToTheme();
   initStars(); initClouds();
-  render(); updateJSON();
+  render(); updateJSON(markDirty);
+  setThemeDirty(markDirty);
 }
 
 // =====================================================================
@@ -1337,13 +1428,25 @@ function wireControls() {
     preview.animate = e.target.checked;
     if (preview.animate) startAnim(); else { stopAnim(); render(); }
   });
+  document.getElementById('p-legend').addEventListener('change', e => {
+    previewLegend = e.target.checked;
+    document.body.classList.toggle('legend-on', previewLegend);
+    render();
+  });
 
   // Export / copy
-  document.getElementById('btn-server-load').addEventListener('click', () => loadServerTheme());
+  document.getElementById('btn-server-new').addEventListener('click', newServerTheme);
   document.getElementById('btn-server-save').addEventListener('click', () => saveServerTheme());
   document.getElementById('btn-server-save-as').addEventListener('click', saveServerThemeAs);
-  document.getElementById('server-theme-select').addEventListener('change', e => {
-    currentThemeFile = e.target.value;
+  document.getElementById('server-theme-select').addEventListener('change', async e => {
+    const nextFile = e.target.value;
+    if (!nextFile) return;
+    if (hasUnsavedChanges() && !confirm('Discard unsaved changes and load another theme?')) {
+      if (selectedThemeFile) e.target.value = selectedThemeFile;
+      else e.target.selectedIndex = -1;
+      return;
+    }
+    await loadServerTheme(nextFile);
   });
   document.getElementById('btn-export').addEventListener('click', exportJSON);
   document.getElementById('btn-copy').addEventListener('click', copyJSON);
@@ -1358,6 +1461,7 @@ function wireControls() {
   document.getElementById('json-out').addEventListener('input', () => {
     if (syncingJSON) return;
     jsonDirty = true;
+    setThemeDirty(themeDirty);
     parseJSONEditor();
   });
   document.getElementById('file-load').addEventListener('change', e => {
@@ -1366,18 +1470,52 @@ function wireControls() {
   });
 }
 
+function wireHelpTitles() {
+  document.querySelectorAll('[data-help]').forEach(el => {
+    el.title = el.dataset.help;
+    el.addEventListener('mouseenter', () => {
+      previewHighlight = el.dataset.highlight || '';
+      render();
+    });
+    el.addEventListener('mouseleave', () => {
+      previewHighlight = '';
+      render();
+    });
+  });
+
+  const help = {
+    'i-name': 'Displayed theme name. New unsaved themes use this to suggest a filename.',
+    'i-desc': 'Optional note stored in the JSON for humans.',
+    'i-bgtype': 'Solid uses one color; gradient blends top to bottom in the animation zone.',
+    'i-stars': 'Adds the persistent stars cameo.',
+    'i-sun': 'Draws the sun before clouds.',
+    'i-moon': 'Draws the moon before clouds.',
+    'i-clouds': 'Adds the persistent clouds cameo.',
+    'c-time': 'Clock time color.',
+    'c-low': 'Low temperature color.',
+    'c-high': 'High temperature and degree-symbol color.',
+    'c-cond': 'Weather condition text color.',
+    'p-legend': 'Shows labeled preview regions.'
+  };
+  for (const [id, text] of Object.entries(help)) {
+    const el = document.getElementById(id);
+    if (el) el.title = text;
+  }
+}
+
 // =====================================================================
 // INIT
 // =====================================================================
 function init() {
   wireControls();
+  wireHelpTitles();
   showHideBgGroups();
   showHideCloudOptions();
   buildCameoList();
   initStars();
   initClouds();
   render();
-  updateJSON();
+  updateJSON(false);
   initServerMode();
 
   // Live time update every 10 seconds when not animating
