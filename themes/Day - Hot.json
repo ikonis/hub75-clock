@@ -1,0 +1,37 @@
+{
+  "name": "Day - Hot",
+  "description": "Theme for PARTICULARLY HOT days.",
+  "background_type": "gradient",
+  "background_color": "#000820",
+  "background_top": "#3946fe",
+  "background_bottom": "#3C1400",
+  "background_split": 0.8,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090"
+  },
+  "sun_enabled": true,
+  "moon_enabled": false,
+  "cloud_density": "sparse",
+  "cloud_speed": "slow",
+  "cameos": [
+    {
+      "name": "tumbleweed",
+      "chance_per_minute": 2
+    },
+    {
+      "name": "airplane",
+      "chance_per_minute": 5
+    },
+    {
+      "name": "flutterflies",
+      "chance_per_minute": 8
+    },
+    {
+      "name": "clouds"
+    }
+  ]
+}
