@@ -466,6 +466,145 @@ static void setThemeBuilderService(mosquitto* mosq, const json& cfg, bool enable
     publishThemeBuilderState(mosq, cfg);
 }
 
+static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
+                                          const std::vector<std::string>& themes) {
+    if (!cfg["ha_discovery"].value("enabled", true)) return;
+
+    const auto& topics = cfg["mqtt"]["topics"];
+    std::string cid = cfg["mqtt"].value("client_id", "hub75_clock");
+    std::string prefix = cfg["ha_discovery"].value("prefix", "homeassistant");
+    std::string devName = cfg["ha_discovery"].value("ha_discovery_name", "HUB75 Clock");
+
+    json device = {
+        {"identifiers", json::array({cid})},
+        {"name", devName},
+        {"model", "HUB75 Smart Clock"},
+        {"manufacturer", "DIY"},
+    };
+    std::string area = cfg["ha_discovery"].value("ha_discovery_area", "");
+    if (!area.empty()) device["suggested_area"] = area;
+
+    json availability = json::array({
+        {{"topic", topics.value("availability", cid + "/status")}}
+    });
+
+    auto pub = [&](const std::string& topic, const json& payload) {
+        std::string body = payload.dump();
+        mosquitto_publish(mosq, nullptr, topic.c_str(), int(body.size()), body.c_str(), 0, 1);
+    };
+
+    auto base = [&](const std::string& name, const std::string& uniqueId) {
+        return json{
+            {"name", name},
+            {"unique_id", uniqueId},
+            {"device", device},
+            {"availability", availability},
+            {"has_entity_name", true},
+        };
+    };
+
+    json themeSelect = base("Theme", cid + "_theme");
+    themeSelect["state_topic"] = topics.value("theme_state", cid + "/theme/state");
+    themeSelect["command_topic"] = topics.value("theme", cid + "/theme/set");
+    themeSelect["options"] = themes;
+    themeSelect["icon"] = "mdi:palette";
+    pub(prefix + "/select/" + cid + "_theme/config", themeSelect);
+
+    json brightness = base("Brightness", cid + "_brightness");
+    brightness["command_topic"] = topics.value("config", cid + "/config");
+    brightness["command_template"] = "{\"brightness\": {{ value }}}";
+    brightness["state_topic"] = cid + "/brightness/state";
+    brightness["min"] = 1;
+    brightness["max"] = 100;
+    brightness["step"] = 1;
+    brightness["mode"] = "slider";
+    brightness["icon"] = "mdi:brightness-6";
+    pub(prefix + "/number/" + cid + "_brightness/config", brightness);
+
+    json lux = base("Lux", cid + "_lux");
+    lux["state_topic"] = topics.value("lux", cid + "/lux");
+    lux["value_template"] = "{{ value_json.lux }}";
+    lux["unit_of_measurement"] = "lx";
+    lux["device_class"] = "illuminance";
+    lux["state_class"] = "measurement";
+    pub(prefix + "/sensor/" + cid + "_lux/config", lux);
+
+    json moveEnergy = base("Move Energy", cid + "_move_energy");
+    moveEnergy["state_topic"] = topics.value("motion", cid + "/motion");
+    moveEnergy["value_template"] = "{{ value_json.move_energy }}";
+    moveEnergy["state_class"] = "measurement";
+    pub(prefix + "/sensor/" + cid + "_move_energy/config", moveEnergy);
+
+    json stillEnergy = base("Still Energy", cid + "_still_energy");
+    stillEnergy["state_topic"] = topics.value("motion", cid + "/motion");
+    stillEnergy["value_template"] = "{{ value_json.still_energy }}";
+    stillEnergy["state_class"] = "measurement";
+    pub(prefix + "/sensor/" + cid + "_still_energy/config", stillEnergy);
+
+    json moveDistance = base("Move Distance", cid + "_move_distance");
+    moveDistance["state_topic"] = topics.value("presence", cid + "/presence");
+    moveDistance["value_template"] = "{{ value_json.move_distance }}";
+    moveDistance["unit_of_measurement"] = "cm";
+    moveDistance["state_class"] = "measurement";
+    pub(prefix + "/sensor/" + cid + "_move_distance/config", moveDistance);
+
+    json stillDistance = base("Still Distance", cid + "_still_distance");
+    stillDistance["state_topic"] = topics.value("presence", cid + "/presence");
+    stillDistance["value_template"] = "{{ value_json.still_distance }}";
+    stillDistance["unit_of_measurement"] = "cm";
+    stillDistance["state_class"] = "measurement";
+    pub(prefix + "/sensor/" + cid + "_still_distance/config", stillDistance);
+
+    json pir = base("PIR", cid + "_pir");
+    pir["state_topic"] = topics.value("pir", cid + "/pir");
+    pir["value_template"] = "{{ value_json.motion }}";
+    pir["payload_on"] = "True";
+    pir["payload_off"] = "False";
+    pir["device_class"] = "motion";
+    pub(prefix + "/binary_sensor/" + cid + "_pir/config", pir);
+
+    json presence = base("Presence", cid + "_presence");
+    presence["state_topic"] = topics.value("presence", cid + "/presence");
+    presence["value_template"] = "{{ value_json.presence }}";
+    presence["payload_on"] = "True";
+    presence["payload_off"] = "False";
+    presence["device_class"] = "occupancy";
+    pub(prefix + "/binary_sensor/" + cid + "_presence/config", presence);
+
+    std::string engineeringTopic = topics.value("engineering_mode", cid + "/engineering_mode");
+    json engineering = base("Engineering Mode", cid + "_engineering_mode");
+    engineering["command_topic"] = engineeringTopic;
+    engineering["state_topic"] = engineeringTopic + "/state";
+    engineering["payload_on"] = "{\"engineering_mode\": true}";
+    engineering["payload_off"] = "{\"engineering_mode\": false}";
+    engineering["state_on"] = "on";
+    engineering["state_off"] = "off";
+    engineering["entity_category"] = "config";
+    engineering["icon"] = "mdi:tune-variant";
+    pub(prefix + "/switch/" + cid + "_engineering_mode/config", engineering);
+
+    if (cfg["theme_builder"].value("mode", "off") == "ha") {
+        json sw = base("Theme Builder", cid + "_theme_builder");
+        sw["command_topic"] = topics.value("config", cid + "/config");
+        sw["payload_on"] = "{\"theme_builder\": true}";
+        sw["payload_off"] = "{\"theme_builder\": false}";
+        sw["state_topic"] = themeBuilderStateTopic(cfg);
+        sw["state_on"] = "on";
+        sw["state_off"] = "off";
+        sw["entity_category"] = "config";
+        sw["icon"] = "mdi:palette-outline";
+        pub(prefix + "/switch/" + cid + "_theme_builder/config", sw);
+
+        json sensor = base("Theme Builder URL", cid + "_theme_builder_url");
+        sensor["state_topic"] = themeBuilderUrlTopic(cfg);
+        sensor["entity_category"] = "diagnostic";
+        sensor["icon"] = "mdi:web";
+        pub(prefix + "/sensor/" + cid + "_theme_builder_url/config", sensor);
+    }
+
+    std::cout << "[mqtt] HA discovery published\n";
+}
+
 static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
     if (rc != 0) {
         std::cerr << "[mqtt] connect failed: " << mosquitto_connack_string(rc) << "\n";
@@ -505,11 +644,17 @@ static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
     mosquitto_subscribe(mosq, nullptr, (cid + "/gate/+/still_thresh").c_str(), 0);
 
     // Publish available themes.
+    std::vector<std::string> themeNames;
     {
-        auto names = ctx->themeLoader->availableThemes();
         json arr = json::array();
-        for (const auto& n : names) arr.push_back(n);
+        themeNames = ctx->themeLoader->availableThemes();
+        for (const auto& n : themeNames) arr.push_back(n);
         pub(topics.value("themes_available", "hub75_clock/themes/available"), arr.dump(), true);
+    }
+
+    if (ctx->animator->currentTheme) {
+        std::string name = ctx->animator->currentTheme->name;
+        pub(topics.value("theme_state", cid + "/theme/state"), name, true);
     }
 
     // Publish initial brightness state.
@@ -525,51 +670,7 @@ static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
         pub(emStateTopic, ctx->ld2410->engineeringMode() ? "on" : "off", true);
     }
     publishThemeBuilderState(mosq, *ctx->cfg);
-
-    if ((*ctx->cfg)["ha_discovery"].value("enabled", true) &&
-        (*ctx->cfg)["theme_builder"].value("mode", "off") == "ha") {
-        std::string prefix = (*ctx->cfg)["ha_discovery"].value("prefix", "homeassistant");
-        std::string devName = (*ctx->cfg)["ha_discovery"].value("ha_discovery_name", "HUB75 Clock");
-        json device = {
-            {"identifiers", json::array({cid})},
-            {"name", devName},
-            {"model", "HUB75 Smart Clock"},
-            {"manufacturer", "DIY"},
-        };
-        std::string area = (*ctx->cfg)["ha_discovery"].value("ha_discovery_area", "");
-        if (!area.empty()) device["suggested_area"] = area;
-        json availability = json::array();
-        availability.push_back({{"topic", topics.value("availability", "hub75_clock/status")}});
-
-        json sw = {
-            {"name", "Theme Builder"},
-            {"unique_id", cid + "_theme_builder"},
-            {"device", device},
-            {"availability", availability},
-            {"command_topic", topics.value("config", "clock/config")},
-            {"payload_on", "{\"theme_builder\": true}"},
-            {"payload_off", "{\"theme_builder\": false}"},
-            {"state_topic", themeBuilderStateTopic(*ctx->cfg)},
-            {"state_on", "on"},
-            {"state_off", "off"},
-            {"entity_category", "config"},
-            {"icon", "mdi:palette-outline"},
-            {"has_entity_name", true},
-        };
-        pub(prefix + "/switch/" + cid + "_theme_builder/config", sw.dump(), true);
-
-        json sensor = {
-            {"name", "Theme Builder URL"},
-            {"unique_id", cid + "_theme_builder_url"},
-            {"device", device},
-            {"availability", availability},
-            {"state_topic", themeBuilderUrlTopic(*ctx->cfg)},
-            {"entity_category", "diagnostic"},
-            {"icon", "mdi:web"},
-            {"has_entity_name", true},
-        };
-        pub(prefix + "/sensor/" + cid + "_theme_builder_url/config", sensor.dump(), true);
-    }
+    publishHomeAssistantDiscovery(mosq, *ctx->cfg, themeNames);
 
     std::cout << "[mqtt] connected and subscribed\n";
 }
