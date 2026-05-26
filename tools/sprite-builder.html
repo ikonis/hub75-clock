@@ -15,17 +15,20 @@ body{background:var(--bg);color:var(--text);font:12px/1.45 Segoe UI,system-ui,sa
 .btn,select,input{border:1px solid var(--border2);border-radius:var(--r);background:var(--bg3);color:var(--text);font:12px Segoe UI,system-ui,sans-serif}
 .btn{padding:5px 10px;cursor:pointer}.btn:hover{background:var(--border)}.btn-p{background:#1e3a80;border-color:var(--accent)}
 select,input[type=text],input[type=number]{padding:5px 7px;outline:none}input[type=color]{width:38px;height:27px;padding:2px}
+input[type=range]{accent-color:var(--accent)}
 #sprite-select{min-width:190px}.status{color:var(--dim);min-width:80px}
 .body{display:grid;grid-template-columns:300px 1fr 360px;min-height:0;flex:1}
 .panel{overflow:auto;background:var(--bg2);border-right:1px solid var(--border)}.panel.right{border-left:1px solid var(--border);border-right:0}
 .sec{border-bottom:1px solid var(--border)}.sec-h{padding:7px 10px;background:var(--bg3);font-size:10px;letter-spacing:.9px;text-transform:uppercase;color:var(--dim);font-weight:600}
 .sec-b{padding:10px;display:flex;flex-direction:column;gap:8px}
 .f{display:flex;align-items:center;gap:7px}.f label{flex:0 0 82px;color:var(--dim);font-size:11px}.f input,.f select{min-width:0;flex:1}
-.swatches{display:grid;grid-template-columns:repeat(6,28px);gap:6px}.sw{width:28px;height:28px;border:1px solid var(--border2);border-radius:var(--r);cursor:pointer}.sw.active{outline:2px solid var(--accent)}
+.alpha-val{width:24px;text-align:right;color:var(--dim);font-family:Consolas,monospace}
+.swatches{display:grid;grid-template-columns:repeat(5,28px);gap:6px}.sw{width:28px;height:28px;border:1px solid var(--border2);border-radius:var(--r);cursor:pointer;background-color:transparent;background-image:linear-gradient(45deg,#101018 25%,transparent 25%),linear-gradient(-45deg,#101018 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#101018 75%),linear-gradient(-45deg,transparent 75%,#101018 75%);background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0;overflow:hidden;position:relative}
+.sw::after{content:"";position:absolute;inset:0;background:var(--swatch,#fff)}.sw.active{outline:2px solid var(--accent)}.sw.custom{border-color:#55557a}.subtle{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.7px}
 .stage{overflow:auto;display:flex;align-items:center;justify-content:center;padding:18px;background:var(--bg)}
 #grid{display:grid;gap:1px;padding:8px;background:#05050a;border:1px solid var(--border2)}
-.cell{width:24px;height:24px;border:1px solid #171727;background:#101018;cursor:crosshair}
-.cell.empty{background-image:linear-gradient(45deg,#111 25%,transparent 25%),linear-gradient(-45deg,#111 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#111 75%),linear-gradient(-45deg,transparent 75%,#111 75%);background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0}
+.cell{width:24px;height:24px;border:1px solid #171727;cursor:crosshair;background-color:transparent;background-image:linear-gradient(45deg,#101018 25%,transparent 25%),linear-gradient(-45deg,#101018 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#101018 75%),linear-gradient(-45deg,transparent 75%,#101018 75%);background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0;position:relative}
+.cell::after{content:"";position:absolute;inset:0;background:var(--pix,transparent)}
 .preview-wrap{display:flex;justify-content:center;padding:8px;background:var(--bg4);border:1px solid var(--border)}
 #preview{image-rendering:pixelated;width:256px;height:128px;border:1px solid var(--border2);background:#020005}
 #json-out{width:100%;min-height:300px;flex:1;background:var(--bg4);color:#7ab0ff;border:0;padding:9px;font:11px/1.5 Consolas,monospace;resize:none;outline:none}
@@ -60,10 +63,19 @@ select,input[type=text],input[type=number]{padding:5px 7px;outline:none}input[ty
     <div class="sec">
       <div class="sec-h">Paint</div>
       <div class="sec-b">
-        <div class="row"><input type="color" id="pick" value="#dcdce6"><button class="btn" id="btn-add-color">Add</button><button class="btn" id="btn-erase">Erase</button></div>
+        <div class="row"><input type="color" id="pick" value="#dcdce6"><button class="btn" id="btn-add-color">Add Custom</button></div>
+        <div class="f"><label>Alpha</label><input type="range" id="alpha" min="0" max="255" value="255"><span class="alpha-val" id="alpha-v">FF</span></div>
+        <div class="row">
+          <button class="btn btn-p" id="btn-paint">Paint</button>
+          <button class="btn" id="btn-bucket">Bucket</button>
+          <button class="btn" id="btn-erase">Erase</button>
+        </div>
+        <div class="subtle">Built in</div>
         <div class="swatches" id="swatches"></div>
-        <div class="row"><button class="btn" id="btn-clear">Clear</button><button class="btn" id="btn-fill">Fill</button></div>
-        <p class="hint">Left click paints. Right click erases.</p>
+        <div class="subtle">Custom</div>
+        <div class="swatches" id="custom-swatches"></div>
+        <div class="row"><button class="btn" id="btn-clear">Clear</button><button class="btn" id="btn-fill">Fill All</button></div>
+        <p class="hint">Bucket uses 4-way fill only. Right click erases. Right click a custom color to remove it.</p>
       </div>
     </div>
   </div>
@@ -88,18 +100,42 @@ select,input[type=text],input[type=number]{padding:5px 7px;outline:none}input[ty
 <script>
 'use strict';
 let sprite={name:'new_sprite',width:8,height:8,motion:'left',speed:0.5,pixels:[]};
-let currentFile='', selectedFile='', color='#dcdce6', erase=false, dirty=false, syncing=false;
-const palette=['#dcdce6','#c8c8d2','#a0c8ff','#c83c3c','#dc4646','#ff7800','#ffd050','#bebed2','#64b4ff','#ffffff','#000000'];
+let currentFile='', selectedFile='', color='#dcdce6', alpha=255, tool='paint', dirty=false, syncing=false;
+const builtinPalette=['#dcdce6','#c8c8d2','#a0c8ff','#c83c3c','#dc4646','#ff7800','#ffd050','#bebed2','#ffffff','#000000'];
+const customPaletteKey='hub75-sprite-custom-colors';
+let customPalette=loadCustomPalette();
 const el=id=>document.getElementById(id);
 const cleanName=n=>((n||'sprite').trim().replace(/[<>:"/\\|?*\x00-\x1f]+/g,'_')||'sprite');
 const fileName=()=>cleanName(sprite.name)+'.json';
 const blank=(name='new_sprite',w=8,h=8)=>({name,width:w,height:h,motion:'left',speed:0.5,pixels:Array.from({length:h},()=>Array.from({length:w},()=>null))});
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
 function markDirty(v=true){dirty=v; el('status').textContent=v?'Unsaved':'Ready';}
-function normHex(h){h=(h||'').replace('#',''); if(h.length===3)h=h.split('').map(c=>c+c).join(''); return '#'+h.padEnd(6,'0').slice(0,6).toLowerCase();}
+function hex2(n){return clamp(Math.round(n)||0,0,255).toString(16).padStart(2,'0').toUpperCase()}
+function normHex(h,allowAlpha=false){
+  h=(h||'').toString().trim().replace('#','');
+  if(h.length===3||h.length===4)h=h.split('').map(c=>c+c).join('');
+  h=h.replace(/[^0-9a-f]/gi,'');
+  const len=allowAlpha&&h.length>=8?8:6;
+  return '#'+h.padEnd(len,'0').slice(0,len).toUpperCase();
+}
+function parseColor(v){
+  if(!v)return null;
+  if(Array.isArray(v)){
+    const r=clamp(v[0]||0,0,255),g=clamp(v[1]||0,0,255),b=clamp(v[2]||0,0,255),a=clamp(v.length>3?v[3]:255,0,255);
+    return {hex:'#'+hex2(r)+hex2(g)+hex2(b),alpha:a,value:a>=255?'#'+hex2(r)+hex2(g)+hex2(b):'#'+hex2(r)+hex2(g)+hex2(b)+hex2(a),css:`rgba(${r},${g},${b},${a/255})`};
+  }
+  let h=normHex(v,true), r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16), a=h.length===9?parseInt(h.slice(7,9),16):255;
+  return {hex:h.slice(0,7),alpha:a,value:a>=255?h.slice(0,7):h,css:`rgba(${r},${g},${b},${a/255})`};
+}
+function currentValue(){return alpha>=255?color:color+hex2(alpha)}
+function setTool(next){tool=next;for(const id of ['paint','bucket','erase'])el('btn-'+id).classList.toggle('btn-p',tool===id)}
+function setColorValue(v){const c=parseColor(v);if(!c)return;color=c.hex;alpha=c.alpha;el('pick').value=color;el('alpha').value=alpha;el('alpha-v').textContent=hex2(alpha);setTool('paint');buildSwatches()}
+function loadCustomPalette(){try{return JSON.parse(localStorage.getItem(customPaletteKey)||'[]').slice(0,5)}catch(e){return []}}
+function saveCustomPalette(){try{localStorage.setItem(customPaletteKey,JSON.stringify(customPalette.slice(0,5)))}catch(e){}}
 function syncFields(){el('i-name').value=sprite.name;el('i-width').value=sprite.width;el('i-height').value=sprite.height;el('i-motion').value=sprite.motion||'left';el('i-speed').value=sprite.speed??0.5}
 function fromFields(){sprite.name=el('i-name').value||'sprite';sprite.motion=el('i-motion').value;sprite.speed=parseFloat(el('i-speed').value)||0.5}
-function normalizePixels(){let rows=sprite.pixels||[];let out=[];for(let y=0;y<sprite.height;y++){let row=[];for(let x=0;x<sprite.width;x++)row.push((rows[y]||[])[x]??null);out.push(row)}sprite.pixels=out}
+function normalizePixels(){let rows=sprite.pixels||[];let out=[];for(let y=0;y<sprite.height;y++){let row=[];for(let x=0;x<sprite.width;x++){const c=parseColor((rows[y]||[])[x]);row.push(c?c.value:null)}out.push(row)}sprite.pixels=out}
 
 function buildGrid(){
   normalizePixels();
@@ -110,18 +146,50 @@ function buildGrid(){
     g.appendChild(c);
   }
 }
-function paintCellStyle(cell,v){cell.classList.toggle('empty',!v);cell.style.backgroundColor=v||''}
-function paint(e){const x=+e.currentTarget.dataset.x,y=+e.currentTarget.dataset.y;sprite.pixels[y][x]=erase?null:color;paintCellStyle(e.currentTarget,sprite.pixels[y][x]);updateAll()}
-function buildSwatches(){const w=el('swatches');w.innerHTML='';for(const p of palette){const s=document.createElement('button');s.className='sw'+(p===color?' active':'');s.style.background=p;s.title=p;s.onclick=()=>{color=p;erase=false;el('pick').value=p;buildSwatches()};w.appendChild(s)}}
+function paintCellStyle(cell,v){const c=parseColor(v);cell.style.setProperty('--pix',c?c.css:'transparent');cell.title=c?c.value:'transparent'}
+function repaintGrid(){document.querySelectorAll('.cell').forEach(cell=>paintCellStyle(cell,sprite.pixels[+cell.dataset.y][+cell.dataset.x]))}
+function samePixel(a,b){return (a??null)===(b??null)}
+function bucketFill(x,y,value){
+  const target=sprite.pixels[y][x]??null;if(samePixel(target,value))return;
+  const stack=[[x,y]], seen=new Set();
+  while(stack.length){
+    const [cx,cy]=stack.pop(), key=cx+','+cy;
+    if(seen.has(key)||cx<0||cy<0||cx>=sprite.width||cy>=sprite.height)continue;
+    seen.add(key);
+    if(!samePixel(sprite.pixels[cy][cx]??null,target))continue;
+    sprite.pixels[cy][cx]=value;
+    stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
+  }
+}
+function paint(e){
+  const x=+e.currentTarget.dataset.x,y=+e.currentTarget.dataset.y;
+  if(tool==='erase')sprite.pixels[y][x]=null;
+  else if(tool==='bucket')bucketFill(x,y,currentValue());
+  else sprite.pixels[y][x]=currentValue();
+  repaintGrid();updateAll();
+}
+function swatchButton(p,custom=false){
+  const c=parseColor(p), s=document.createElement('button');
+  s.className='sw'+(c&&c.value===currentValue()?' active':'')+(custom?' custom':'');
+  s.style.setProperty('--swatch',c?c.css:'#fff');s.title=custom?`${c.value} - right click to remove`:c.value;
+  s.onclick=()=>setColorValue(c.value);
+  if(custom)s.oncontextmenu=e=>{e.preventDefault();customPalette=customPalette.filter(v=>v!==p);saveCustomPalette();buildSwatches()};
+  return s;
+}
+function buildSwatches(){
+  const w=el('swatches'), cw=el('custom-swatches');w.innerHTML='';cw.innerHTML='';
+  builtinPalette.forEach(p=>w.appendChild(swatchButton(p,false)));
+  customPalette.forEach(p=>cw.appendChild(swatchButton(p,true)));
+}
 
 function renderPreview(){
-  const cv=el('preview'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.fillStyle='#020005';ctx.fillRect(0,0,cv.width,cv.height);
+  const cv=el('preview'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,cv.width,cv.height);ctx.fillStyle='#020005';ctx.fillRect(0,0,cv.width,cv.height);
   const scale=Math.max(4,Math.floor(Math.min(cv.width/(sprite.width+4),cv.height/(sprite.height+4))));
   const ox=Math.floor((cv.width-sprite.width*scale)/2),oy=Math.floor((cv.height-sprite.height*scale)/2);
-  for(let y=0;y<sprite.height;y++)for(let x=0;x<sprite.width;x++){const v=sprite.pixels[y][x];if(!v)continue;ctx.fillStyle=v;ctx.fillRect(ox+x*scale,oy+y*scale,scale,scale)}
+  for(let y=0;y<sprite.height;y++)for(let x=0;x<sprite.width;x++){const c=parseColor(sprite.pixels[y][x]);if(!c)continue;ctx.fillStyle=c.css;ctx.fillRect(ox+x*scale,oy+y*scale,scale,scale)}
 }
 function buildJSON(){fromFields();normalizePixels();return JSON.stringify(sprite,null,2)}
-function updateJSON(){syncing=true;el('json-out').value=buildJSON();syncing=false;el('json-status').textContent='Generated'}
+function updateJSON(){syncing=true;el('json-out').value=buildJSON();syncing=false;el('json-status').textContent='Generated';el('json-status').className='hint'}
 function updateAll(){renderPreview();updateJSON();markDirty(true)}
 function applySprite(data,dirtyState=false){sprite={...blank(),...data};sprite.width=parseInt(sprite.width)||8;sprite.height=parseInt(sprite.height)||8;normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(dirtyState)}
 
@@ -133,16 +201,17 @@ function wire(){
   buildSwatches();
   ['i-name','i-motion','i-speed'].forEach(id=>el(id).addEventListener('input',updateAll));
   el('btn-resize').onclick=()=>{sprite.width=Math.max(1,Math.min(32,parseInt(el('i-width').value)||8));sprite.height=Math.max(1,Math.min(25,parseInt(el('i-height').value)||8));normalizePixels();buildGrid();updateAll()};
-  el('pick').oninput=e=>{color=normHex(e.target.value);erase=false;buildSwatches()};
-  el('btn-add-color').onclick=()=>{const c=normHex(el('pick').value);if(!palette.includes(c))palette.unshift(c);color=c;erase=false;buildSwatches()};
-  el('btn-erase').onclick=()=>{erase=!erase;el('btn-erase').classList.toggle('btn-p',erase)};
+  el('pick').oninput=e=>{color=normHex(e.target.value);setTool('paint');buildSwatches()};
+  el('alpha').oninput=e=>{alpha=clamp(parseInt(e.target.value)||0,0,255);el('alpha-v').textContent=hex2(alpha);setTool('paint');buildSwatches()};
+  el('btn-add-color').onclick=()=>{const c=currentValue();customPalette=customPalette.filter(v=>v!==c);customPalette.push(c);if(customPalette.length>5)customPalette.shift();saveCustomPalette();buildSwatches()};
+  el('btn-paint').onclick=()=>setTool('paint');el('btn-bucket').onclick=()=>setTool('bucket');el('btn-erase').onclick=()=>setTool('erase');
   el('btn-clear').onclick=()=>{sprite.pixels=blank(sprite.name,sprite.width,sprite.height).pixels;buildGrid();updateAll()};
-  el('btn-fill').onclick=()=>{for(let y=0;y<sprite.height;y++)for(let x=0;x<sprite.width;x++)sprite.pixels[y][x]=color;buildGrid();updateAll()};
+  el('btn-fill').onclick=()=>{for(let y=0;y<sprite.height;y++)for(let x=0;x<sprite.width;x++)sprite.pixels[y][x]=currentValue();buildGrid();updateAll()};
   el('btn-new').onclick=()=>{if(dirty&&!confirm('Discard unsaved changes?'))return;currentFile=selectedFile='';applySprite(blank(prompt('Sprite name:','new_sprite')||'new_sprite'),true)};
   el('btn-save').onclick=()=>saveSprite().catch(e=>alert(e.message));
   el('btn-save-as').onclick=()=>{const f=prompt('Save sprite as:',currentFile||fileName());if(f)saveSprite(f.toLowerCase().endsWith('.json')?f:f+'.json').catch(e=>alert(e.message))};
   el('sprite-select').onchange=e=>{const f=e.target.value;if(dirty&&!confirm('Discard unsaved changes and load another sprite?')){if(selectedFile)e.target.value=selectedFile;else e.target.selectedIndex=-1;return}loadSprite(f).catch(err=>alert(err.message))};
-  el('json-out').oninput=()=>{if(syncing)return;try{const d=JSON.parse(el('json-out').value);el('json-status').textContent='Valid edit';el('json-status').className='ok'}catch(e){el('json-status').textContent=e.message;el('json-status').className='err'}};
+  el('json-out').oninput=()=>{if(syncing)return;try{JSON.parse(el('json-out').value);el('json-status').textContent='Valid edit';el('json-status').className='ok'}catch(e){el('json-status').textContent=e.message;el('json-status').className='err'}};
   el('btn-apply').onclick=()=>{try{applySprite(JSON.parse(el('json-out').value),true)}catch(e){alert(e.message)}};
   el('btn-copy').onclick=()=>navigator.clipboard&&navigator.clipboard.writeText(el('json-out').value);
 }

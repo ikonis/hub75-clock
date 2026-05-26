@@ -321,7 +321,7 @@ Sprites live in `sprites/` in the repo and `/etc/hub75-clock/sprites/` on clocks
 { "name": "sprite", "sprite": "rocket", "chance_per_minute": 4 }
 ```
 
-The first implementation is Python runtime only. C++ can read the same sprite JSON format later.
+Sprite pixels use `null` for transparent cells, `#RRGGBB` for solid color, or `#RRGGBBAA` for alpha-blended pixels. The first implementation is Python runtime only. C++ can read the same sprite JSON format later.
 
 ---
 

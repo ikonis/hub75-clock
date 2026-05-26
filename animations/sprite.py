@@ -69,11 +69,22 @@ class Animation:
                     continue
                 if isinstance(value, str):
                     h = value.lstrip("#")
-                    if len(h) != 6:
+                    if len(h) not in (6, 8):
                         continue
-                    color = (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
-                elif isinstance(value, list) and len(value) == 3:
-                    color = tuple(max(0, min(255, int(v))) for v in value)
+                    try:
+                        color = (
+                            int(h[0:2], 16),
+                            int(h[2:4], 16),
+                            int(h[4:6], 16),
+                            int(h[6:8], 16) if len(h) == 8 else 255,
+                        )
+                    except ValueError:
+                        continue
+                elif isinstance(value, list) and len(value) in (3, 4):
+                    rgba = [max(0, min(255, int(v))) for v in value]
+                    if len(rgba) == 3:
+                        rgba.append(255)
+                    color = tuple(rgba)
                 else:
                     continue
                 pixels.append((x, y, color))
@@ -86,11 +97,16 @@ class Animation:
     def draw(self, canvas):
         ox = int(round(self.x))
         oy = int(round(self.y))
-        for dx, dy, (r, g, b) in self._pixels:
+        for dx, dy, (r, g, b, a) in self._pixels:
             px = ox + dx
             py = oy + dy
             if 0 <= px < self._w and self._at <= py <= self._ab:
-                canvas.SetPixel(px, py, r, g, b)
+                if a >= 255:
+                    canvas.SetPixel(px, py, r, g, b)
+                elif a > 0 and hasattr(canvas, "BlendPixel"):
+                    canvas.BlendPixel(px, py, r, g, b, a / 255.0)
+                elif a > 0:
+                    canvas.SetPixel(px, py, r, g, b)
 
     def is_done(self) -> bool:
         return (
