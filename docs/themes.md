@@ -19,7 +19,7 @@ Built-in themes are installed to `/etc/hub75-clock/themes/` by `install.sh`. Tha
 └── your_custom_theme.json   ← drop it here
 ```
 
-The repo ships the built-in themes under `themes/` and the installer copies them on first install. `make update` syncs the repo's `themes/` directory to `/etc/hub75-clock/themes/`, so keep local-only experiments in git or copy them elsewhere before updating.
+The repo ships the built-in themes under `themes/` and the installer copies them on first install. `make update` preserves installed themes by copying `/etc/hub75-clock/themes/` back into the repo before syncing, then commits and pushes theme changes by default. Set `PRESERVE_LOCAL_THEMES=false`, `COMMIT_LOCAL_THEMES=false`, or `PUSH_LOCAL_THEMES=false` when running the update script if you want to override that behavior.
 
 ---
 

@@ -223,7 +223,7 @@ Run once on a fresh Pi. Does everything in sequence:
 7. Downloads fonts (rpi-rgb-led-matrix bundled BDF fonts + Spleen 12x24/16x32) to `~/hub75-fonts`
 8. Enables I2C and UART hardware; disables serial console; disables Bluetooth; blacklists `snd_bcm2835`
 9. Adds user to `dialout`, `gpio`, `i2c` groups
-10. Installs the selected runtime to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only; copies Python animation `.py` files when using the Python runtime; installs the theme builder helper files
+10. Installs the selected runtime to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only; update scripts preserve locally edited themes before syncing; copies Python animation `.py` files when using the Python runtime; installs the theme builder helper files
 11. Installs and enables the `hub75-clock` systemd service for the selected runtime
 12. Installs the `hub75-theme-builder` systemd service, enabled only when theme builder mode is `always`
 13. Installs the matching update script to `~/update-clock.sh`
@@ -543,7 +543,7 @@ hub75-clock/
 │   ├── theme_loader.py         Theme dataclass, JSON loader, file watcher
 │   └── test_sensors.py         Per-sensor test utility (make test)
 ├── themes/
-│   └── *.json                  Built-in themes; copied to /etc/hub75-clock/themes/ on first install
+│   └── *.json                  Built-in themes; locally edited installed themes are preserved by update scripts
 ├── animations/
 │   └── *.py                    Built-in drop-in animations; copied to /etc/hub75-clock/animations/
 │                               Drop your own .py files there to add custom animations at runtime
