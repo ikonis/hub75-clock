@@ -27,6 +27,7 @@ CACHE_DIR = APP_DIR / ".theme-cache" / "ikonis"
 SPRITE_CACHE_DIR = APP_DIR / ".theme-cache" / "sprites"
 AUTH_FILE = APP_DIR / ".theme-cache" / "ikonis-auth.json"
 REMOTE_THEMES_DIR = "/etc/hub75-clock/themes"
+REMOTE_SPRITES_DIR = "/etc/hub75-clock/sprites"
 
 SOURCE_CLOCK = "hub75-clock.local"
 TARGET_CLOCKS = [
@@ -128,31 +129,33 @@ def run_sudo(client, password, command):
         raise RuntimeError(err or f"sudo command failed with exit {rc}")
 
 
-def pull_themes_paramiko(paramiko, user, source_host, password, themes_dir, cache_dir):
+def pull_json_dir_paramiko(paramiko, user, source_host, password, remote_dir, cache_dir, label):
     cache_dir.mkdir(parents=True, exist_ok=True)
     for existing in cache_dir.glob("*.json"):
         existing.unlink()
 
-    print(f"[ikonis-theme-builder] pull {source_host}:{themes_dir}/*.json")
+    print(f"[ikonis-theme-builder] pull {source_host}:{remote_dir}/*.json")
     client = ssh_connect(paramiko, user, source_host, password)
     try:
         sftp = client.open_sftp()
         try:
-            for attr in sftp.listdir_attr(themes_dir):
+            for attr in sftp.listdir_attr(remote_dir):
                 name = attr.filename
                 if name.lower().endswith(".json"):
-                    sftp.get(f"{themes_dir}/{name}", str(cache_dir / name))
+                    sftp.get(f"{remote_dir}/{name}", str(cache_dir / name))
+        except FileNotFoundError:
+            print(f"[ikonis-theme-builder] warning: remote {label} dir not found: {remote_dir}")
         finally:
             sftp.close()
     finally:
         client.close()
 
 
-def push_theme_paramiko(paramiko, user, host, password, themes_dir, path, restart):
-    remote_theme = themes_dir + "/" + path.name
-    remote_tmp = f"/tmp/hub75-theme-upload-{os.getpid()}.json"
+def push_json_paramiko(paramiko, user, host, password, remote_dir, path, restart, label):
+    remote_path = remote_dir + "/" + path.name
+    remote_tmp = f"/tmp/hub75-{label}-upload-{os.getpid()}.json"
 
-    print(f"[ikonis-theme-builder] push {path.name} -> {host}:{remote_theme}")
+    print(f"[ikonis-theme-builder] push {path.name} -> {host}:{remote_path}")
     client = ssh_connect(paramiko, user, host, password)
     try:
         sftp = client.open_sftp()
@@ -164,7 +167,7 @@ def push_theme_paramiko(paramiko, user, host, password, themes_dir, path, restar
         run_sudo(
             client,
             password,
-            f"install -m 0644 {shlex.quote(remote_tmp)} {shlex.quote(remote_theme)} && rm -f {shlex.quote(remote_tmp)}",
+            f"install -D -m 0644 {shlex.quote(remote_tmp)} {shlex.quote(remote_path)} && rm -f {shlex.quote(remote_tmp)}",
         )
 
         if restart:
@@ -173,28 +176,31 @@ def push_theme_paramiko(paramiko, user, host, password, themes_dir, path, restar
         client.close()
 
 
-def pull_themes_scp(user, source_host, themes_dir, cache_dir):
+def pull_json_dir_scp(user, source_host, remote_dir, cache_dir, label):
     require_tool("scp")
     cache_dir.mkdir(parents=True, exist_ok=True)
     for existing in cache_dir.glob("*.json"):
         existing.unlink()
-    src = f"{remote(user, source_host)}:{themes_dir}/*.json"
-    run_cmd(["scp", src, str(cache_dir)])
+    src = f"{remote(user, source_host)}:{remote_dir}/*.json"
+    try:
+        run_cmd(["scp", src, str(cache_dir)])
+    except subprocess.CalledProcessError as exc:
+        print(f"[ikonis-theme-builder] warning: could not pull {label} from {remote_dir}: exit {exc.returncode}")
 
 
-def push_theme_scp(user, host, themes_dir, path, restart):
+def push_json_scp(user, host, remote_dir, path, restart, label):
     require_tool("scp")
     require_tool("ssh")
     dest = remote(user, host)
-    remote_theme = themes_dir + "/" + path.name
-    remote_tmp = f"/tmp/hub75-theme-upload-{os.getpid()}.json"
+    remote_path = remote_dir + "/" + path.name
+    remote_tmp = f"/tmp/hub75-{label}-upload-{os.getpid()}.json"
 
     run_cmd(["scp", str(path), f"{dest}:{remote_tmp}"])
 
     install_cmd = (
-        "sudo install -m 0644 "
+        "sudo install -D -m 0644 "
         f"{shlex.quote(remote_tmp)} "
-        f"{shlex.quote(remote_theme)} && "
+        f"{shlex.quote(remote_path)} && "
         f"rm -f {shlex.quote(remote_tmp)}"
     )
     run_cmd(["ssh", "-t", dest, install_cmd])
@@ -206,63 +212,77 @@ def push_theme_scp(user, host, themes_dir, path, restart):
 class IkonisThemeHandler(theme_server.ThemeBuilderHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
-        if parsed.path != "/api/theme":
-            return super().do_POST()
+        if parsed.path == "/api/theme":
+            return self._write_remote_json("theme", self.themes_dir, self.server.remote_themes_dir)
+        if parsed.path == "/api/sprite":
+            return self._write_remote_json("sprite", self.sprites_dir, self.server.remote_sprites_dir)
+        return super().do_POST()
+
+    def _write_remote_json(self, label, local_dir, remote_dir):
+        if label == "theme":
+            payload_key = "theme"
+            safe_path = theme_server._safe_theme_path
+        else:
+            payload_key = "sprite"
+            safe_path = lambda base, name: theme_server._safe_json_path(base, name, "sprite")
 
         length = int(self.headers.get("Content-Length", "0"))
         raw = self.rfile.read(length)
         try:
             payload = json.loads(raw.decode("utf-8"))
             name = payload.get("file") or ""
-            data = payload.get("theme")
+            data = payload.get(payload_key)
             if not isinstance(data, dict):
-                raise ValueError("theme must be an object")
+                raise ValueError(f"{label} must be an object")
 
-            path = theme_server._safe_theme_path(self.themes_dir, name)
+            path = safe_path(local_dir, name)
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(path.suffix + ".tmp")
             tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
             os.replace(tmp, path)
-
-            failures = []
-            saved_to = []
-            for target in self.server.targets:
-                try:
-                    if self.server.paramiko:
-                        push_theme_paramiko(
-                            self.server.paramiko,
-                            self.server.ssh_user,
-                            target["host"],
-                            self.server.ssh_password,
-                            self.server.remote_themes_dir,
-                            path,
-                            target["restart"],
-                        )
-                    else:
-                        push_theme_scp(
-                            self.server.ssh_user,
-                            target["host"],
-                            self.server.remote_themes_dir,
-                            path,
-                            target["restart"],
-                        )
-                    label = target["host"]
-                    if target["restart"]:
-                        label += " + restart"
-                    saved_to.append(label)
-                except subprocess.CalledProcessError as exc:
-                    failures.append(f"{target['host']}: exit {exc.returncode}")
-                except Exception as exc:
-                    failures.append(f"{target['host']}: {exc}")
-
-            if failures:
-                return theme_server._json_response(
-                    self,
-                    500,
-                    {"ok": False, "file": path.name, "error": "; ".join(failures)},
-                )
         except Exception as exc:
             return theme_server._json_response(self, 400, {"ok": False, "error": str(exc)})
+
+        failures = []
+        saved_to = []
+        for target in self.server.targets:
+            restart = target["restart"] if label == "theme" else False
+            try:
+                if self.server.paramiko:
+                    push_json_paramiko(
+                        self.server.paramiko,
+                        self.server.ssh_user,
+                        target["host"],
+                        self.server.ssh_password,
+                        remote_dir,
+                        path,
+                        restart,
+                        label,
+                    )
+                else:
+                    push_json_scp(
+                        self.server.ssh_user,
+                        target["host"],
+                        remote_dir,
+                        path,
+                        restart,
+                        label,
+                    )
+                target_label = target["host"]
+                if restart:
+                    target_label += " + restart"
+                saved_to.append(target_label)
+            except subprocess.CalledProcessError as exc:
+                failures.append(f"{target['host']}: exit {exc.returncode}")
+            except Exception as exc:
+                failures.append(f"{target['host']}: {exc}")
+
+        if failures:
+            return theme_server._json_response(
+                self,
+                500,
+                {"ok": False, "file": path.name, "error": "; ".join(failures)},
+            )
 
         return theme_server._json_response(
             self,
@@ -278,7 +298,9 @@ def main():
     parser.add_argument("--user", default="ikonis")
     parser.add_argument("--source", default=SOURCE_CLOCK)
     parser.add_argument("--themes-dir", default=REMOTE_THEMES_DIR)
+    parser.add_argument("--sprites-dir", default=REMOTE_SPRITES_DIR)
     parser.add_argument("--cache-dir", default=str(CACHE_DIR))
+    parser.add_argument("--sprite-cache-dir", default=str(SPRITE_CACHE_DIR))
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-pull", action="store_true")
@@ -295,6 +317,7 @@ def main():
     args = parser.parse_args()
 
     cache_dir = Path(args.cache_dir).expanduser().resolve()
+    sprite_cache_dir = Path(args.sprite_cache_dir).expanduser().resolve()
     auth_file = AUTH_FILE
     if args.forget_password:
         try:
@@ -325,24 +348,29 @@ def main():
 
     if not args.no_pull:
         if paramiko:
-            pull_themes_paramiko(paramiko, ssh_user, args.source, ssh_password, args.themes_dir, cache_dir)
+            pull_json_dir_paramiko(paramiko, ssh_user, args.source, ssh_password, args.themes_dir, cache_dir, "themes")
+            pull_json_dir_paramiko(paramiko, ssh_user, args.source, ssh_password, args.sprites_dir, sprite_cache_dir, "sprites")
         else:
-            pull_themes_scp(ssh_user, args.source, args.themes_dir, cache_dir)
+            pull_json_dir_scp(ssh_user, args.source, args.themes_dir, cache_dir, "themes")
+            pull_json_dir_scp(ssh_user, args.source, args.sprites_dir, sprite_cache_dir, "sprites")
 
     httpd = ThreadingHTTPServer((args.host, args.port), IkonisThemeHandler)
     httpd.themes_dir = cache_dir
-    SPRITE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    httpd.sprites_dir = SPRITE_CACHE_DIR
+    sprite_cache_dir.mkdir(parents=True, exist_ok=True)
+    httpd.sprites_dir = sprite_cache_dir
     httpd.ssh_user = ssh_user
     httpd.ssh_password = ssh_password
     httpd.paramiko = paramiko
     httpd.remote_themes_dir = args.themes_dir
+    httpd.remote_sprites_dir = args.sprites_dir
     httpd.targets = targets
 
     url = f"http://{args.host}:{args.port}/"
     print(f"[ikonis-theme-builder] serving {url}")
-    print(f"[ikonis-theme-builder] local cache: {cache_dir}")
+    print(f"[ikonis-theme-builder] local theme cache: {cache_dir}")
+    print(f"[ikonis-theme-builder] local sprite cache: {sprite_cache_dir}")
     print(f"[ikonis-theme-builder] source: {args.source}:{args.themes_dir}")
+    print(f"[ikonis-theme-builder] sprite source: {args.source}:{args.sprites_dir}")
     print(f"[ikonis-theme-builder] auth backend: {'paramiko' if paramiko else 'scp/ssh'}")
     for target in targets:
         suffix = " + restart" if target["restart"] else ""
