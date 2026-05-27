@@ -21,7 +21,7 @@ import random
 import re
 import importlib.util
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Tuple
 
 import yaml
@@ -104,6 +104,10 @@ DEFAULTS = {
             "theme":            "hub75_clock/theme/set",
             "theme_state":      "hub75_clock/theme/state",
             "themes_available": "hub75_clock/themes/available",
+            "update_check":     "hub75_clock/update/check",
+            "update_install":   "hub75_clock/update/install",
+            "update_state":     "hub75_clock/update/state",
+            "update_latest":    "hub75_clock/update/latest",
         },
     },
     "ha_discovery": {
@@ -141,38 +145,17 @@ DEFAULTS = {
         "alert_h":     6,
     },
     "colors": {
-        # All colors accept either "#RRGGBB" or [r, g, b]
         "time_day":        "#F0F0F0",
-        "time_night":      "#505050",
         "low_temp_day":    "#00CCFF",
-        "low_temp_night":  "#004455",
         "high_temp_day":   "#FF8C00",
-        "high_temp_night": "#553300",
         "condition_day":   "#909090",
-        "condition_night": "#404040",
         "alert_text":      "#FFFFFF",
         "alert_bg":        "#CC0000",
-        # Animation colors
-        "rain_day":        [22, 42, 115],
-        "rain_night":      [10, 18, 50],
-        "snow_day":        [180, 180, 200],
-        "snow_night":      [50, 50, 70],
-        "sleet_day":       [120, 160, 180],
-        "sleet_night":     [40, 55, 70],
-        "lightning":       [200, 200, 40],
         "cloud_day":       [70, 70, 70],
-        "cloud_night":     [25, 25, 25],
         "sun_day":         [220, 160, 30],
-        "sun_night":       [70, 50, 10],
         "ice_day":         [80, 140, 160],
-        "ice_night":       [25, 45, 55],
         "outline":         [0, 0, 0],
         "sky_day":         "#000820",
-        "separator":       "#1A1A1A",
-        "evening_top":     "#0F0019",
-        "evening_bottom":  "#3C1400",
-        "night_bg":        "#020005",
-        "late_evening_bg": "#05000F",
     },
     "animation": {
         "fps":                        90,
@@ -211,6 +194,14 @@ DEFAULTS = {
     },
     "animations": {
         "animations_dir": "/etc/hub75-clock/animations",
+    },
+    "update": {
+        "enabled": False,
+        "repo_path": "/home/pi/hub75-clock",
+        "branch": "",
+        "command": "/home/pi/update-clock.sh",
+        "check_on_startup": True,
+        "check_time": "03:30",
     },
 }
 
@@ -261,12 +252,6 @@ def load_config(config_path: str) -> dict:
         cfg["animation"]["fps"] = max(1, int(cfg["animation"].get("fps", 90)))
     except Exception:
         cfg["animation"]["fps"] = 90
-    if "fps_night" in cfg["animation"]:
-        try:
-            cfg["animation"]["fps_night"] = max(1, int(cfg["animation"]["fps_night"]))
-        except Exception:
-            cfg["animation"]["fps_night"] = 1
-
     # Resolve full font paths from names
     fonts_dir = cfg["fonts"]["fonts_dir"]
     for key in ("banner", "time", "alert"):
@@ -1205,6 +1190,8 @@ class HUB75Clock:
         self._alert_show_message = False
         self._engineering_lock = threading.Lock()
         self._engineering_running = False
+        self._update_stop = threading.Event()
+        self._update_thread_started = False
 
     # ------------------------------------------------------------------
     # MQTT
@@ -1297,6 +1284,121 @@ class HUB75Clock:
     def _set_theme_builder_async(self, enable: bool):
         threading.Thread(target=self._set_theme_builder, args=(enable,), daemon=True).start()
 
+    def _update_cfg(self):
+        return self.cfg.get("update", {})
+
+    def _update_enabled(self) -> bool:
+        return bool(self._update_cfg().get("enabled", False))
+
+    def _update_state_topic(self):
+        topics = self.cfg["mqtt"]["topics"]
+        client_id = self.cfg["mqtt"]["client_id"]
+        return topics.get("update_state", f"{client_id}/update/state")
+
+    def _update_latest_topic(self):
+        topics = self.cfg["mqtt"]["topics"]
+        client_id = self.cfg["mqtt"]["client_id"]
+        return topics.get("update_latest", f"{client_id}/update/latest")
+
+    def _run_git(self, args, repo_path: str) -> str:
+        return subprocess.check_output(
+            ["git", "-C", repo_path, *args],
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=30,
+        ).strip()
+
+    def _update_branch(self, repo_path: str) -> str:
+        branch = str(self._update_cfg().get("branch") or "").strip()
+        if branch:
+            return branch
+        return self._run_git(["branch", "--show-current"], repo_path)
+
+    def _publish_update_state(self, state: dict):
+        if not self._update_enabled():
+            return
+        payload = json.dumps(state, separators=(",", ":"))
+        self.mqtt_client.publish(self._update_state_topic(), payload, retain=True)
+        if "remote" in state:
+            self.mqtt_client.publish(self._update_latest_topic(), state["remote"], retain=True)
+
+    def _check_for_update(self):
+        if not self._update_enabled():
+            return
+        repo_path = self._update_cfg().get("repo_path") or "/home/pi/hub75-clock"
+        try:
+            branch = self._update_branch(repo_path)
+            self._run_git(["fetch", "origin", branch], repo_path)
+            local = self._run_git(["rev-parse", "--short", "HEAD"], repo_path)
+            remote = self._run_git(["rev-parse", "--short", f"origin/{branch}"], repo_path)
+            state = {
+                "available": local != remote,
+                "branch": branch,
+                "local": local,
+                "remote": remote,
+                "checked_at": datetime.now(timezone.utc).isoformat(),
+            }
+            self._publish_update_state(state)
+            print(f"[update] checked {branch}: local={local} remote={remote}")
+        except Exception as e:
+            self._publish_update_state({
+                "available": False,
+                "error": str(e),
+                "checked_at": datetime.now(timezone.utc).isoformat(),
+            })
+            print(f"[update] check failed: {e}")
+
+    def _check_for_update_async(self):
+        threading.Thread(target=self._check_for_update, daemon=True).start()
+
+    def _install_update(self):
+        if not self._update_enabled():
+            return
+        command = self._update_cfg().get("command") or "/home/pi/update-clock.sh"
+        self._publish_update_state({
+            "available": False,
+            "installing": True,
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+        })
+        try:
+            subprocess.Popen(str(command), shell=True)
+            print(f"[update] install started: {command}")
+        except Exception as e:
+            self._publish_update_state({
+                "available": False,
+                "installing": False,
+                "error": str(e),
+                "checked_at": datetime.now(timezone.utc).isoformat(),
+            })
+            print(f"[update] install failed: {e}")
+
+    def _install_update_async(self):
+        threading.Thread(target=self._install_update, daemon=True).start()
+
+    def _seconds_until_update_check(self) -> float:
+        check_time = str(self._update_cfg().get("check_time", "03:30"))
+        try:
+            hour, minute = [int(part) for part in check_time.split(":", 1)]
+            hour = max(0, min(23, hour))
+            minute = max(0, min(59, minute))
+        except Exception:
+            hour, minute = 3, 30
+        now = datetime.now()
+        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if target <= now:
+            target += timedelta(days=1)
+        return max(60.0, (target - now).total_seconds())
+
+    def _update_daily_loop(self):
+        while self.running and not self._update_stop.wait(self._seconds_until_update_check()):
+            self._check_for_update()
+
+    def _start_update_scheduler(self):
+        if not self._update_enabled() or self._update_thread_started:
+            return
+        self._update_thread_started = True
+        threading.Thread(target=self._update_daily_loop, daemon=True).start()
+
     def _on_connect(self, client, userdata, flags, rc):
         if rc != 0:
             print(f"[mqtt] connect failed rc={rc}"); return
@@ -1309,6 +1411,8 @@ class HUB75Clock:
                   topics.get("gates", f"{client_id}/gates"),
                   topics.get("engineering_mode", f"{client_id}/engineering_mode"),
                   topics.get("bucket", f"{client_id}/bucket"),
+                  topics.get("update_check", f"{client_id}/update/check"),
+                  topics.get("update_install", topics.get("update", f"{client_id}/update/install")),
                   topics["theme"]):
             client.subscribe(t)
         client.publish(topics["themes_available"],
@@ -1328,6 +1432,9 @@ class HUB75Clock:
         if self.ld2410 is not None:
             client.publish(em_state_topic, "on" if self.ld2410.engineering_mode else "off", retain=True)
         self._publish_theme_builder_state()
+        self._start_update_scheduler()
+        if self._update_enabled() and self._update_cfg().get("check_on_startup", True):
+            self._check_for_update_async()
         if self.cfg["ha_discovery"]["enabled"]:
             self._publish_discovery()
 
@@ -1484,6 +1591,14 @@ class HUB75Clock:
         elif msg.topic == topics.get("bucket", f"{client_id}/bucket"):
             if "bucket" in payload:
                 self._apply_bucket(payload["bucket"])
+
+        elif msg.topic == topics.get("update_check", f"{client_id}/update/check"):
+            if not getattr(msg, "retain", False):
+                self._check_for_update_async()
+
+        elif msg.topic == topics.get("update_install", topics.get("update", f"{client_id}/update/install")):
+            if not getattr(msg, "retain", False):
+                self._install_update_async()
 
         elif msg.topic == topics.get("theme"):
             theme_name = payload if isinstance(payload, str) else payload.get("theme", "")
@@ -1705,6 +1820,65 @@ class HUB75Clock:
                     "has_entity_name": True,
                 }), retain=True)
 
+        # --- Update status + actions ---
+        if self._update_enabled():
+            update_state_topic = self._update_state_topic()
+            self.mqtt_client.publish(
+                f"{prefix}/binary_sensor/{client_id}_update_available/config",
+                json.dumps({
+                    "name":          "Update Available",
+                    "unique_id":     f"{client_id}_update_available",
+                    "device":        device,
+                    "availability":  avail,
+                    "state_topic":   update_state_topic,
+                    "value_template": "{{ 'ON' if value_json.available else 'OFF' }}",
+                    "payload_on":    "ON",
+                    "payload_off":   "OFF",
+                    "entity_category": "diagnostic",
+                    "icon":          "mdi:update",
+                    "has_entity_name": True,
+                }), retain=True)
+            self.mqtt_client.publish(
+                f"{prefix}/sensor/{client_id}_update_info/config",
+                json.dumps({
+                    "name":          "Update Info",
+                    "unique_id":     f"{client_id}_update_info",
+                    "device":        device,
+                    "availability":  avail,
+                    "state_topic":   update_state_topic,
+                    "value_template": "{{ value_json.local ~ ' -> ' ~ value_json.remote if value_json.remote is defined else value_json.error | default('unknown') }}",
+                    "json_attributes_topic": update_state_topic,
+                    "entity_category": "diagnostic",
+                    "icon":          "mdi:source-branch",
+                    "has_entity_name": True,
+                }), retain=True)
+            self.mqtt_client.publish(
+                f"{prefix}/button/{client_id}_update_check/config",
+                json.dumps({
+                    "name":          "Check Update",
+                    "unique_id":     f"{client_id}_update_check",
+                    "device":        device,
+                    "availability":  avail,
+                    "command_topic": topics.get("update_check", f"{client_id}/update/check"),
+                    "payload_press": "check",
+                    "entity_category": "diagnostic",
+                    "icon":          "mdi:cloud-search",
+                    "has_entity_name": True,
+                }), retain=True)
+            self.mqtt_client.publish(
+                f"{prefix}/button/{client_id}_update_install/config",
+                json.dumps({
+                    "name":          "Install Update",
+                    "unique_id":     f"{client_id}_update_install",
+                    "device":        device,
+                    "availability":  avail,
+                    "command_topic": topics.get("update_install", topics.get("update", f"{client_id}/update/install")),
+                    "payload_press": "install",
+                    "entity_category": "config",
+                    "icon":          "mdi:download",
+                    "has_entity_name": True,
+                }), retain=True)
+
         # --- Select: theme ---
         self.mqtt_client.publish(
             f"{prefix}/select/{client_id}_theme/config",
@@ -1743,6 +1917,7 @@ class HUB75Clock:
     def stop(self):
         print("[clock] stopping")
         self.running = False
+        self._update_stop.set()
         if self.veml   is not None: self.veml.stop()
         if self.pir    is not None: self.pir.stop()
         if self.ld2410 is not None: self.ld2410.stop()

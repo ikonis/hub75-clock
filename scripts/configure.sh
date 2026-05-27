@@ -187,6 +187,9 @@ mqtt:
     bucket:           ${CLIENT_ID}/bucket
     version_state:    ${CLIENT_ID}/version
     update:           ${CLIENT_ID}/update/install
+    update_check:     ${CLIENT_ID}/update/check
+    update_install:   ${CLIENT_ID}/update/install
+    update_state:     ${CLIENT_ID}/update/state
     update_latest:    ${CLIENT_ID}/update/latest
 
 ha_discovery:
@@ -224,40 +227,19 @@ fonts:
 
 colors:
   time_day: "#F0F0F0"
-  time_night: "#505050"
   low_temp_day: "#00CCFF"
-  low_temp_night: "#004455"
   high_temp_day: "#FF8C00"
-  high_temp_night: "#552E00"
   condition_day: "#909090"
-  condition_night: "#303030"
   alert_text: "#FFFFFF"
   alert_bg: "#CC0000"
   cloud_day: [70, 70, 70]
-  cloud_night: [25, 25, 25]
-  rain_day: [22, 42, 115]
-  rain_night: [10, 18, 50]
-  snow_day: [180, 180, 200]
-  snow_night: [50, 50, 70]
-  sleet_day: [120, 160, 180]
-  sleet_night: [40, 55, 70]
-  lightning: [200, 200, 40]
   sun_day: [220, 160, 30]
-  sun_night: [70, 50, 10]
   ice_day: [80, 140, 160]
-  ice_night: [25, 45, 55]
   outline: [0, 0, 0]
   sky_day: "#000820"
-  separator: "#1A1A1A"
-  evening_top: "#0F0019"
-  evening_bottom: "#3C1400"
-  night_bg: "#020005"
-  late_evening_bg: "#05000F"
-  ice_bg: "#001830"
 
 animation:
   fps: 90
-  fps_night: 90
   rain_count: [5, 8]
   snow_count: [6, 10]
   sleet_count: [6, 10]
@@ -290,7 +272,10 @@ time_format:
 update:
   enabled: true
   repo_path: "$REPO_DIR"
-  github_repo: "YOUR_GITHUB/hub75-clock"
+  branch: ""
+  command: "/home/$USER/update-clock.sh"
+  check_on_startup: true
+  check_time: "03:30"
 EOF
 sudo chmod 666 "$CONFIG_FILE"
 

@@ -10,7 +10,10 @@
 #include <mosquitto.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
+#include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -19,6 +22,7 @@
 #include <fstream>
 #include <iostream>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <chrono>
@@ -54,6 +58,10 @@ static json defaults() {
                 {"theme",            "hub75_clock/theme/set"},
                 {"theme_state",      "hub75_clock/theme/state"},
                 {"themes_available", "hub75_clock/themes/available"},
+                {"update_check",     "hub75_clock/update/check"},
+                {"update_install",   "hub75_clock/update/install"},
+                {"update_state",     "hub75_clock/update/state"},
+                {"update_latest",    "hub75_clock/update/latest"},
             }},
         }},
         {"ha_discovery", {
@@ -91,35 +99,16 @@ static json defaults() {
         }},
         {"colors", {
             {"time_day",        "#F0F0F0"},
-            {"time_night",      "#505050"},
             {"low_temp_day",    "#00CCFF"},
-            {"low_temp_night",  "#004455"},
             {"high_temp_day",   "#FF8C00"},
-            {"high_temp_night", "#553300"},
             {"condition_day",   "#909090"},
-            {"condition_night", "#404040"},
             {"alert_text",      "#FFFFFF"},
             {"alert_bg",        "#CC0000"},
-            {"rain_day",        {22, 42, 115}},
-            {"rain_night",      {10, 18, 50}},
-            {"snow_day",        {180, 180, 200}},
-            {"snow_night",      {50, 50, 70}},
-            {"sleet_day",       {120, 160, 180}},
-            {"sleet_night",     {40, 55, 70}},
-            {"lightning",       {200, 200, 40}},
             {"cloud_day",       {70, 70, 70}},
-            {"cloud_night",     {25, 25, 25}},
             {"sun_day",         {220, 160, 30}},
-            {"sun_night",       {70, 50, 10}},
             {"ice_day",         {80, 140, 160}},
-            {"ice_night",       {25, 45, 55}},
             {"outline",         {0, 0, 0}},
             {"sky_day",         "#000820"},
-            {"separator",       "#1A1A1A"},
-            {"evening_top",     "#0F0019"},
-            {"evening_bottom",  "#3C1400"},
-            {"night_bg",        "#020005"},
-            {"late_evening_bg", "#05000F"},
         }},
         {"animation", {
             {"fps",                        90},
@@ -155,6 +144,19 @@ static json defaults() {
         {"themes", {
             {"themes_dir",    "/etc/hub75-clock/themes"},
             {"default_theme", "Day"},
+        }},
+        {"animations", {
+            {"animations_dir", "/etc/hub75-clock/animations"},
+            {"sprites_dir", "/etc/hub75-clock/sprites"},
+            {"settings_path", "/etc/hub75-clock/animations.yaml"},
+        }},
+        {"update", {
+            {"enabled", false},
+            {"repo_path", "/home/pi/hub75-clock"},
+            {"branch", ""},
+            {"command", "/home/pi/update-clock.sh"},
+            {"check_on_startup", true},
+            {"check_time", "03:30"},
         }},
     };
 }
@@ -203,8 +205,6 @@ static json loadConfig(const std::string& path) {
     if (!fs::exists(path)) {
         std::cerr << "[config] " << path << " not found — using defaults\n";
         cfg["animation"]["fps"] = std::max(1, cfg["animation"].value("fps", 90));
-        if (cfg["animation"].contains("fps_night"))
-            cfg["animation"]["fps_night"] = std::max(1, cfg["animation"].value("fps_night", 90));
         return cfg;
     }
     try {
@@ -216,8 +216,6 @@ static json loadConfig(const std::string& path) {
         std::cerr << "[config] Failed to parse " << path << ": " << e.what() << "\n";
     }
     cfg["animation"]["fps"] = std::max(1, cfg["animation"].value("fps", 90));
-    if (cfg["animation"].contains("fps_night"))
-        cfg["animation"]["fps_night"] = std::max(1, cfg["animation"].value("fps_night", 90));
     return cfg;
 }
 
@@ -466,6 +464,144 @@ static void setThemeBuilderService(mosquitto* mosq, const json& cfg, bool enable
     publishThemeBuilderState(mosq, cfg);
 }
 
+static bool updateEnabled(const json& cfg) {
+    return cfg.contains("update") && cfg["update"].value("enabled", false);
+}
+
+static std::string updateStateTopic(const json& cfg) {
+    const auto& topics = cfg["mqtt"]["topics"];
+    std::string cid = cfg["mqtt"].value("client_id", "hub75_clock");
+    return topics.value("update_state", cid + "/update/state");
+}
+
+static std::string updateLatestTopic(const json& cfg) {
+    const auto& topics = cfg["mqtt"]["topics"];
+    std::string cid = cfg["mqtt"].value("client_id", "hub75_clock");
+    return topics.value("update_latest", cid + "/update/latest");
+}
+
+static std::string shellQuote(const std::string& s) {
+    std::string out = "'";
+    for (char c : s) out += (c == '\'') ? "'\\''" : std::string(1, c);
+    out += "'";
+    return out;
+}
+
+static std::string trim(std::string s) {
+    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
+    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
+    return s;
+}
+
+static std::string runCommandCapture(const std::string& cmd) {
+    std::array<char, 256> buffer{};
+    std::string result;
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) throw std::runtime_error("popen failed");
+    while (fgets(buffer.data(), int(buffer.size()), pipe) != nullptr) result += buffer.data();
+    int rc = pclose(pipe);
+    if (rc != 0) throw std::runtime_error("command failed: " + cmd);
+    return trim(result);
+}
+
+static std::string updateBranch(const json& cfg, const std::string& repo) {
+    std::string branch = cfg["update"].value("branch", "");
+    if (!branch.empty()) return branch;
+    return runCommandCapture("git -C " + shellQuote(repo) + " branch --show-current");
+}
+
+static void publishUpdateState(mosquitto* mosq, const json& cfg, const json& state) {
+    if (!updateEnabled(cfg)) return;
+    std::string payload = state.dump();
+    std::string stateTopic = updateStateTopic(cfg);
+    mosquitto_publish(mosq, nullptr, stateTopic.c_str(), int(payload.size()), payload.c_str(), 0, 1);
+    if (state.contains("remote")) {
+        std::string latest = state.value("remote", "");
+        mosquitto_publish(mosq, nullptr, updateLatestTopic(cfg).c_str(), int(latest.size()), latest.c_str(), 0, 1);
+    }
+}
+
+static void checkForUpdate(mosquitto* mosq, const json& cfg) {
+    if (!updateEnabled(cfg)) return;
+    try {
+        std::string repo = cfg["update"].value("repo_path", "/home/pi/hub75-clock");
+        std::string branch = updateBranch(cfg, repo);
+        std::string repoQ = shellQuote(repo);
+        std::string branchQ = shellQuote(branch);
+        std::system(("git -C " + repoQ + " fetch origin " + branchQ + " >/dev/null 2>&1").c_str());
+        std::string local = runCommandCapture("git -C " + repoQ + " rev-parse --short HEAD");
+        std::string remote = runCommandCapture("git -C " + repoQ + " rev-parse --short origin/" + branch);
+        publishUpdateState(mosq, cfg, {
+            {"available", local != remote},
+            {"branch", branch},
+            {"local", local},
+            {"remote", remote},
+            {"checked_at", std::time(nullptr)},
+        });
+        std::cout << "[update] checked " << branch << ": local=" << local << " remote=" << remote << "\n";
+    } catch (const std::exception& e) {
+        publishUpdateState(mosq, cfg, {
+            {"available", false},
+            {"error", e.what()},
+            {"checked_at", std::time(nullptr)},
+        });
+        std::cerr << "[update] check failed: " << e.what() << "\n";
+    }
+}
+
+static void checkForUpdateAsync(mosquitto* mosq, json cfg) {
+    std::thread([mosq, cfg]() { checkForUpdate(mosq, cfg); }).detach();
+}
+
+static void installUpdateAsync(mosquitto* mosq, json cfg) {
+    std::thread([mosq, cfg]() {
+        if (!updateEnabled(cfg)) return;
+        publishUpdateState(mosq, cfg, {
+            {"available", false},
+            {"installing", true},
+            {"checked_at", std::time(nullptr)},
+        });
+        std::string command = cfg["update"].value("command", "/home/pi/update-clock.sh");
+        std::system((command + " &").c_str());
+        std::cout << "[update] install started: " << command << "\n";
+    }).detach();
+}
+
+static int secondsUntilUpdateCheck(const json& cfg) {
+    std::string checkTime = cfg["update"].value("check_time", "03:30");
+    int hour = 3, minute = 30;
+    try {
+        auto pos = checkTime.find(':');
+        if (pos != std::string::npos) {
+            hour = std::max(0, std::min(23, std::stoi(checkTime.substr(0, pos))));
+            minute = std::max(0, std::min(59, std::stoi(checkTime.substr(pos + 1))));
+        }
+    } catch (...) {
+        hour = 3;
+        minute = 30;
+    }
+
+    std::time_t now = std::time(nullptr);
+    std::tm target = *std::localtime(&now);
+    target.tm_hour = hour;
+    target.tm_min = minute;
+    target.tm_sec = 0;
+    std::time_t targetTime = std::mktime(&target);
+    if (targetTime <= now) targetTime += 24 * 60 * 60;
+    return std::max(60, int(targetTime - now));
+}
+
+static void startUpdateScheduler(mosquitto* mosq, json cfg) {
+    if (!updateEnabled(cfg)) return;
+    std::thread([mosq, cfg]() {
+        while (g_running) {
+            int seconds = secondsUntilUpdateCheck(cfg);
+            for (int i = 0; i < seconds && g_running; ++i)
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            if (g_running) checkForUpdate(mosq, cfg);
+        }
+    }).detach();
+}
 static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
     if (rc != 0) {
         std::cerr << "[mqtt] connect failed: " << mosquitto_connack_string(rc) << "\n";
@@ -499,6 +635,8 @@ static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
     sub("gates",            cid + "/gates");
     sub("engineering_mode", cid + "/engineering_mode");
     sub("bucket",           cid + "/bucket");
+    sub("update_check",     cid + "/update/check");
+    sub("update_install",   topics.value("update", cid + "/update/install"));
 
     // Gate threshold wildcard topics: {client_id}/gate/+/move_thresh etc.
     mosquitto_subscribe(mosq, nullptr, (cid + "/gate/+/move_thresh").c_str(),  0);
@@ -570,6 +708,80 @@ static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
         };
         pub(prefix + "/sensor/" + cid + "_theme_builder_url/config", sensor.dump(), true);
     }
+
+    if ((*ctx->cfg)["ha_discovery"].value("enabled", true) && updateEnabled(*ctx->cfg)) {
+        std::string prefix = (*ctx->cfg)["ha_discovery"].value("prefix", "homeassistant");
+        std::string devName = (*ctx->cfg)["ha_discovery"].value("ha_discovery_name", "HUB75 Clock");
+        json device = {
+            {"identifiers", json::array({cid})},
+            {"name", devName},
+            {"model", "HUB75 Smart Clock"},
+            {"manufacturer", "DIY"},
+        };
+        std::string area = (*ctx->cfg)["ha_discovery"].value("ha_discovery_area", "");
+        if (!area.empty()) device["suggested_area"] = area;
+        json availability = json::array();
+        availability.push_back({{"topic", topics.value("availability", "hub75_clock/status")}});
+        std::string stateTopic = updateStateTopic(*ctx->cfg);
+
+        json available = {
+            {"name", "Update Available"},
+            {"unique_id", cid + "_update_available"},
+            {"device", device},
+            {"availability", availability},
+            {"state_topic", stateTopic},
+            {"value_template", "{{ 'ON' if value_json.available else 'OFF' }}"},
+            {"payload_on", "ON"},
+            {"payload_off", "OFF"},
+            {"entity_category", "diagnostic"},
+            {"icon", "mdi:update"},
+            {"has_entity_name", true},
+        };
+        pub(prefix + "/binary_sensor/" + cid + "_update_available/config", available.dump(), true);
+
+        json info = {
+            {"name", "Update Info"},
+            {"unique_id", cid + "_update_info"},
+            {"device", device},
+            {"availability", availability},
+            {"state_topic", stateTopic},
+            {"value_template", "{{ value_json.local ~ ' -> ' ~ value_json.remote if value_json.remote is defined else value_json.error | default('unknown') }}"},
+            {"json_attributes_topic", stateTopic},
+            {"entity_category", "diagnostic"},
+            {"icon", "mdi:source-branch"},
+            {"has_entity_name", true},
+        };
+        pub(prefix + "/sensor/" + cid + "_update_info/config", info.dump(), true);
+
+        json check = {
+            {"name", "Check Update"},
+            {"unique_id", cid + "_update_check"},
+            {"device", device},
+            {"availability", availability},
+            {"command_topic", topics.value("update_check", cid + "/update/check")},
+            {"payload_press", "check"},
+            {"entity_category", "diagnostic"},
+            {"icon", "mdi:cloud-search"},
+            {"has_entity_name", true},
+        };
+        pub(prefix + "/button/" + cid + "_update_check/config", check.dump(), true);
+
+        json install = {
+            {"name", "Install Update"},
+            {"unique_id", cid + "_update_install"},
+            {"device", device},
+            {"availability", availability},
+            {"command_topic", topics.value("update_install", topics.value("update", cid + "/update/install"))},
+            {"payload_press", "install"},
+            {"entity_category", "config"},
+            {"icon", "mdi:download"},
+            {"has_entity_name", true},
+        };
+        pub(prefix + "/button/" + cid + "_update_install/config", install.dump(), true);
+    }
+
+    if (updateEnabled(*ctx->cfg) && (*ctx->cfg)["update"].value("check_on_startup", true))
+        checkForUpdateAsync(mosq, *ctx->cfg);
 
     std::cout << "[mqtt] connected and subscribed\n";
 }
@@ -754,6 +966,12 @@ static void mqttOnMessage(mosquitto* mosq, void* obj,
             ctx->clockState->bucket = payload["bucket"].get<std::string>();
         else if (payload.is_string())
             ctx->clockState->bucket = payload.get<std::string>();
+
+    } else if (topic == topics.value("update_check", cid + "/update/check")) {
+        checkForUpdateAsync(mosq, *ctx->cfg);
+
+    } else if (topic == topics.value("update_install", topics.value("update", cid + "/update/install"))) {
+        installUpdateAsync(mosq, *ctx->cfg);
     }
 }
 
@@ -854,6 +1072,7 @@ int main(int argc, char* argv[]) {
     if (!broker.empty()) {
         mosquitto_connect_async(mosq, broker.c_str(), port, 60);
         mosquitto_loop_start(mosq);
+        startUpdateScheduler(mosq, cfg);
     }
 
     // ── Sensors ───────────────────────────────────────────────────────────
