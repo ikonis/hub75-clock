@@ -393,6 +393,15 @@ function applySprite(data,dirtyState=false){
 function stepSpriteFrame(delta){fromFields();spriteFrameIndex=clamp(spriteFrameIndex+delta,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();updateJSON()}
 function addSpriteFrame(copy=false){fromFields();const base=copy?JSON.parse(JSON.stringify(sprite.frames[spriteFrameIndex])):{duration_ms:100,pixels:blankPixels(sprite.width,sprite.height)};sprite.frames.splice(spriteFrameIndex+1,0,base);spriteFrameIndex++;normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(true)}
 function deleteSpriteFrame(){if(!sprite.frames||sprite.frames.length<=1)return;sprite.frames.splice(spriteFrameIndex,1);spriteFrameIndex=clamp(spriteFrameIndex,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(true)}
+function addCameoFrame(copy=false){
+  fromAnimationFields();
+  const current=animation.frames[frameIndex]||{duration_ms:100,sprites:[{sprite:el('f-sprite').value||'rocket',x:0,y:0,rotation:0}]};
+  const next=JSON.parse(JSON.stringify(current));
+  if(!copy)next.duration_ms=parseInt(el('f-duration').value)||100;
+  animation.frames.splice(frameIndex+1,0,next);
+  frameIndex++;
+  syncAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true);
+}
 
 async function refresh(select=currentFile){
   const r=await fetch('/api/sprites',{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'list failed');
@@ -444,8 +453,8 @@ function wire(){
   el('btn-anim-save').onclick=()=>saveAnimation().catch(e=>alert(e.message));
   el('btn-anim-save-as').onclick=()=>{const f=prompt('Save cameo as:',currentAnimFile||animFileName());if(f)saveAnimation(f.toLowerCase().endsWith('.json')?f:f+'.json').catch(e=>alert(e.message))};
   el('btn-frame-prev').onclick=()=>stepFrame(-1);el('btn-frame-next').onclick=()=>stepFrame(1);
-  el('btn-frame-add').onclick=()=>{fromAnimationFields();animation.frames.splice(frameIndex+1,0,{duration_ms:100,sprites:[{sprite:el('f-sprite').value||'rocket',x:0,y:0,rotation:0}]});frameIndex++;syncAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)};
-  el('btn-frame-dupe').onclick=()=>{fromAnimationFields();animation.frames.splice(frameIndex+1,0,JSON.parse(JSON.stringify(animation.frames[frameIndex])));frameIndex++;syncAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)};
+  el('btn-frame-add').onclick=()=>addCameoFrame(false);
+  el('btn-frame-dupe').onclick=()=>addCameoFrame(true);
   el('btn-frame-del').onclick=()=>{if(animation.frames.length<=1)return;animation.frames.splice(frameIndex,1);frameIndex=clamp(frameIndex,0,animation.frames.length-1);syncAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)};
   el('btn-anim-play').onclick=()=>setPlaying(!playing);
 }
