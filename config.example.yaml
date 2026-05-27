@@ -31,6 +31,17 @@ mqtt:
     motion:       hub75_clock/motion
     pir:          hub75_clock/pir
     availability: hub75_clock/status
+    fonts_available:  hub75_clock/fonts_available
+    gates:            hub75_clock/gates
+    engineering_mode: hub75_clock/engineering_mode
+    bucket:           hub75_clock/bucket
+    theme:            hub75_clock/theme/set
+    theme_state:      hub75_clock/theme/state
+    themes_available: hub75_clock/themes/available
+    update_check:     hub75_clock/update/check
+    update_install:   hub75_clock/update/install
+    update_state:     hub75_clock/update/state
+    update_latest:    hub75_clock/update/latest
 
 # -----------------------------------------------------------------------------
 # Home Assistant MQTT Discovery
@@ -78,30 +89,20 @@ fonts:
   alert_h: 7
 
 # -----------------------------------------------------------------------------
-# Colors (RGB tuples 0-255)
-# Day values are used when lux is above the night threshold; night values below.
+# Colors are runtime fallbacks only. Theme JSON colors override these.
 # -----------------------------------------------------------------------------
 colors:
-  banner_day:   [200, 200, 200]
-  banner_night: [60, 60, 60]
-  time_day:     [240, 240, 240]
-  time_night:   [80, 80, 80]
-  outline:      [0, 0, 0]
-  rain_day:     [22, 42, 115]
-  rain_night:   [10, 18, 50]
-  snow_day:     [180, 180, 200]
-  snow_night:   [50, 50, 70]
-  sleet_day:    [120, 160, 180]
-  sleet_night:  [40, 55, 70]
-  lightning:    [200, 200, 40]
-  cloud_day:    [70, 70, 70]
-  cloud_night:  [25, 25, 25]
-  sun_day:      [220, 160, 30]
-  sun_night:    [70, 50, 10]
-  ice_day:      [80, 140, 160]
-  ice_night:    [25, 45, 55]
-  alert_bg:     [180, 0, 0]
-  alert_text:   [255, 255, 255]
+  time_day:      "#F0F0F0"
+  low_temp_day:  "#00CCFF"
+  high_temp_day: "#FF8C00"
+  condition_day: "#909090"
+  alert_text:    "#FFFFFF"
+  alert_bg:      "#CC0000"
+  cloud_day:     [70, 70, 70]
+  sun_day:       [220, 160, 30]
+  ice_day:       [80, 140, 160]
+  outline:       [0, 0, 0]
+  sky_day:       "#000820"
 
 # -----------------------------------------------------------------------------
 # Animation - frame rates and particle counts for weather effects
@@ -156,7 +157,10 @@ time_format:
 update:
   enabled: true
   repo_path: /home/YOUR_USERNAME/hub75-clock  # path where you cloned the repo
-  github_repo: YOUR_GITHUB_USERNAME/hub75-clock
+  branch: ""                                  # empty = current checked-out branch
+  command: /home/YOUR_USERNAME/update-clock.sh
+  check_on_startup: true
+  check_time: "03:30"                         # daily branch check
 
 # -----------------------------------------------------------------------------
 # Themes - background, color, and animation presets loaded from JSON files
