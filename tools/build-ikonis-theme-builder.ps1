@@ -40,6 +40,10 @@ if (-not $SkipInstall) {
     --add-data "tools/sprite-builder.html;tools" `
     tools/ikonis-theme-builder.py
 
+if ($LASTEXITCODE -ne 0) {
+    throw "PyInstaller failed with exit code $LASTEXITCODE"
+}
+
 Write-Host ""
 Write-Host "Built: $RepoRoot\dist\ikonis-theme-builder.exe"
 Write-Host "First run to save your SSH password:"
