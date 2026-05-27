@@ -29,6 +29,10 @@ input[type=range]{accent-color:var(--accent)}
 .stage{overflow:auto;display:flex;align-items:center;justify-content:center;padding:18px;background:var(--bg)}
 #grid{display:grid;gap:1px;padding:8px;background:#05050a;border:1px solid var(--border2)}
 .cell{width:24px;height:24px;border:1px solid #171727;cursor:crosshair;background-color:transparent;background-image:linear-gradient(45deg,#101018 25%,transparent 25%),linear-gradient(-45deg,#101018 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#101018 75%),linear-gradient(-45deg,transparent 75%,#101018 75%);background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0;position:relative}
+body.tool-paint .cell{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M4 20l4-1 11-11-3-3L5 16z' fill='%23d0d0dc' stroke='%2309090e' stroke-width='1.5'/%3E%3Cpath d='M14 5l3 3' stroke='%237aa2f7' stroke-width='2'/%3E%3C/svg%3E") 4 20,crosshair}
+body.tool-bucket .cell{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M7 4l10 10-6 6L1 10z' fill='%23d0d0dc' stroke='%2309090e' stroke-width='1.5'/%3E%3Cpath d='M16 15c2 2 2 4 0 4s-2-2 0-4z' fill='%237aa2f7' stroke='%2309090e' stroke-width='1'/%3E%3C/svg%3E") 5 19,cell}
+body.tool-erase .cell{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M4 15l9-9 7 7-7 7H7z' fill='%23ff5f78' stroke='%2309090e' stroke-width='1.5'/%3E%3Cpath d='M9 10l7 7' stroke='%23d0d0dc' stroke-width='2'/%3E%3C/svg%3E") 5 18,not-allowed}
+body.tool-eyedropper .cell{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M14 3l7 7-3 3-2-2-8 8H4v-4l8-8-2-2z' fill='%23d0d0dc' stroke='%2309090e' stroke-width='1.5'/%3E%3Cpath d='M5 18h4' stroke='%237aa2f7' stroke-width='2'/%3E%3C/svg%3E") 5 19,copy}
 .cell::after{content:"";position:absolute;inset:0;background:var(--pix,transparent)}
 .preview-wrap{display:flex;justify-content:center;padding:8px;background:var(--bg4);border:1px solid var(--border)}
 #preview{image-rendering:pixelated;width:256px;height:128px;border:1px solid var(--border2);background:#020005}
@@ -79,6 +83,7 @@ body.mode-animation #anim-stage{display:flex}
         <div class="row">
           <button class="btn btn-p" id="btn-paint">Paint</button>
           <button class="btn" id="btn-bucket">Bucket</button>
+          <button class="btn" id="btn-eyedropper">Eyedropper</button>
           <button class="btn" id="btn-erase">Erase</button>
         </div>
         <div class="subtle">Built in</div>
@@ -195,7 +200,7 @@ function parseColor(v){
   return {hex:h.slice(0,7),alpha:a,value:a>=255?h.slice(0,7):h,css:`rgba(${r},${g},${b},${a/255})`};
 }
 function currentValue(){return alpha>=255?color:color+hex2(alpha)}
-function setTool(next){tool=next;for(const id of ['paint','bucket','erase'])el('btn-'+id).classList.toggle('btn-p',tool===id)}
+function setTool(next){tool=next;for(const id of ['paint','bucket','erase','eyedropper'])el('btn-'+id).classList.toggle('btn-p',tool===id);document.body.classList.remove('tool-paint','tool-bucket','tool-erase','tool-eyedropper');document.body.classList.add('tool-'+tool)}
 function setColorValue(v){const c=parseColor(v);if(!c)return;color=c.hex;alpha=c.alpha;el('pick').value=color;el('alpha').value=alpha;el('alpha-v').textContent=hex2(alpha);setTool('paint');buildSwatches()}
 function loadCustomPalette(){try{return JSON.parse(localStorage.getItem(customPaletteKey)||'[]').slice(0,5)}catch(e){return []}}
 function saveCustomPalette(){try{localStorage.setItem(customPaletteKey,JSON.stringify(customPalette.slice(0,5)))}catch(e){}}
@@ -250,6 +255,7 @@ function bucketFill(x,y,value){
 }
 function paint(e){
   const x=+e.currentTarget.dataset.x,y=+e.currentTarget.dataset.y;
+  if(tool==='eyedropper'){const picked=sprite.pixels[y][x];if(picked)setColorValue(picked);return}
   if(tool==='erase')sprite.pixels[y][x]=null;
   else if(tool==='bucket')bucketFill(x,y,currentValue());
   else sprite.pixels[y][x]=currentValue();
@@ -391,7 +397,7 @@ function applySprite(data,dirtyState=false){
   spriteFrameIndex=0;normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(dirtyState)
 }
 function stepSpriteFrame(delta){fromFields();spriteFrameIndex=clamp(spriteFrameIndex+delta,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();updateJSON()}
-function addSpriteFrame(copy=false){fromFields();const base=copy?JSON.parse(JSON.stringify(sprite.frames[spriteFrameIndex])):{duration_ms:100,pixels:blankPixels(sprite.width,sprite.height)};sprite.frames.splice(spriteFrameIndex+1,0,base);spriteFrameIndex++;normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(true)}
+function addSpriteFrame(copy=false){fromFields();const base=JSON.parse(JSON.stringify(sprite.frames[spriteFrameIndex]));if(!copy)base.duration_ms=parseInt(el('i-frame-duration').value)||100;sprite.frames.splice(spriteFrameIndex+1,0,base);spriteFrameIndex++;normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(true)}
 function deleteSpriteFrame(){if(!sprite.frames||sprite.frames.length<=1)return;sprite.frames.splice(spriteFrameIndex,1);spriteFrameIndex=clamp(spriteFrameIndex,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(true)}
 function addCameoFrame(copy=false){
   fromAnimationFields();
@@ -420,6 +426,7 @@ function wire(){
   setMode(builderMode);
   setZoom(zoom);
   buildSwatches();
+  setTool(tool);
   ['i-name','i-frame-duration'].forEach(id=>el(id).addEventListener('input',updateAll));
   el('btn-resize').onclick=()=>{sprite.width=Math.max(1,Math.min(32,parseInt(el('i-width').value)||8));sprite.height=Math.max(1,Math.min(25,parseInt(el('i-height').value)||8));normalizePixels();buildGrid();updateAll()};
   el('zoom').oninput=e=>setZoom(e.target.value);
@@ -427,7 +434,7 @@ function wire(){
   el('pick').oninput=e=>{color=normHex(e.target.value);setTool('paint');buildSwatches()};
   el('alpha').oninput=e=>{alpha=clamp(parseInt(e.target.value)||0,0,255);el('alpha-v').textContent=hex2(alpha);setTool('paint');buildSwatches()};
   el('btn-add-color').onclick=()=>{const c=currentValue();customPalette=customPalette.filter(v=>v!==c);customPalette.push(c);if(customPalette.length>5)customPalette.shift();saveCustomPalette();buildSwatches()};
-  el('btn-paint').onclick=()=>setTool('paint');el('btn-bucket').onclick=()=>setTool('bucket');el('btn-erase').onclick=()=>setTool('erase');
+  el('btn-paint').onclick=()=>setTool('paint');el('btn-bucket').onclick=()=>setTool('bucket');el('btn-eyedropper').onclick=()=>setTool('eyedropper');el('btn-erase').onclick=()=>setTool('erase');
   el('btn-clear').onclick=()=>{sprite.frames[spriteFrameIndex].pixels=blankPixels(sprite.width,sprite.height);sprite.pixels=sprite.frames[spriteFrameIndex].pixels;buildGrid();updateAll()};
   el('btn-fill').onclick=()=>{for(let y=0;y<sprite.height;y++)for(let x=0;x<sprite.width;x++)sprite.pixels[y][x]=currentValue();buildGrid();updateAll()};
   el('btn-sprite-frame-prev').onclick=()=>stepSpriteFrame(-1);
