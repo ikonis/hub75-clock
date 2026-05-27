@@ -6,16 +6,18 @@
 <title>HUB75 Clock Theme Builder</title>
 <style>
 :root {
-  --bg: #09090e;
-  --bg2: #11111a;
-  --bg3: #181826;
-  --bg4: #0d0d18;
-  --border: #252538;
-  --border2: #32324e;
-  --text: #c0c0d4;
-  --dim: #60607a;
-  --accent: #4a80ff;
-  --accent2: #1e3a80;
+  --bg: #0f0f14;
+  --bg2: #1b1b22;
+  --bg3: #24242d;
+  --bg4: #14141c;
+  --tab: #191920;
+  --tab-active: #2b2b34;
+  --border: #2f2f3a;
+  --border2: #41414f;
+  --text: #d0d0dc;
+  --dim: #858596;
+  --accent: #7aa2f7;
+  --accent2: #243a67;
   --danger: #ff4466;
   --r: 3px;
   --fs: 12px;
@@ -24,9 +26,13 @@
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',system-ui,sans-serif;display:flex;flex-direction:column}
 /* Header */
-.hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;gap:8px}
-.hdr-title{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.5px;white-space:nowrap}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;padding:9px 14px 0;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;gap:12px}
+.hdr-title{font-size:13px;font-weight:600;color:#a8c7ff;letter-spacing:.5px;white-space:nowrap;padding:0 0 8px}
 .hdr-btns{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tabs{display:flex;align-items:flex-end;gap:2px;flex-wrap:wrap;margin-bottom:-1px}
+.tab{padding:8px 16px 7px;text-decoration:none;border-radius:9px 9px 0 0;background:var(--tab);border-color:var(--border);border-bottom-color:var(--border);color:#a8a8b8}
+.tab:hover{background:#23232c}
+.tab.active{background:var(--tab-active);border-color:var(--border2);border-bottom-color:var(--tab-active);color:#f3f3f8}
 .server-only{display:none}
 .server-mode .server-only{display:flex}
 #server-theme-select{background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:var(--r);font:11px monospace;outline:none;min-width:190px;max-width:280px}
@@ -96,11 +102,11 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 <div class="hdr">
   <span class="hdr-title">HUB75 Theme Builder</span>
   <div class="hdr-btns">
+    <div class="tabs"><button class="btn tab active" type="button">Themes</button><a class="btn tab" href="/sprite-builder.html?mode=sprite">Sprite</a><a class="btn tab" href="/sprite-builder.html?mode=animation">Cameo</a></div>
     <select id="server-theme-select" class="server-only"></select>
     <button class="btn server-only" id="btn-server-new">New</button>
     <button class="btn btn-p server-only" id="btn-server-save">Save</button>
     <button class="btn server-only" id="btn-server-save-as">Save As</button>
-    <a class="btn server-only" href="/sprite-builder.html">Sprites</a>
     <span id="server-status" class="server-only"></span>
     <label class="btn">
       <input type="file" id="file-load" accept=".json" style="display:none"> Load JSON

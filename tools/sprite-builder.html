@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HUB75 Sprite Builder</title>
 <style>
-:root{--bg:#09090e;--bg2:#11111a;--bg3:#181826;--bg4:#0d0d18;--border:#252538;--border2:#32324e;--text:#c0c0d4;--dim:#686884;--accent:#7f8796;--danger:#ff4466;--ok:#66c080;--r:3px}
+:root{--bg:#0f0f14;--bg2:#1b1b22;--bg3:#24242d;--bg4:#14141c;--tab:#191920;--tab-active:#2b2b34;--border:#2f2f3a;--border2:#41414f;--text:#d0d0dc;--dim:#858596;--accent:#7aa2f7;--danger:#ff5f78;--ok:#7bd88f;--r:4px}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font:12px/1.45 Segoe UI,system-ui,sans-serif;display:flex;flex-direction:column}
-.hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--border)}
-.title{font-size:13px;font-weight:600;color:var(--accent)}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:9px 14px 0;background:var(--bg2);border-bottom:1px solid var(--border)}
+.title{font-size:13px;font-weight:600;color:#a8c7ff;padding:0 0 8px;white-space:nowrap}
 .hdr-btns,.row,.tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .btn,select,input{border:1px solid var(--border2);border-radius:var(--r);background:var(--bg3);color:var(--text);font:12px Segoe UI,system-ui,sans-serif}
 .btn{padding:5px 10px;cursor:pointer}.btn:hover{background:var(--border)}.btn-p{background:#30343d;border-color:var(--accent)}
-.tab{padding:5px 12px}.tab.active{background:#2a2d36;border-color:var(--accent);color:#f0f0f4}
+.tabs{align-items:flex-end;gap:2px;margin-bottom:-1px}.tab{padding:8px 16px 7px;border-radius:9px 9px 0 0;background:var(--tab);border-color:var(--border);border-bottom-color:var(--border);color:#a8a8b8;text-decoration:none}.tab:hover{background:#23232c}.tab.active{background:var(--tab-active);border-color:var(--border2);border-bottom-color:var(--tab-active);color:#f3f3f8}
 select,input[type=text],input[type=number]{padding:5px 7px;outline:none}input[type=color]{width:38px;height:27px;padding:2px}
 input[type=range]{accent-color:var(--accent)}
 #sprite-select{min-width:190px}.status{color:var(--dim);min-width:80px}
@@ -47,12 +47,11 @@ body.mode-animation #anim-stage{display:flex}
 <div class="hdr">
   <span class="title">HUB75 Sprite Builder</span>
   <div class="hdr-btns">
-    <div class="tabs"><button class="btn tab active" id="tab-sprite">Sprite</button><button class="btn tab" id="tab-animation">Cameo</button></div>
+    <div class="tabs"><a class="btn tab" href="/theme-builder.html">Themes</a><button class="btn tab active" id="tab-sprite">Sprite</button><button class="btn tab" id="tab-animation">Cameo</button></div>
     <select id="sprite-select"></select>
     <button class="btn" id="btn-new">New</button>
     <button class="btn btn-p" id="btn-save">Save</button>
     <button class="btn" id="btn-save-as">Save As</button>
-    <a class="btn" href="/theme-builder.html">Themes</a>
     <span class="status" id="status"></span>
   </div>
 </div>
@@ -141,7 +140,8 @@ let spriteFrameIndex=0;
 let animation={name:'new_cameo',width:64,height:32,speed:1,loop:true,movement:{mode:'straight',direction:'left',random_start:true,random_facing:false,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]};
 let currentAnimFile='', selectedAnimFile='', animDirty=false, frameIndex=0, playing=false, playTimer=null;
 let animDrag=null;
-let builderMode=localStorage.getItem('hub75-builder-mode')||'sprite';
+const requestedMode=new URLSearchParams(location.search).get('mode');
+let builderMode=(requestedMode==='animation'||requestedMode==='cameo')?'animation':(requestedMode==='sprite'?'sprite':(localStorage.getItem('hub75-builder-mode')||'sprite'));
 const spriteCache=new Map();
 const builtinPalette=['#dcdce6','#c8c8d2','#a0c8ff','#c83c3c','#dc4646','#ff7800','#ffd050','#bebed2','#ffffff','#000000'];
 const customPaletteKey='hub75-sprite-custom-colors';
@@ -382,7 +382,14 @@ function playNextFrame(){
 function buildJSON(){fromFields();normalizePixels();return JSON.stringify(sprite,null,2)}
 function updateJSON(){syncing=true;el('json-out').value=builderMode==='animation'?buildAnimationJSON():buildJSON();syncing=false;el('json-status').textContent='Generated';el('json-status').className='hint'}
 function updateAll(){renderPreview();updateJSON();markDirty(true)}
-function applySprite(data,dirtyState=false){sprite={...blank(),...data};sprite.width=parseInt(sprite.width)||8;sprite.height=parseInt(sprite.height)||8;spriteFrameIndex=0;normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(dirtyState)}
+function applySprite(data,dirtyState=false){
+  sprite={...blank(),...data};
+  sprite.width=parseInt(sprite.width)||8;sprite.height=parseInt(sprite.height)||8;
+  if(!Array.isArray(data.frames)||!data.frames.length){
+    sprite.frames=[{duration_ms:sprite.frame_duration_ms||100,pixels:data.pixels||blankPixels(sprite.width,sprite.height)}];
+  }
+  spriteFrameIndex=0;normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(dirtyState)
+}
 function stepSpriteFrame(delta){fromFields();spriteFrameIndex=clamp(spriteFrameIndex+delta,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();updateJSON()}
 function addSpriteFrame(copy=false){fromFields();const base=copy?JSON.parse(JSON.stringify(sprite.frames[spriteFrameIndex])):{duration_ms:100,pixels:blankPixels(sprite.width,sprite.height)};sprite.frames.splice(spriteFrameIndex+1,0,base);spriteFrameIndex++;normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(true)}
 function deleteSpriteFrame(){if(!sprite.frames||sprite.frames.length<=1)return;sprite.frames.splice(spriteFrameIndex,1);spriteFrameIndex=clamp(spriteFrameIndex,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(true)}
