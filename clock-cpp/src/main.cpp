@@ -504,10 +504,14 @@ static std::string runCommandCapture(const std::string& cmd) {
     return trim(result);
 }
 
+static std::string gitBaseCommand(const std::string& repo) {
+    return "git -c safe.directory=" + shellQuote(repo) + " -C " + shellQuote(repo);
+}
+
 static std::string updateBranch(const json& cfg, const std::string& repo) {
     std::string branch = cfg["update"].value("branch", "");
     if (!branch.empty()) return branch;
-    return runCommandCapture("git -C " + shellQuote(repo) + " branch --show-current");
+    return runCommandCapture(gitBaseCommand(repo) + " branch --show-current");
 }
 
 static void publishUpdateState(mosquitto* mosq, const json& cfg, const json& state) {
@@ -526,11 +530,11 @@ static void checkForUpdate(mosquitto* mosq, const json& cfg) {
     try {
         std::string repo = cfg["update"].value("repo_path", "/home/pi/hub75-clock");
         std::string branch = updateBranch(cfg, repo);
-        std::string repoQ = shellQuote(repo);
+        std::string git = gitBaseCommand(repo);
         std::string branchQ = shellQuote(branch);
-        std::system(("git -C " + repoQ + " fetch origin " + branchQ + " >/dev/null 2>&1").c_str());
-        std::string local = runCommandCapture("git -C " + repoQ + " rev-parse --short HEAD");
-        std::string remote = runCommandCapture("git -C " + repoQ + " rev-parse --short origin/" + branch);
+        runCommandCapture(git + " fetch origin " + branchQ + " 2>&1");
+        std::string local = runCommandCapture(git + " rev-parse --short HEAD");
+        std::string remote = runCommandCapture(git + " rev-parse --short origin/" + shellQuote(branch));
         publishUpdateState(mosq, cfg, {
             {"available", local != remote},
             {"branch", branch},
