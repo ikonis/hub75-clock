@@ -26,6 +26,7 @@ extern "C" std::unique_ptr<Animation> create_santa(int, int, const nlohmann::jso
 extern "C" std::unique_ptr<Animation> create_satellite(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_shooting_star(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_snowman(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_snake(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_stars(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_submarine(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_tumbleweed(int, int, const nlohmann::json&, WeatherAnimator*);
@@ -69,6 +70,7 @@ void CameoManager::loadPlugins() {
         { "satellite",       "celestial",  false, create_satellite       },
         { "shooting_star",   "celestial",  false, create_shooting_star   },
         { "snowman",         "foreground", false, create_snowman         },
+        { "snake",           "foreground", true,  create_snake           },
         { "stars",           "celestial",  true,  create_stars           },
         { "submarine",       "foreground", false, create_submarine       },
         { "tumbleweed",      "foreground", false, create_tumbleweed      },
@@ -89,18 +91,15 @@ void CameoManager::setupPersistent() {
     if (!_animator->currentTheme) return;
 
     for (const auto& entry : _animator->currentTheme->cameos) {
-        if (entry.chancePerMinute == 0) {
-            // chancePerMinute == 0 → treat as persistent (always-on).
-            auto it = _info.find(entry.name);
-            if (it == _info.end()) {
-                std::cerr << "[cameo] Unknown animation: " << entry.name << "\n";
-                continue;
-            }
-            if (!it->second.persistent) continue;
-            _persistent.push_back(it->second.factory(
-                _animator->width, _animator->height,
-                _animator->cfg, _animator));
+        auto it = _info.find(entry.name);
+        if (it == _info.end()) {
+            std::cerr << "[cameo] Unknown animation: " << entry.name << "\n";
+            continue;
         }
+        if (!it->second.persistent) continue;
+        _persistent.push_back(it->second.factory(
+            _animator->width, _animator->height,
+            _animator->cfg, _animator));
     }
 }
 
@@ -160,7 +159,7 @@ void CameoManager::_trySpawnCelestial() {
     for (const auto& entry : _animator->currentTheme->cameos) {
         if (entry.chancePerMinute <= 0) continue;
         auto it = _info.find(entry.name);
-        if (it == _info.end() || it->second.layer != "celestial") continue;
+        if (it == _info.end() || it->second.layer != "celestial" || it->second.persistent) continue;
 
         // chancePerMinute / (60 * fps) = probability per frame.
         float prob = static_cast<float>(entry.chancePerMinute) / (60.0f * fps);
@@ -179,7 +178,7 @@ void CameoManager::_trySpawnForeground() {
     for (const auto& entry : _animator->currentTheme->cameos) {
         if (entry.chancePerMinute <= 0) continue;
         auto it = _info.find(entry.name);
-        if (it == _info.end() || it->second.layer != "foreground") continue;
+        if (it == _info.end() || it->second.layer != "foreground" || it->second.persistent) continue;
 
         float prob = static_cast<float>(entry.chancePerMinute) / (60.0f * fps);
         if (static_cast<float>(rand()) / RAND_MAX < prob) {

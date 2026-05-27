@@ -249,6 +249,7 @@ input[type=range]{accent-color:var(--accent)}
           <option value="santa">santa</option>
           <option value="satellite">satellite</option>
           <option value="snowman">snowman</option>
+          <option value="snake">snake</option>
           <option value="sprite">sprite</option>
           <option value="submarine">submarine</option>
           <option value="tractor">tractor</option>
@@ -917,7 +918,8 @@ function buildThemeObject() {
   if (theme.stars_enabled) cameoOut.push({ name: 'stars' });
   for (const c of theme.cameos) {
     if (c.name === 'stars' || c.name === 'clouds') continue;
-    cameoOut.push({ name: c.name, chance_per_minute: c.chance_per_minute });
+    if (c.name === 'snake') cameoOut.push({ name: c.name });
+    else cameoOut.push({ name: c.name, chance_per_minute: c.chance_per_minute });
   }
   if (theme.clouds_enabled) cameoOut.push({ name: 'clouds' });
 
@@ -1300,7 +1302,7 @@ const ALL_ANIMATIONS = [
   'shooting_star','airplane','biplane','bird_flock','butterfly','comet',
   'easter_egg','firefly','fireworks','fish','flutterflies','ghost','hot_air_balloon',
   'jack_o_lantern','meteor','rainbow','rocket','santa','satellite',
-  'snowman','sprite','submarine','tractor','tumbleweed','ufo'
+  'snowman','snake','sprite','submarine','tractor','tumbleweed','ufo'
 ];
 
 function buildCameoList() {
