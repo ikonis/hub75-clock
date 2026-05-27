@@ -33,7 +33,8 @@ input[type=range]{accent-color:var(--accent)}
 .preview-wrap{display:flex;justify-content:center;padding:8px;background:var(--bg4);border:1px solid var(--border)}
 #preview{image-rendering:pixelated;width:256px;height:128px;border:1px solid var(--border2);background:#020005}
 #anim-stage{display:none;align-items:center;justify-content:center;min-width:100%;min-height:100%}
-#anim-preview{image-rendering:pixelated;width:min(78vw,760px);height:auto;aspect-ratio:2/1;border:1px solid var(--border2);background:#020005}
+#anim-preview{image-rendering:pixelated;width:min(78vw,760px);height:auto;aspect-ratio:2/1;border:1px solid var(--border2);background:#020005;cursor:grab}
+#anim-preview.dragging{cursor:grabbing}
 #json-out{width:100%;min-height:300px;flex:1;background:var(--bg4);color:#7ab0ff;border:0;padding:9px;font:11px/1.5 Consolas,monospace;resize:none;outline:none}
 .hint{color:var(--dim);font-size:11px}.err{color:var(--danger)}.ok{color:var(--ok)}
 body.mode-animation .sprite-only{display:none!important}
@@ -46,7 +47,7 @@ body.mode-animation #anim-stage{display:flex}
 <div class="hdr">
   <span class="title">HUB75 Sprite Builder</span>
   <div class="hdr-btns">
-    <div class="tabs"><button class="btn tab active" id="tab-sprite">Sprite</button><button class="btn tab" id="tab-animation">Animation</button></div>
+    <div class="tabs"><button class="btn tab active" id="tab-sprite">Sprite</button><button class="btn tab" id="tab-animation">Cameo</button></div>
     <select id="sprite-select"></select>
     <button class="btn" id="btn-new">New</button>
     <button class="btn btn-p" id="btn-save">Save</button>
@@ -63,14 +64,12 @@ body.mode-animation #anim-stage{display:flex}
         <div class="f"><label>Name</label><input id="i-name" type="text" value="new_sprite"></div>
         <div class="f"><label>Width</label><input id="i-width" type="number" min="1" max="32" value="8"></div>
         <div class="f"><label>Height</label><input id="i-height" type="number" min="1" max="25" value="8"></div>
-        <div class="f"><label>Motion</label><select id="i-motion"><option value="left">left</option><option value="right">right</option><option value="up">up</option></select></div>
-        <div class="f"><label>Speed</label><input id="i-speed" type="number" min="0.05" max="5" step="0.05" value="0.5"></div>
-        <div class="f"><label>Mode</label><select id="i-move-mode"><option value="straight">straight</option><option value="random_walk">random walk</option><option value="point_shoot">point + shoot</option></select></div>
-        <div class="f"><label>Direction</label><select id="i-direction"><option value="left">left</option><option value="right">right</option><option value="up">up</option><option value="down">down</option><option value="random">random</option></select></div>
-        <div class="row"><label class="hint"><input type="checkbox" id="i-random-start" checked> Random start</label><label class="hint"><input type="checkbox" id="i-random-facing"> Random facing</label></div>
+        <div class="row"><button class="btn" id="btn-sprite-frame-prev">Prev</button><span class="hint" id="sprite-frame-label">Frame 1/1</span><button class="btn" id="btn-sprite-frame-next">Next</button></div>
+        <div class="row"><button class="btn" id="btn-sprite-frame-add">Add</button><button class="btn" id="btn-sprite-frame-dupe">Duplicate</button><button class="btn" id="btn-sprite-frame-del">Delete</button></div>
+        <div class="f"><label>Frame Time</label><input id="i-frame-duration" type="number" min="20" step="10" value="100"><span class="pct-val">ms</span></div>
         <div class="f"><label>Zoom</label><input type="range" id="zoom" min="10" max="100" step="5" value="25"><span class="pct-val" id="zoom-v">25%</span></div>
         <button class="btn" id="btn-resize">Resize Grid</button>
-        <p class="hint">Cameo motion metadata is saved with the sprite for future runtime hookup.</p>
+        <p class="hint">Sprite frames describe visual states. Cameo movement decides where to put them.</p>
       </div>
     </div>
     <div class="sec sprite-only">
@@ -92,12 +91,17 @@ body.mode-animation #anim-stage{display:flex}
       </div>
     </div>
     <div class="sec anim-only">
-      <div class="sec-h">Animation</div>
+      <div class="sec-h">Cameo</div>
       <div class="sec-b">
         <div class="f"><label>Load</label><select id="anim-select"></select></div>
         <div class="row"><button class="btn" id="btn-anim-new">New</button><button class="btn btn-p" id="btn-anim-save">Save</button><button class="btn" id="btn-anim-save-as">Save As</button></div>
-        <div class="f"><label>Name</label><input id="a-name" type="text" value="new_animation"></div>
-        <div class="f"><label>FPS</label><input id="a-fps" type="number" min="1" max="60" value="12"></div>
+        <div class="f"><label>Name</label><input id="a-name" type="text" value="new_cameo"></div>
+        <div class="f"><label>Speed</label><input id="a-speed" type="number" min="0.05" max="5" step="0.05" value="1"></div>
+        <div class="f"><label>Move</label><select id="a-move-mode"><option value="straight">straight</option><option value="random_walk">random walk</option><option value="point_shoot">point + shoot</option></select></div>
+        <div class="f"><label>Direction</label><select id="a-direction"><option value="left">left</option><option value="right">right</option><option value="up">up</option><option value="down">down</option><option value="random">random</option></select></div>
+        <div class="row"><label class="hint"><input type="checkbox" id="a-random-start" checked> Random start</label><label class="hint"><input type="checkbox" id="a-random-facing"> Random facing</label></div>
+        <div class="f"><label>Spin</label><select id="a-spin"><option value="false">off</option><option value="true">on</option></select></div>
+        <div class="f"><label>Spin Speed</label><input id="a-spin-speed" type="number" min="-5" max="5" step="0.1" value="0"></div>
         <div class="f"><label>Loop</label><select id="a-loop"><option value="true">yes</option><option value="false">no</option></select></div>
         <div class="row"><button class="btn" id="btn-frame-prev">Prev</button><span class="hint" id="frame-label">Frame 1/1</span><button class="btn" id="btn-frame-next">Next</button></div>
         <div class="row"><button class="btn" id="btn-frame-add">Add</button><button class="btn" id="btn-frame-dupe">Duplicate</button><button class="btn" id="btn-frame-del">Delete</button><button class="btn" id="btn-anim-play">Play</button></div>
@@ -105,7 +109,8 @@ body.mode-animation #anim-stage{display:flex}
         <div class="f"><label>Sprite</label><select id="f-sprite"></select></div>
         <div class="f"><label>X</label><input id="f-x" type="number" min="-64" max="128" value="0"></div>
         <div class="f"><label>Y</label><input id="f-y" type="number" min="-32" max="64" value="0"></div>
-        <p class="hint">Frame animation scaffold: one sprite per frame for now. It saves JSON only; runtime playback comes next.</p>
+        <div class="f"><label>Rotation</label><input id="f-rotation" type="number" min="-360" max="360" step="5" value="0"><span class="pct-val">deg</span></div>
+        <p class="hint">Cameo scaffold: place framed sprites, preview motion ideas, save JSON. Drag the sprite in the preview to change X/Y.</p>
       </div>
     </div>
   </div>
@@ -132,8 +137,10 @@ body.mode-animation #anim-stage{display:flex}
 let sprite={name:'new_sprite',width:8,height:8,motion:'left',speed:0.5,pixels:[]};
 let currentFile='', selectedFile='', color='#dcdce6', alpha=255, tool='paint', dirty=false, syncing=false;
 let zoom=parseInt(localStorage.getItem('hub75-sprite-zoom')||'25',10)||25;
-let animation={name:'new_animation',width:64,height:32,fps:12,loop:true,frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0}]}]};
+let spriteFrameIndex=0;
+let animation={name:'new_cameo',width:64,height:32,speed:1,loop:true,movement:{mode:'straight',direction:'left',random_start:true,random_facing:false,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]};
 let currentAnimFile='', selectedAnimFile='', animDirty=false, frameIndex=0, playing=false, playTimer=null;
+let animDrag=null;
 let builderMode=localStorage.getItem('hub75-builder-mode')||'sprite';
 const spriteCache=new Map();
 const builtinPalette=['#dcdce6','#c8c8d2','#a0c8ff','#c83c3c','#dc4646','#ff7800','#ffd050','#bebed2','#ffffff','#000000'];
@@ -143,8 +150,9 @@ const el=id=>document.getElementById(id);
 const cleanName=n=>((n||'sprite').trim().replace(/[<>:"/\\|?*\x00-\x1f]+/g,'_')||'sprite');
 const fileName=()=>cleanName(sprite.name)+'.json';
 const animFileName=()=>cleanName(animation.name)+'.json';
-const blank=(name='new_sprite',w=8,h=8)=>({name,width:w,height:h,motion:'left',speed:0.5,movement:{mode:'straight',direction:'left',random_start:true,random_facing:false},pixels:Array.from({length:h},()=>Array.from({length:w},()=>null))});
-const blankAnimation=(name='new_animation')=>({name,width:64,height:32,fps:12,loop:true,frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0}]}]});
+const blankPixels=(w,h)=>Array.from({length:h},()=>Array.from({length:w},()=>null));
+const blank=(name='new_sprite',w=8,h=8)=>({name,width:w,height:h,motion:'left',speed:0.5,movement:{mode:'straight',direction:'left',random_start:true,random_facing:false},frame_duration_ms:100,frames:[{duration_ms:100,pixels:blankPixels(w,h)}],pixels:blankPixels(w,h)});
+const blankAnimation=(name='new_cameo')=>({name,width:64,height:32,speed:1,loop:true,movement:{mode:'straight',direction:'left',random_start:true,random_facing:false,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]});
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
 function markDirty(v=true){dirty=v; el('status').textContent=v?'Unsaved':'Ready';}
@@ -192,15 +200,27 @@ function setColorValue(v){const c=parseColor(v);if(!c)return;color=c.hex;alpha=c
 function loadCustomPalette(){try{return JSON.parse(localStorage.getItem(customPaletteKey)||'[]').slice(0,5)}catch(e){return []}}
 function saveCustomPalette(){try{localStorage.setItem(customPaletteKey,JSON.stringify(customPalette.slice(0,5)))}catch(e){}}
 function syncFields(){
-  const mv=sprite.movement||{};
-  el('i-name').value=sprite.name;el('i-width').value=sprite.width;el('i-height').value=sprite.height;el('i-motion').value=sprite.motion||mv.direction||'left';el('i-speed').value=sprite.speed??0.5;
-  el('i-move-mode').value=mv.mode||'straight';el('i-direction').value=mv.direction||sprite.motion||'left';el('i-random-start').checked=mv.random_start!==false;el('i-random-facing').checked=!!mv.random_facing;
+  ensureSpriteFrames();
+  const sf=sprite.frames[spriteFrameIndex]||sprite.frames[0];
+  el('i-name').value=sprite.name;el('i-width').value=sprite.width;el('i-height').value=sprite.height;
+  el('i-frame-duration').value=sf.duration_ms||sprite.frame_duration_ms||100;
+  el('sprite-frame-label').textContent=`Frame ${spriteFrameIndex+1}/${sprite.frames.length}`;
 }
 function fromFields(){
-  sprite.name=el('i-name').value||'sprite';sprite.motion=el('i-motion').value;sprite.speed=parseFloat(el('i-speed').value)||0.5;
-  sprite.movement={mode:el('i-move-mode').value,direction:el('i-direction').value,random_start:el('i-random-start').checked,random_facing:el('i-random-facing').checked};
+  ensureSpriteFrames();
+  sprite.name=el('i-name').value||'sprite';
+  sprite.frames[spriteFrameIndex].duration_ms=parseInt(el('i-frame-duration').value)||100;
+  sprite.frame_duration_ms=sprite.frames[spriteFrameIndex].duration_ms;
 }
-function normalizePixels(){let rows=sprite.pixels||[];let out=[];for(let y=0;y<sprite.height;y++){let row=[];for(let x=0;x<sprite.width;x++){const c=parseColor((rows[y]||[])[x]);row.push(c?c.value:null)}out.push(row)}sprite.pixels=out}
+function normalizePixelRows(rows){let out=[];for(let y=0;y<sprite.height;y++){let row=[];for(let x=0;x<sprite.width;x++){const c=parseColor((rows[y]||[])[x]);row.push(c?c.value:null)}out.push(row)}return out}
+function ensureSpriteFrames(){
+  sprite.width=parseInt(sprite.width)||8;sprite.height=parseInt(sprite.height)||8;
+  if(!Array.isArray(sprite.frames)||!sprite.frames.length)sprite.frames=[{duration_ms:sprite.frame_duration_ms||100,pixels:sprite.pixels||blankPixels(sprite.width,sprite.height)}];
+  sprite.frames=sprite.frames.map(f=>({duration_ms:parseInt(f.duration_ms)||sprite.frame_duration_ms||100,pixels:normalizePixelRows(f.pixels||sprite.pixels||[])}));
+  spriteFrameIndex=clamp(spriteFrameIndex,0,sprite.frames.length-1);
+  sprite.pixels=sprite.frames[spriteFrameIndex].pixels;
+}
+function normalizePixels(){ensureSpriteFrames();sprite.frames[spriteFrameIndex].pixels=normalizePixelRows(sprite.frames[spriteFrameIndex].pixels);sprite.pixels=sprite.frames[spriteFrameIndex].pixels}
 
 function buildGrid(){
   normalizePixels();
@@ -264,19 +284,23 @@ async function getSpriteData(name){
   spriteCache.set(file,d.sprite); return d.sprite;
 }
 function syncAnimationFields(){
-  el('a-name').value=animation.name||'new_animation';el('a-fps').value=animation.fps||12;el('a-loop').value=animation.loop===false?'false':'true';
+  const mv=animation.movement||{};
+  el('a-name').value=animation.name||'new_cameo';el('a-speed').value=animation.speed??1;el('a-loop').value=animation.loop===false?'false':'true';
+  el('a-move-mode').value=mv.mode||'straight';el('a-direction').value=mv.direction||'left';el('a-random-start').checked=mv.random_start!==false;el('a-random-facing').checked=!!mv.random_facing;el('a-spin').value=mv.spin?'true':'false';el('a-spin-speed').value=mv.spin_speed??0;
   const total=(animation.frames||[]).length||1;frameIndex=clamp(frameIndex,0,total-1);el('frame-label').textContent=`Frame ${frameIndex+1}/${total}`;
-  const f=animation.frames[frameIndex]||{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0}]};
-  const item=(f.sprites&&f.sprites[0])||{sprite:'rocket',x:0,y:0};
-  el('f-duration').value=f.duration_ms||100;el('f-sprite').value=(item.sprite||'').endsWith('.json')?item.sprite.slice(0,-5):item.sprite||'';el('f-x').value=item.x||0;el('f-y').value=item.y||0;
+  const f=animation.frames[frameIndex]||{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]};
+  const item=(f.sprites&&f.sprites[0])||{sprite:'rocket',x:0,y:0,rotation:0};
+  el('f-duration').value=f.duration_ms||100;el('f-sprite').value=(item.sprite||'').endsWith('.json')?item.sprite.slice(0,-5):item.sprite||'';el('f-x').value=item.x||0;el('f-y').value=item.y||0;el('f-rotation').value=item.rotation||0;
 }
 function fromAnimationFields(){
-  animation.name=el('a-name').value||'new_animation';animation.fps=parseInt(el('a-fps').value)||12;animation.loop=el('a-loop').value!=='false';
+  animation.name=el('a-name').value||'new_cameo';animation.speed=parseFloat(el('a-speed').value)||1;animation.loop=el('a-loop').value!=='false';
+  delete animation.fps;
+  animation.movement={mode:el('a-move-mode').value,direction:el('a-direction').value,random_start:el('a-random-start').checked,random_facing:el('a-random-facing').checked,spin:el('a-spin').value==='true',spin_speed:parseFloat(el('a-spin-speed').value)||0};
   if(!animation.frames||!animation.frames.length)animation.frames=blankAnimation(animation.name).frames;
   const f=animation.frames[frameIndex]||{duration_ms:100,sprites:[{}]};
   const item=(f.sprites&&f.sprites[0])||{};
   f.duration_ms=parseInt(el('f-duration').value)||100;
-  item.sprite=el('f-sprite').value||'rocket';item.x=parseInt(el('f-x').value)||0;item.y=parseInt(el('f-y').value)||0;
+  item.sprite=el('f-sprite').value||'rocket';item.x=parseInt(el('f-x').value)||0;item.y=parseInt(el('f-y').value)||0;item.rotation=parseFloat(el('f-rotation').value)||0;
   f.sprites=[item];animation.frames[frameIndex]=f;
 }
 async function renderAnimationFrame(idx){
@@ -284,8 +308,51 @@ async function renderAnimationFrame(idx){
   const scale=2, f=(animation.frames||[])[idx]; if(!f)return;
   for(const item of (f.sprites||[])){
     const data=await getSpriteData(item.sprite); if(!data)continue;
-    for(let y=0;y<(data.pixels||[]).length;y++)for(let x=0;x<(data.pixels[y]||[]).length;x++){const c=parseColor(data.pixels[y][x]);if(!c)continue;ctx.fillStyle=c.css;ctx.fillRect((item.x+x)*scale,(item.y+y)*scale,scale,scale)}
+    const spriteFrames=Array.isArray(data.frames)&&data.frames.length?data.frames:null;
+    const pixels=spriteFrames?(spriteFrames[idx%spriteFrames.length].pixels||data.pixels||[]):(data.pixels||[]);
+    const rotation=(parseFloat(item.rotation)||0)+((animation.movement&&animation.movement.spin)?idx*(parseFloat(animation.movement.spin_speed)||0):0);
+    ctx.save();
+    ctx.translate((item.x+(data.width||pixels[0]?.length||0)/2)*scale,(item.y+(data.height||pixels.length||0)/2)*scale);
+    ctx.rotate(rotation*Math.PI/180);
+    ctx.translate(-((data.width||pixels[0]?.length||0)/2)*scale,-((data.height||pixels.length||0)/2)*scale);
+    for(let y=0;y<pixels.length;y++)for(let x=0;x<(pixels[y]||[]).length;x++){const c=parseColor(pixels[y][x]);if(!c)continue;ctx.fillStyle=c.css;ctx.fillRect(x*scale,y*scale,scale,scale)}
+    ctx.restore();
   }
+}
+function animationPoint(e){
+  const cv=el('anim-preview'), r=cv.getBoundingClientRect();
+  return {x:(e.clientX-r.left)/r.width*64,y:(e.clientY-r.top)/r.height*32};
+}
+async function startAnimationDrag(e){
+  fromAnimationFields();
+  const f=(animation.frames||[])[frameIndex], item=f&&f.sprites&&f.sprites[0];
+  if(!item)return;
+  const data=await getSpriteData(item.sprite);
+  const frames=data&&Array.isArray(data.frames)&&data.frames.length?data.frames:null;
+  const pixels=frames?(frames[0].pixels||data.pixels||[]):(data&&data.pixels)||[];
+  const w=data&&data.width?data.width:((pixels[0]||[]).length||1);
+  const h=data&&data.height?data.height:(pixels.length||1);
+  const p=animationPoint(e), ix=parseFloat(item.x)||0, iy=parseFloat(item.y)||0;
+  if(p.x<ix||p.y<iy||p.x>ix+w||p.y>iy+h)return;
+  animDrag={dx:p.x-ix,dy:p.y-iy};
+  el('anim-preview').classList.add('dragging');
+  el('anim-preview').setPointerCapture(e.pointerId);
+}
+function moveAnimationDrag(e){
+  if(!animDrag)return;
+  const p=animationPoint(e);
+  el('f-x').value=Math.round(p.x-animDrag.dx);
+  el('f-y').value=Math.round(p.y-animDrag.dy);
+  fromAnimationFields();
+  renderAnimationPreview();
+  updateJSON();
+  markAnimDirty(true);
+}
+function endAnimationDrag(e){
+  if(!animDrag)return;
+  animDrag=null;
+  el('anim-preview').classList.remove('dragging');
+  try{el('anim-preview').releasePointerCapture(e.pointerId)}catch(err){}
 }
 async function renderAnimationPreview(){
   fromAnimationFields();
@@ -315,7 +382,10 @@ function playNextFrame(){
 function buildJSON(){fromFields();normalizePixels();return JSON.stringify(sprite,null,2)}
 function updateJSON(){syncing=true;el('json-out').value=builderMode==='animation'?buildAnimationJSON():buildJSON();syncing=false;el('json-status').textContent='Generated';el('json-status').className='hint'}
 function updateAll(){renderPreview();updateJSON();markDirty(true)}
-function applySprite(data,dirtyState=false){sprite={...blank(),...data};sprite.width=parseInt(sprite.width)||8;sprite.height=parseInt(sprite.height)||8;normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(dirtyState)}
+function applySprite(data,dirtyState=false){sprite={...blank(),...data};sprite.width=parseInt(sprite.width)||8;sprite.height=parseInt(sprite.height)||8;spriteFrameIndex=0;normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(dirtyState)}
+function stepSpriteFrame(delta){fromFields();spriteFrameIndex=clamp(spriteFrameIndex+delta,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();updateJSON()}
+function addSpriteFrame(copy=false){fromFields();const base=copy?JSON.parse(JSON.stringify(sprite.frames[spriteFrameIndex])):{duration_ms:100,pixels:blankPixels(sprite.width,sprite.height)};sprite.frames.splice(spriteFrameIndex+1,0,base);spriteFrameIndex++;normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(true)}
+function deleteSpriteFrame(){if(!sprite.frames||sprite.frames.length<=1)return;sprite.frames.splice(spriteFrameIndex,1);spriteFrameIndex=clamp(spriteFrameIndex,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();updateJSON();markDirty(true)}
 
 async function refresh(select=currentFile){
   const r=await fetch('/api/sprites',{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'list failed');
@@ -334,7 +404,7 @@ function wire(){
   setMode(builderMode);
   setZoom(zoom);
   buildSwatches();
-  ['i-name','i-motion','i-speed','i-move-mode','i-direction','i-random-start','i-random-facing'].forEach(id=>el(id).addEventListener('input',updateAll));
+  ['i-name','i-frame-duration'].forEach(id=>el(id).addEventListener('input',updateAll));
   el('btn-resize').onclick=()=>{sprite.width=Math.max(1,Math.min(32,parseInt(el('i-width').value)||8));sprite.height=Math.max(1,Math.min(25,parseInt(el('i-height').value)||8));normalizePixels();buildGrid();updateAll()};
   el('zoom').oninput=e=>setZoom(e.target.value);
   document.querySelector('.stage').addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom+(e.deltaY<0?5:-5))},{passive:false});
@@ -342,8 +412,13 @@ function wire(){
   el('alpha').oninput=e=>{alpha=clamp(parseInt(e.target.value)||0,0,255);el('alpha-v').textContent=hex2(alpha);setTool('paint');buildSwatches()};
   el('btn-add-color').onclick=()=>{const c=currentValue();customPalette=customPalette.filter(v=>v!==c);customPalette.push(c);if(customPalette.length>5)customPalette.shift();saveCustomPalette();buildSwatches()};
   el('btn-paint').onclick=()=>setTool('paint');el('btn-bucket').onclick=()=>setTool('bucket');el('btn-erase').onclick=()=>setTool('erase');
-  el('btn-clear').onclick=()=>{sprite.pixels=blank(sprite.name,sprite.width,sprite.height).pixels;buildGrid();updateAll()};
+  el('btn-clear').onclick=()=>{sprite.frames[spriteFrameIndex].pixels=blankPixels(sprite.width,sprite.height);sprite.pixels=sprite.frames[spriteFrameIndex].pixels;buildGrid();updateAll()};
   el('btn-fill').onclick=()=>{for(let y=0;y<sprite.height;y++)for(let x=0;x<sprite.width;x++)sprite.pixels[y][x]=currentValue();buildGrid();updateAll()};
+  el('btn-sprite-frame-prev').onclick=()=>stepSpriteFrame(-1);
+  el('btn-sprite-frame-next').onclick=()=>stepSpriteFrame(1);
+  el('btn-sprite-frame-add').onclick=()=>addSpriteFrame(false);
+  el('btn-sprite-frame-dupe').onclick=()=>addSpriteFrame(true);
+  el('btn-sprite-frame-del').onclick=()=>deleteSpriteFrame();
   el('btn-new').onclick=()=>{if(dirty&&!confirm('Discard unsaved changes?'))return;currentFile=selectedFile='';applySprite(blank(prompt('Sprite name:','new_sprite')||'new_sprite'),true)};
   el('btn-save').onclick=()=>saveSprite().catch(e=>alert(e.message));
   el('btn-save-as').onclick=()=>{const f=prompt('Save sprite as:',currentFile||fileName());if(f)saveSprite(f.toLowerCase().endsWith('.json')?f:f+'.json').catch(e=>alert(e.message))};
@@ -352,15 +427,19 @@ function wire(){
   el('btn-apply').onclick=()=>{try{builderMode==='animation'?applyAnimation(JSON.parse(el('json-out').value),true):applySprite(JSON.parse(el('json-out').value),true)}catch(e){alert(e.message)}};
   el('btn-copy').onclick=()=>navigator.clipboard&&navigator.clipboard.writeText(el('json-out').value);
   el('tab-sprite').onclick=()=>setMode('sprite');el('tab-animation').onclick=()=>setMode('animation');
-  ['a-name','a-fps','a-loop','f-duration','f-sprite','f-x','f-y'].forEach(id=>el(id).addEventListener('input',()=>{fromAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)}));
-  el('anim-select').onchange=e=>{const f=e.target.value;if(animDirty&&!confirm('Discard unsaved animation changes?')){if(selectedAnimFile)e.target.value=selectedAnimFile;return}loadAnimation(f).catch(err=>alert(err.message))};
-  el('btn-anim-new').onclick=()=>{if(animDirty&&!confirm('Discard unsaved animation changes?'))return;currentAnimFile=selectedAnimFile='';applyAnimation(blankAnimation(prompt('Animation name:','new_animation')||'new_animation'),true)};
+  ['a-name','a-speed','a-loop','a-move-mode','a-direction','a-random-start','a-random-facing','a-spin','a-spin-speed','f-duration','f-sprite','f-x','f-y','f-rotation'].forEach(id=>el(id).addEventListener('input',()=>{fromAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)}));
+  el('anim-preview').addEventListener('pointerdown',e=>startAnimationDrag(e));
+  el('anim-preview').addEventListener('pointermove',moveAnimationDrag);
+  el('anim-preview').addEventListener('pointerup',endAnimationDrag);
+  el('anim-preview').addEventListener('pointercancel',endAnimationDrag);
+  el('anim-select').onchange=e=>{const f=e.target.value;if(animDirty&&!confirm('Discard unsaved cameo changes?')){if(selectedAnimFile)e.target.value=selectedAnimFile;return}loadAnimation(f).catch(err=>alert(err.message))};
+  el('btn-anim-new').onclick=()=>{if(animDirty&&!confirm('Discard unsaved cameo changes?'))return;currentAnimFile=selectedAnimFile='';applyAnimation(blankAnimation(prompt('Cameo name:','new_cameo')||'new_cameo'),true)};
   el('btn-anim-save').onclick=()=>saveAnimation().catch(e=>alert(e.message));
-  el('btn-anim-save-as').onclick=()=>{const f=prompt('Save animation as:',currentAnimFile||animFileName());if(f)saveAnimation(f.toLowerCase().endsWith('.json')?f:f+'.json').catch(e=>alert(e.message))};
+  el('btn-anim-save-as').onclick=()=>{const f=prompt('Save cameo as:',currentAnimFile||animFileName());if(f)saveAnimation(f.toLowerCase().endsWith('.json')?f:f+'.json').catch(e=>alert(e.message))};
   el('btn-frame-prev').onclick=()=>stepFrame(-1);el('btn-frame-next').onclick=()=>stepFrame(1);
-  el('btn-frame-add').onclick=()=>{fromAnimationFields();animation.frames.splice(frameIndex+1,0,{duration_ms:100,sprites:[{sprite:el('f-sprite').value||'rocket',x:0,y:0}]});frameIndex++;syncAnimationFields();renderAnimationPreview();markAnimDirty(true)};
-  el('btn-frame-dupe').onclick=()=>{fromAnimationFields();animation.frames.splice(frameIndex+1,0,JSON.parse(JSON.stringify(animation.frames[frameIndex])));frameIndex++;syncAnimationFields();renderAnimationPreview();markAnimDirty(true)};
-  el('btn-frame-del').onclick=()=>{if(animation.frames.length<=1)return;animation.frames.splice(frameIndex,1);frameIndex=clamp(frameIndex,0,animation.frames.length-1);syncAnimationFields();renderAnimationPreview();markAnimDirty(true)};
+  el('btn-frame-add').onclick=()=>{fromAnimationFields();animation.frames.splice(frameIndex+1,0,{duration_ms:100,sprites:[{sprite:el('f-sprite').value||'rocket',x:0,y:0,rotation:0}]});frameIndex++;syncAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)};
+  el('btn-frame-dupe').onclick=()=>{fromAnimationFields();animation.frames.splice(frameIndex+1,0,JSON.parse(JSON.stringify(animation.frames[frameIndex])));frameIndex++;syncAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)};
+  el('btn-frame-del').onclick=()=>{if(animation.frames.length<=1)return;animation.frames.splice(frameIndex,1);frameIndex=clamp(frameIndex,0,animation.frames.length-1);syncAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)};
   el('btn-anim-play').onclick=()=>setPlaying(!playing);
 }
 wire();applySprite(sprite,false);applyAnimation(animation,false);refresh().then(()=>selectedFile&&loadSprite(selectedFile)).then(()=>refreshAnimations().then(()=>selectedAnimFile&&loadAnimation(selectedAnimFile))).catch(()=>el('status').textContent='Offline');
