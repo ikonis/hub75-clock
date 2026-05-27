@@ -1478,12 +1478,19 @@ class HUB75Clock:
         return topics.get("update_latest", f"{client_id}/update/latest")
 
     def _run_git(self, args, repo_path: str) -> str:
-        return subprocess.check_output(
-            ["git", "-C", repo_path, *args],
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=30,
-        ).strip()
+        cmd = ["git", "-c", f"safe.directory={repo_path}", "-C", repo_path, *args]
+        try:
+            return subprocess.check_output(
+                cmd,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=30,
+            ).strip()
+        except subprocess.CalledProcessError as e:
+            output = (e.output or "").strip()
+            if output:
+                raise RuntimeError(output) from e
+            raise RuntimeError(f"{' '.join(cmd)} returned {e.returncode}") from e
 
     def _update_branch(self, repo_path: str) -> str:
         branch = str(self._update_cfg().get("branch") or "").strip()
