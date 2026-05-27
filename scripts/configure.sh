@@ -185,7 +185,6 @@ mqtt:
     gates:            ${CLIENT_ID}/gates
     engineering_mode: ${CLIENT_ID}/engineering_mode
     bucket:           ${CLIENT_ID}/bucket
-    version_state:    ${CLIENT_ID}/version
     update:           ${CLIENT_ID}/update/install
     update_check:     ${CLIENT_ID}/update/check
     update_install:   ${CLIENT_ID}/update/install
