@@ -466,6 +466,13 @@ static void setThemeBuilderService(mosquitto* mosq, const json& cfg, bool enable
     publishThemeBuilderState(mosq, cfg);
 }
 
+static void ensureThemeBuilderStartupState(const json& cfg) {
+    if (cfg["theme_builder"].value("mode", "off") != "ha") return;
+    std::string service = cfg["theme_builder"].value("service_name", "hub75-theme-builder");
+    std::string cmd = "systemctl stop " + service + " >/dev/null 2>&1";
+    std::system(cmd.c_str());
+}
+
 static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
                                           const std::vector<std::string>& themes) {
     if (!cfg["ha_discovery"].value("enabled", true)) return;
@@ -796,7 +803,12 @@ static void mqttOnMessage(mosquitto* mosq, void* obj,
                                   static_cast<int>(std::strlen(s)), s, 0, 1);
             }
             if (payload.contains("theme_builder")) {
-                setThemeBuilderService(mosq, *ctx->cfg, payload["theme_builder"].get<bool>());
+                if (msg->retain) {
+                    std::cout << "[theme_builder] ignored retained command\n";
+                    publishThemeBuilderState(mosq, *ctx->cfg);
+                } else {
+                    setThemeBuilderService(mosq, *ctx->cfg, payload["theme_builder"].get<bool>());
+                }
             }
         } catch (...) {}
 
@@ -922,6 +934,7 @@ int main(int argc, char* argv[]) {
 
     // ── Weather animator ──────────────────────────────────────────────────
     WeatherAnimator animator(matrix->width(), matrix->height(), cfg, matrix);
+    ensureThemeBuilderStartupState(cfg);
 
     std::string defaultTheme = cfg["themes"].value("default_theme", "Day");
     animator.setTheme(defaultTheme, themeLoader);

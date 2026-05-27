@@ -1312,6 +1312,7 @@ class HUB75Clock:
         self._alert_show_message = False
         self._engineering_lock = threading.Lock()
         self._engineering_running = False
+        self._ensure_theme_builder_startup_state()
 
     # ------------------------------------------------------------------
     # MQTT
@@ -1403,6 +1404,21 @@ class HUB75Clock:
 
     def _set_theme_builder_async(self, enable: bool):
         threading.Thread(target=self._set_theme_builder, args=(enable,), daemon=True).start()
+
+    def _ensure_theme_builder_startup_state(self):
+        tb = self._theme_builder_cfg()
+        if tb.get("mode", "off") != "ha":
+            return
+        service = tb.get("service_name", "hub75-theme-builder")
+        try:
+            subprocess.run(
+                ["systemctl", "stop", service],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception as e:
+            print(f"[theme_builder] startup stop failed: {e}")
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc != 0:
@@ -1502,7 +1518,11 @@ class HUB75Clock:
                 self._request_engineering_mode(em)
 
             if "theme_builder" in payload:
-                self._set_theme_builder_async(bool(payload["theme_builder"]))
+                if getattr(msg, "retain", False):
+                    print("[theme_builder] ignored retained command")
+                    self._publish_theme_builder_state()
+                else:
+                    self._set_theme_builder_async(bool(payload["theme_builder"]))
 
             if "bucket" in payload:
                 self._apply_bucket(payload["bucket"])
