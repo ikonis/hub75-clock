@@ -323,7 +323,7 @@ Use sprites from a theme cameo like:
 { "name": "sprite", "sprite": "rocket", "chance_per_minute": 4 }
 ```
 
-Sprite pixels use `null` for transparent cells, `#RRGGBB` for solid color, or `#RRGGBBAA` for alpha-blended pixels. The first sprite cameo implementation is Python runtime only. Animation JSON editing is scaffolded for design work; runtime playback comes later.
+Sprite pixels use `null` for transparent cells, `#RRGGBB` for solid color, or `#RRGGBBAA` for alpha-blended pixels. Sprite JSON can also carry early `movement` metadata for future cameo behavior work. The first sprite cameo implementation is Python runtime only. Animation JSON editing is scaffolded for design work; runtime playback comes later.
 
 ---
 

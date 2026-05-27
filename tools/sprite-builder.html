@@ -58,8 +58,12 @@ input[type=range]{accent-color:var(--accent)}
         <div class="f"><label>Height</label><input id="i-height" type="number" min="1" max="25" value="8"></div>
         <div class="f"><label>Motion</label><select id="i-motion"><option value="left">left</option><option value="right">right</option><option value="up">up</option></select></div>
         <div class="f"><label>Speed</label><input id="i-speed" type="number" min="0.05" max="5" step="0.05" value="0.5"></div>
+        <div class="f"><label>Mode</label><select id="i-move-mode"><option value="straight">straight</option><option value="random_walk">random walk</option><option value="point_shoot">point + shoot</option></select></div>
+        <div class="f"><label>Direction</label><select id="i-direction"><option value="left">left</option><option value="right">right</option><option value="up">up</option><option value="down">down</option><option value="random">random</option></select></div>
+        <div class="row"><label class="hint"><input type="checkbox" id="i-random-start" checked> Random start</label><label class="hint"><input type="checkbox" id="i-random-facing"> Random facing</label></div>
         <div class="f"><label>Zoom</label><input type="range" id="zoom" min="10" max="100" step="5" value="25"><span class="pct-val" id="zoom-v">25%</span></div>
         <button class="btn" id="btn-resize">Resize Grid</button>
+        <p class="hint">Cameo motion metadata is saved with the sprite for future runtime hookup.</p>
       </div>
     </div>
     <div class="sec">
@@ -132,7 +136,7 @@ const el=id=>document.getElementById(id);
 const cleanName=n=>((n||'sprite').trim().replace(/[<>:"/\\|?*\x00-\x1f]+/g,'_')||'sprite');
 const fileName=()=>cleanName(sprite.name)+'.json';
 const animFileName=()=>cleanName(animation.name)+'.json';
-const blank=(name='new_sprite',w=8,h=8)=>({name,width:w,height:h,motion:'left',speed:0.5,pixels:Array.from({length:h},()=>Array.from({length:w},()=>null))});
+const blank=(name='new_sprite',w=8,h=8)=>({name,width:w,height:h,motion:'left',speed:0.5,movement:{mode:'straight',direction:'left',random_start:true,random_facing:false},pixels:Array.from({length:h},()=>Array.from({length:w},()=>null))});
 const blankAnimation=(name='new_animation')=>({name,width:64,height:32,fps:12,loop:true,frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0}]}]});
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
@@ -170,8 +174,15 @@ function setTool(next){tool=next;for(const id of ['paint','bucket','erase'])el('
 function setColorValue(v){const c=parseColor(v);if(!c)return;color=c.hex;alpha=c.alpha;el('pick').value=color;el('alpha').value=alpha;el('alpha-v').textContent=hex2(alpha);setTool('paint');buildSwatches()}
 function loadCustomPalette(){try{return JSON.parse(localStorage.getItem(customPaletteKey)||'[]').slice(0,5)}catch(e){return []}}
 function saveCustomPalette(){try{localStorage.setItem(customPaletteKey,JSON.stringify(customPalette.slice(0,5)))}catch(e){}}
-function syncFields(){el('i-name').value=sprite.name;el('i-width').value=sprite.width;el('i-height').value=sprite.height;el('i-motion').value=sprite.motion||'left';el('i-speed').value=sprite.speed??0.5}
-function fromFields(){sprite.name=el('i-name').value||'sprite';sprite.motion=el('i-motion').value;sprite.speed=parseFloat(el('i-speed').value)||0.5}
+function syncFields(){
+  const mv=sprite.movement||{};
+  el('i-name').value=sprite.name;el('i-width').value=sprite.width;el('i-height').value=sprite.height;el('i-motion').value=sprite.motion||mv.direction||'left';el('i-speed').value=sprite.speed??0.5;
+  el('i-move-mode').value=mv.mode||'straight';el('i-direction').value=mv.direction||sprite.motion||'left';el('i-random-start').checked=mv.random_start!==false;el('i-random-facing').checked=!!mv.random_facing;
+}
+function fromFields(){
+  sprite.name=el('i-name').value||'sprite';sprite.motion=el('i-motion').value;sprite.speed=parseFloat(el('i-speed').value)||0.5;
+  sprite.movement={mode:el('i-move-mode').value,direction:el('i-direction').value,random_start:el('i-random-start').checked,random_facing:el('i-random-facing').checked};
+}
 function normalizePixels(){let rows=sprite.pixels||[];let out=[];for(let y=0;y<sprite.height;y++){let row=[];for(let x=0;x<sprite.width;x++){const c=parseColor((rows[y]||[])[x]);row.push(c?c.value:null)}out.push(row)}sprite.pixels=out}
 
 function buildGrid(){
@@ -289,7 +300,7 @@ async function saveSprite(file=''){fromFields();const f=file||currentFile||fileN
 function wire(){
   setZoom(zoom);
   buildSwatches();
-  ['i-name','i-motion','i-speed'].forEach(id=>el(id).addEventListener('input',updateAll));
+  ['i-name','i-motion','i-speed','i-move-mode','i-direction','i-random-start','i-random-facing'].forEach(id=>el(id).addEventListener('input',updateAll));
   el('btn-resize').onclick=()=>{sprite.width=Math.max(1,Math.min(32,parseInt(el('i-width').value)||8));sprite.height=Math.max(1,Math.min(25,parseInt(el('i-height').value)||8));normalizePixels();buildGrid();updateAll()};
   el('zoom').oninput=e=>setZoom(e.target.value);
   document.querySelector('.stage').addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom+(e.deltaY<0?5:-5))},{passive:false});
@@ -317,7 +328,7 @@ function wire(){
   el('btn-frame-del').onclick=()=>{if(animation.frames.length<=1)return;animation.frames.splice(frameIndex,1);frameIndex=clamp(frameIndex,0,animation.frames.length-1);syncAnimationFields();renderAnimationPreview();markAnimDirty(true)};
   el('btn-anim-play').onclick=()=>setPlaying(!playing);
 }
-wire();applySprite(sprite,false);applyAnimation(animation,false);refresh().then(()=>refreshAnimations().then(()=>selectedAnimFile&&loadAnimation(selectedAnimFile))).catch(()=>el('status').textContent='Offline');
+wire();applySprite(sprite,false);applyAnimation(animation,false);refresh().then(()=>selectedFile&&loadSprite(selectedFile)).then(()=>refreshAnimations().then(()=>selectedAnimFile&&loadAnimation(selectedAnimFile))).catch(()=>el('status').textContent='Offline');
 </script>
 </body>
 </html>
