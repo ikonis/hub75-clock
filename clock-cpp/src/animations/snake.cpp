@@ -19,6 +19,8 @@ public:
         _at = animator->animTop;
         _ab = animator->animBottom;
         _playH = _ab - _at + 1;
+        _cols = std::max(1, _w / CELL_SIZE);
+        _rows = std::max(1, _playH / CELL_SIZE);
         if (cfg.contains("animation") && cfg["animation"].is_object())
             _fps = std::max(1, cfg["animation"].value("fps", 15));
         if (cfg.contains("animation_settings") &&
@@ -42,33 +44,20 @@ public:
 
     void draw(rgb_matrix::FrameCanvas* canvas) override {
         for (const auto& c : _cherries) {
-            for (int dy = 0; dy < CHERRY_SIZE; ++dy) {
-                for (int dx = 0; dx < CHERRY_SIZE; ++dx) {
-                    int px = c.first + dx;
-                    int py = c.second + dy;
-                    if (px < 0 || px >= _w || py < _at || py > _ab) continue;
-                    if (dx == 1 && dy == 1)
-                        render::SetPixel(canvas, px, py, 255, 45, 60);
-                    else
-                        render::SetPixel(canvas, px, py, 170, 0, 35);
-                }
-            }
+            drawBlock(canvas, c, {170, 0, 35}, {255, 45, 60}, true);
         }
 
         bool crash = _crashFrames > 0 && (_frame % 2 == 0);
         int n = int(_snake.size());
         for (int rev = 0; rev < n; ++rev) {
-            const auto& p = _snake[n - 1 - rev];
-            int x = p.first;
-            int y = p.second;
-            if (x < 0 || x >= _w || y < _at || y > _ab) continue;
+            const auto& cell = _snake[n - 1 - rev];
             if (crash) {
-                render::SetPixel(canvas, x, y, 220, 30, 30);
+                drawBlock(canvas, cell, {220, 30, 30});
             } else if (rev == n - 1) {
-                render::SetPixel(canvas, x, y, 210, 255, 120);
+                drawBlock(canvas, cell, {210, 255, 120});
             } else {
                 int shade = 100 + int(85.0f * (float(rev) / float(std::max(1, n - 1))));
-                render::SetPixel(canvas, x, y, 35, shade, 55);
+                drawBlock(canvas, cell, {35, shade, 55});
             }
         }
     }
@@ -81,8 +70,9 @@ public:
 
 private:
     using Pt = std::pair<int, int>;
+    using Color = std::array<int, 3>;
+    static constexpr int CELL_SIZE = 3;
     static constexpr int CHERRY_COUNT = 4;
-    static constexpr int CHERRY_SIZE = 3;
 
     int rndInt(int lo, int hi) {
         if (hi < lo) hi = lo;
@@ -95,31 +85,46 @@ private:
         return dist(_rng);
     }
 
-    Pt wrap(int x, int y) const {
-        int wx = ((x % _w) + _w) % _w;
-        int localY = y - _at;
-        int wy = _at + (((localY % _playH) + _playH) % _playH);
-        return {wx, wy};
+    Pt wrapCell(int x, int y) const {
+        return {((x % _cols) + _cols) % _cols, ((y % _rows) + _rows) % _rows};
+    }
+
+    Pt cellToPixel(const Pt& cell) const {
+        return {cell.first * CELL_SIZE, _at + cell.second * CELL_SIZE};
+    }
+
+    void drawBlock(rgb_matrix::FrameCanvas* canvas, const Pt& cell, Color color,
+                   Color highlight = {0, 0, 0}, bool useHighlight = false) {
+        Pt origin = cellToPixel(cell);
+        for (int dy = 0; dy < CELL_SIZE; ++dy) {
+            for (int dx = 0; dx < CELL_SIZE; ++dx) {
+                int px = origin.first + dx;
+                int py = origin.second + dy;
+                if (px < 0 || px >= _w || py < _at || py > _ab) continue;
+                const Color& c = (useHighlight && dx == 1 && dy == 1) ? highlight : color;
+                render::SetPixel(canvas, px, py, c[0], c[1], c[2]);
+            }
+        }
     }
 
     void reset() {
         static const Pt dirs[] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
         _dir = dirs[rndInt(0, 3)];
 
-        int length = rndInt(8, 12);
-        int margin = length + 2;
+        int length = rndInt(6, 9);
+        int margin = std::min(length + 1, std::max(1, std::min(_cols, _rows) / 2));
         int x, y;
         if (_dir.first != 0) {
-            x = rndInt(margin, std::max(margin, _w - margin - 1));
-            y = _at + rndInt(3, std::max(3, _playH - 4));
+            x = rndInt(margin, std::max(margin, _cols - margin - 1));
+            y = rndInt(1, std::max(1, _rows - 2));
         } else {
-            x = rndInt(4, std::max(4, _w - 5));
-            y = _at + rndInt(margin, std::max(margin, _playH - margin - 1));
+            x = rndInt(1, std::max(1, _cols - 2));
+            y = rndInt(margin, std::max(margin, _rows - margin - 1));
         }
 
         _snake.clear();
         for (int i = 0; i < length; ++i) {
-            _snake.push_back({x - _dir.first * i, y - _dir.second * i});
+            _snake.push_back(wrapCell(x - _dir.first * i, y - _dir.second * i));
         }
         _grow = 0;
         _cherries.clear();
@@ -130,48 +135,37 @@ private:
         int attempts = 0;
         while (int(_cherries.size()) < CHERRY_COUNT && attempts < 300) {
             ++attempts;
-            int x = rndInt(0, std::max(0, _w - CHERRY_SIZE));
-            int y = rndInt(_at, std::max(_at, _ab - CHERRY_SIZE + 1));
-
-            bool blocked = false;
-            for (int dy = 0; dy < CHERRY_SIZE && !blocked; ++dy) {
-                for (int dx = 0; dx < CHERRY_SIZE; ++dx) {
-                    if (std::find(_snake.begin(), _snake.end(), Pt{x + dx, y + dy}) != _snake.end()) {
-                        blocked = true;
-                        break;
-                    }
-                }
-            }
-            if (blocked) continue;
+            Pt pos{rndInt(0, _cols - 1), rndInt(0, _rows - 1)};
+            if (std::find(_snake.begin(), _snake.end(), pos) != _snake.end()) continue;
+            if (std::find(_cherries.begin(), _cherries.end(), pos) != _cherries.end()) continue;
 
             bool tooClose = false;
             for (const auto& c : _cherries) {
-                if (std::abs(x - c.first) < 5 && std::abs(y - c.second) < 5) {
+                if (torusDistance(pos.first, pos.second, c.first, c.second) < 3) {
                     tooClose = true;
                     break;
                 }
             }
-            if (!tooClose) _cherries.push_back({x, y});
+            if (!tooClose) _cherries.push_back(pos);
         }
     }
 
     int torusDistance(int x, int y, int tx, int ty) const {
         int dx = std::abs(x - tx);
-        dx = std::min(dx, _w - dx);
-        int dy = std::abs((y - _at) - (ty - _at));
-        dy = std::min(dy, _playH - dy);
+        dx = std::min(dx, _cols - dx);
+        int dy = std::abs(y - ty);
+        dy = std::min(dy, _rows - dy);
         return dx + dy;
     }
 
-    Pt nearestCherryCenter(int x, int y) const {
-        Pt best{_w / 2, _at + _playH / 2};
+    Pt nearestCherry(int x, int y) const {
+        Pt best{_cols / 2, _rows / 2};
         int bestDist = 9999;
         for (const auto& c : _cherries) {
-            Pt center{c.first + CHERRY_SIZE / 2, c.second + CHERRY_SIZE / 2};
-            int dist = torusDistance(x, y, center.first, center.second);
+            int dist = torusDistance(x, y, c.first, c.second);
             if (dist < bestDist) {
                 bestDist = dist;
-                best = center;
+                best = c;
             }
         }
         return best;
@@ -190,7 +184,7 @@ private:
             return choices.front();
         }
 
-        Pt target = nearestCherryCenter(head.first, head.second);
+        Pt target = nearestCherry(head.first, head.second);
         std::set<Pt> body;
         int bodyLimit = int(_snake.size()) - (_grow <= 0 ? 1 : 0);
         for (int i = 0; i < bodyLimit; ++i) body.insert(_snake[i]);
@@ -198,7 +192,7 @@ private:
         struct Scored { int score; float tie; Pt dir; };
         std::vector<Scored> scored;
         for (const auto& d : choices) {
-            Pt next = wrap(head.first + d.first, head.second + d.second);
+            Pt next = wrapCell(head.first + d.first, head.second + d.second);
             bool crash = body.find(next) != body.end();
             int score = torusDistance(next.first, next.second, target.first, target.second) + (crash ? 999 : 0);
             scored.push_back({score, rnd01(), d});
@@ -218,22 +212,18 @@ private:
         return scored.front().dir;
     }
 
-    void eatCherryAt(int x, int y) {
-        for (auto it = _cherries.begin(); it != _cherries.end(); ++it) {
-            if (x >= it->first && x < it->first + CHERRY_SIZE &&
-                y >= it->second && y < it->second + CHERRY_SIZE) {
-                _cherries.erase(it);
-                _grow += 5;
-                if (_cherries.empty()) spawnCherries();
-                return;
-            }
-        }
+    void eatCherryAt(const Pt& cell) {
+        auto it = std::find(_cherries.begin(), _cherries.end(), cell);
+        if (it == _cherries.end()) return;
+        _cherries.erase(it);
+        _grow += 3;
+        if (_cherries.empty()) spawnCherries();
     }
 
     void step() {
         _dir = chooseDirection();
         Pt head = _snake.front();
-        Pt next = wrap(head.first + _dir.first, head.second + _dir.second);
+        Pt next = wrapCell(head.first + _dir.first, head.second + _dir.second);
 
         std::set<Pt> body;
         int bodyLimit = int(_snake.size()) - (_grow <= 0 ? 1 : 0);
@@ -244,7 +234,7 @@ private:
         }
 
         _snake.insert(_snake.begin(), next);
-        eatCherryAt(next.first, next.second);
+        eatCherryAt(next);
         if (_grow > 0) {
             --_grow;
         } else {
@@ -252,7 +242,7 @@ private:
         }
     }
 
-    int _w, _h, _at = 0, _ab = 0, _playH = 1;
+    int _w, _h, _at = 0, _ab = 0, _playH = 1, _cols = 1, _rows = 1;
     WeatherAnimator* _animator;
     std::mt19937 _rng{std::random_device{}()};
     std::vector<Pt> _snake;

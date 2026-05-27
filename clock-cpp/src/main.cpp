@@ -23,10 +23,69 @@
 #include <thread>
 #include <chrono>
 #include <unordered_map>
+#include <vector>
 
 using namespace rgb_matrix;
 using json = nlohmann::json;
 namespace fs = std::filesystem;
+
+static const std::vector<std::pair<std::string, std::string>>& animationDefaultBlocks() {
+    static const std::vector<std::pair<std::string, std::string>> blocks = {
+        {"rocket", "  speed: 0.25\n"},
+        {"meteor", "  speed: 0.3\n"},
+        {"hot_air_balloon", "  speed: 0.5\n"},
+        {"santa", "  speed: 0.5\n"},
+        {"tumbleweed", "  speed: 0.5\n"},
+        {"fireworks", "  speed: 1.0\n"},
+        {"flutterflies", "  speed: 1.0\n"},
+        {"snake", "  speed: 1.0\n"},
+        {"clouds",
+         "  speed: 1.0\n"
+         "  particle_speed: 1.0\n"
+         "  rain_speed: 1.0\n"
+         "  heavy_rain_speed: 1.0\n"
+         "  snow_speed: 1.0\n"
+         "  sleet_fast_speed: 1.0\n"
+         "  sleet_slow_speed: 1.0\n"},
+    };
+    return blocks;
+}
+
+static void ensureAnimationSettingsDefaults(const std::string& path) {
+    try {
+        fs::path p(path);
+        if (!p.parent_path().empty()) fs::create_directories(p.parent_path());
+
+        if (!fs::exists(path)) {
+            std::ofstream out(path);
+            out << "# Per-animation speed multipliers.\n"
+                << "# Added automatically; edit these values to tune runtime speed.\n";
+            for (const auto& block : animationDefaultBlocks()) {
+                out << "\n" << block.first << ":\n" << block.second;
+            }
+            std::cout << "[config] created " << path << "\n";
+            return;
+        }
+
+        YAML::Node existing = YAML::LoadFile(path);
+        if (!existing.IsMap()) return;
+
+        std::vector<const std::pair<std::string, std::string>*> missing;
+        for (const auto& block : animationDefaultBlocks()) {
+            if (!existing[block.first]) missing.push_back(&block);
+        }
+        if (missing.empty()) return;
+
+        std::ofstream out(path, std::ios::app);
+        out << "\n# Added automatically for new animation defaults.\n";
+        for (const auto* block : missing) {
+            out << "\n" << block->first << ":\n" << block->second;
+        }
+        std::cout << "[config] added missing animation defaults to " << path << "\n";
+    } catch (const std::exception& e) {
+        std::cerr << "[config] Failed to update animation defaults: " << e.what() << "\n";
+    }
+}
 
 // ── Defaults (mirror Python DEFAULTS dict) ────────────────────────────────────
 
@@ -881,6 +940,7 @@ int main(int argc, char* argv[]) {
     // Load per-animation speed settings from a separate YAML file.
     {
         const std::string animPath = "/etc/hub75-clock/animations.yaml";
+        ensureAnimationSettingsDefaults(animPath);
         if (fs::exists(animPath)) {
             try {
                 YAML::Node ay = YAML::LoadFile(animPath);

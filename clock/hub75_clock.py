@@ -30,6 +30,27 @@ import paho.mqtt.client as mqtt
 from theme_loader import ThemeLoader, Theme
 
 
+DEFAULT_ANIMATION_SETTINGS = {
+    "rocket": {"speed": 0.25},
+    "meteor": {"speed": 0.30},
+    "hot_air_balloon": {"speed": 0.5},
+    "santa": {"speed": 0.5},
+    "tumbleweed": {"speed": 0.5},
+    "fireworks": {"speed": 1.0},
+    "flutterflies": {"speed": 1.0},
+    "snake": {"speed": 1.0},
+    "clouds": {
+        "speed": 1.0,
+        "particle_speed": 1.0,
+        "rain_speed": 1.0,
+        "heavy_rain_speed": 1.0,
+        "snow_speed": 1.0,
+        "sleet_fast_speed": 1.0,
+        "sleet_slow_speed": 1.0,
+    },
+}
+
+
 try:
     import board
     import adafruit_veml7700
@@ -304,10 +325,43 @@ def load_animation_settings(path: str) -> dict:
         if not isinstance(data, dict):
             print(f"[config] animation settings ignored: {path} is not a mapping")
             return {}
+        added_names = []
+        for name, defaults_for_animation in DEFAULT_ANIMATION_SETTINGS.items():
+            if name in data:
+                continue
+            data[name] = defaults_for_animation
+            added_names.append(name)
+        if added_names:
+            parent = os.path.dirname(path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            with open(path, "a", encoding="utf-8") as f:
+                f.write("\n# Added automatically for new animation defaults.\n")
+                for name in added_names:
+                    defaults_for_animation = DEFAULT_ANIMATION_SETTINGS[name]
+                    f.write(f"\n{name}:\n")
+                    for key, value in defaults_for_animation.items():
+                        f.write(f"  {key}: {value}\n")
+            print(f"[config] added missing animation defaults to {path}")
         print(f"[config] loaded {path}")
         return data
     except FileNotFoundError:
-        return {}
+        try:
+            parent = os.path.dirname(path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("# Per-animation speed multipliers.\n")
+                f.write("# Added automatically; edit these values to tune runtime speed.\n")
+                for name, defaults_for_animation in DEFAULT_ANIMATION_SETTINGS.items():
+                    f.write(f"\n{name}:\n")
+                    for key, value in defaults_for_animation.items():
+                        f.write(f"  {key}: {value}\n")
+            print(f"[config] created {path}")
+            return dict(DEFAULT_ANIMATION_SETTINGS)
+        except Exception as e:
+            print(f"[config] animation settings create failed: {e}")
+            return {}
     except Exception as e:
         print(f"[config] animation settings ignored: {e}")
         return {}
