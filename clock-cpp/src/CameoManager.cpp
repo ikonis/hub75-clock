@@ -27,10 +27,20 @@ extern "C" std::unique_ptr<Animation> create_satellite(int, int, const nlohmann:
 extern "C" std::unique_ptr<Animation> create_shooting_star(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_snowman(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_snake(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_sprite(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_stars(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_submarine(int, int, const nlohmann::json&, WeatherAnimator*);
+extern "C" std::unique_ptr<Animation> create_test_plane(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_tumbleweed(int, int, const nlohmann::json&, WeatherAnimator*);
 extern "C" std::unique_ptr<Animation> create_ufo(int, int, const nlohmann::json&, WeatherAnimator*);
+
+namespace {
+nlohmann::json cfgForCameo(const nlohmann::json& cfg, const CameoEntry& cameo) {
+    nlohmann::json out = cfg;
+    out["_cameo"] = cameo.raw.is_object() ? cameo.raw : nlohmann::json::object({{"name", cameo.name}});
+    return out;
+}
+}
 
 CameoManager::CameoManager(WeatherAnimator* animator)
     : _animator(animator) {}
@@ -71,8 +81,10 @@ void CameoManager::loadPlugins() {
         { "shooting_star",   "celestial",  false, create_shooting_star   },
         { "snowman",         "foreground", false, create_snowman         },
         { "snake",           "foreground", true,  create_snake           },
+        { "sprite",          "foreground", false, create_sprite          },
         { "stars",           "celestial",  true,  create_stars           },
         { "submarine",       "foreground", false, create_submarine       },
+        { "testPlane",       "foreground", false, create_test_plane      },
         { "tumbleweed",      "foreground", false, create_tumbleweed      },
         { "ufo",             "foreground", false, create_ufo             },
     };
@@ -97,9 +109,10 @@ void CameoManager::setupPersistent() {
             continue;
         }
         if (!it->second.persistent) continue;
+        nlohmann::json cameoCfg = cfgForCameo(_animator->cfg, entry);
         _persistent.push_back(it->second.factory(
             _animator->width, _animator->height,
-            _animator->cfg, _animator));
+            cameoCfg, _animator));
     }
 }
 
@@ -164,8 +177,9 @@ void CameoManager::_trySpawnCelestial() {
         // chancePerMinute / (60 * fps) = probability per frame.
         float prob = static_cast<float>(entry.chancePerMinute) / (60.0f * fps);
         if (static_cast<float>(rand()) / RAND_MAX < prob) {
+            nlohmann::json cameoCfg = cfgForCameo(_animator->cfg, entry);
             _activeCelestial = it->second.factory(_animator->width, _animator->height,
-                                                  _animator->cfg, _animator);
+                                                  cameoCfg, _animator);
             return;
         }
     }
@@ -182,8 +196,9 @@ void CameoManager::_trySpawnForeground() {
 
         float prob = static_cast<float>(entry.chancePerMinute) / (60.0f * fps);
         if (static_cast<float>(rand()) / RAND_MAX < prob) {
+            nlohmann::json cameoCfg = cfgForCameo(_animator->cfg, entry);
             _activeForeground = it->second.factory(_animator->width, _animator->height,
-                                                   _animator->cfg, _animator);
+                                                   cameoCfg, _animator);
             return;
         }
     }

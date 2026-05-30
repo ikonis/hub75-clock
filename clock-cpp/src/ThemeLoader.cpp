@@ -35,6 +35,7 @@ Theme themeFromJson(const nlohmann::json& j) {
             CameoEntry entry;
             entry.name            = ce.value("name",              "");
             entry.chancePerMinute = ce.value("chance_per_minute", 0);
+            entry.raw             = ce.is_object() ? ce : nlohmann::json::object({{"name", entry.name}});
             t.cameos.push_back(entry);
         }
     }
@@ -46,7 +47,10 @@ Theme themeFromJson(const nlohmann::json& j) {
             if (c.name == "shooting_star") { hasEntry = true; break; }
         }
         if (!hasEntry) {
-            t.cameos.push_back({"shooting_star", 8});
+            t.cameos.push_back({"shooting_star", 8, nlohmann::json::object({
+                {"name", "shooting_star"},
+                {"chance_per_minute", 8},
+            })});
         }
     }
 
@@ -56,7 +60,9 @@ Theme themeFromJson(const nlohmann::json& j) {
             if (c.name == "stars") { hasEntry = true; break; }
         }
         if (!hasEntry) {
-            t.cameos.insert(t.cameos.begin(), {"stars", 0});
+            t.cameos.insert(t.cameos.begin(), {"stars", 0, nlohmann::json::object({
+                {"name", "stars"},
+            })});
         }
     }
 

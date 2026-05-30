@@ -310,7 +310,7 @@ During install, the theme builder can be disabled, left always running, or contr
 
 ## Sprite Builder
 
-The sprite builder edits small JSON sprites used by the generic Python `sprite` cameo:
+The sprite builder edits small JSON sprites used by the generic `sprite` cameo in both runtimes:
 
 ```bash
 make sprite-builder
@@ -325,7 +325,7 @@ Use sprites from a theme cameo like:
 { "name": "sprite", "sprite": "rocket", "chance_per_minute": 4 }
 ```
 
-Sprite pixels use `null` for transparent cells, `#RRGGBB` for solid color, or `#RRGGBBAA` for alpha-blended pixels. Sprite JSON can also carry early `movement` metadata for future cameo behavior work. The first sprite cameo implementation is Python runtime only. Animation JSON editing is scaffolded for design work; runtime playback comes later.
+Sprite pixels use `null` for transparent cells, `#RRGGBB` for solid color, or `#RRGGBBAA` for alpha-blended pixels. Sprite JSON can also carry early `movement` metadata for future cameo behavior work. Animation JSON editing is scaffolded for design work; runtime playback comes later.
 
 ---
 
@@ -572,7 +572,7 @@ hub75-clock/
 │   └── *.py                    Built-in drop-in animations; copied to /etc/hub75-clock/animations/
 │                               Drop your own .py files there to add custom animations at runtime
 ├── sprites/
-│   └── *.json                  Sprite cameo art for the generic Python sprite animation
+│   └── *.json                  Sprite cameo art for the generic sprite animation
 └── automations/
     ├── 01_set_theme.yaml            Set brightness + call theme script on bucket/condition change
     ├── 01b_select_theme_script.yaml Script: maps bucket + condition → theme, publishes to both clocks

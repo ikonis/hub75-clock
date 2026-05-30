@@ -14,6 +14,7 @@ using ColorValue = std::variant<std::string, std::array<int, 3>>;
 struct CameoEntry {
     std::string name;
     int chancePerMinute = 0;
+    nlohmann::json raw = nlohmann::json::object();
 };
 
 struct Theme {

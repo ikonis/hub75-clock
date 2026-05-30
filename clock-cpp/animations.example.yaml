@@ -28,6 +28,12 @@ flutterflies:
 snake:
   speed: 1.0
 
+sprite:
+  speed: 1.0
+
+testPlane:
+  speed: 0.8
+
 clouds:
   speed: 1.0             # cloud drift
   particle_speed: 1.0    # all rain/snow/sleet particles
