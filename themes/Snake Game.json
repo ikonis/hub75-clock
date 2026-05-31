@@ -1,0 +1,25 @@
+{
+  "name": "Snake Game",
+  "description": "",
+  "background_type": "solid",
+  "background_color": "#120024",
+  "background_top": "#0F0019",
+  "background_bottom": "#3C1400",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090"
+  },
+  "sun_enabled": false,
+  "moon_enabled": false,
+  "cloud_density": "medium",
+  "cloud_speed": "medium",
+  "cameos": [
+    {
+      "name": "snake"
+    }
+  ]
+}
