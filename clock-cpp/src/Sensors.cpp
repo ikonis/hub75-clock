@@ -317,6 +317,30 @@ void LD2410Sensor::_sendCmd(const uint8_t* cmdWord, size_t cwLen,
     usleep(50'000); // 50 ms inter-command gap
 }
 
+std::vector<uint8_t> LD2410Sensor::_sendCmdWait(const uint8_t* cmdWord, size_t cwLen,
+                                                const uint8_t* data, size_t dataLen)
+{
+    {
+        std::lock_guard<std::mutex> lk(_cmdResponseMtx);
+        _cmdResponses.clear();
+    }
+    _sendCmd(cmdWord, cwLen, data, dataLen);
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    std::unique_lock<std::mutex> lk(_cmdResponseMtx);
+    while (std::chrono::steady_clock::now() < deadline) {
+        while (!_cmdResponses.empty()) {
+            auto payload = std::move(_cmdResponses.front());
+            _cmdResponses.pop_front();
+            if (payload.size() >= 2 && payload[0] == cmdWord[0] &&
+                payload[1] == static_cast<uint8_t>(cmdWord[1] + 1)) {
+                return payload;
+            }
+        }
+        _cmdResponseCv.wait_until(lk, deadline);
+    }
+    return {};
+}
+
 void LD2410Sensor::_enableEngineeringModeImpl(bool enable) {
     static const uint8_t ENTER_CFG[] = {0xFF, 0x00};
     static const uint8_t END_CFG[]   = {0xFE, 0x00};
@@ -380,6 +404,64 @@ void LD2410Sensor::writeGateConfig(int gate, int moveThresh, int stillThresh) {
     });
 }
 
+void LD2410Sensor::_readParametersAndPublishImpl(const std::string& paramsTopic) {
+    static const uint8_t ENTER_CFG[] = {0xFF, 0x00};
+    static const uint8_t END_CFG[]   = {0xFE, 0x00};
+    static const uint8_t READ_CMD[]  = {0x61, 0x00};
+
+    _sendCmd(ENTER_CFG, 2);
+    usleep(100'000);
+    std::vector<uint8_t> response = _sendCmdWait(READ_CMD, 2);
+    usleep(100'000);
+    _sendCmd(END_CFG, 2);
+
+    if (response.size() < 28 || response[2] != 0x00 || response[3] != 0x00 || response[4] != 0xAA) {
+        std::cerr << "[ld2410] read parameters failed\n";
+        return;
+    }
+
+    int maxGate = response[5];
+    int maxMoveGate = response[6];
+    int maxStillGate = response[7];
+    int gateCount = std::max(0, std::min(9, maxGate + 1));
+    std::vector<int> move(9, 0), still(9, 0);
+    for (int i = 0; i < gateCount && 8 + i < static_cast<int>(response.size()); ++i)
+        move[i] = response[8 + i];
+    int stillStart = 8 + gateCount;
+    for (int i = 0; i < gateCount && stillStart + i < static_cast<int>(response.size()); ++i)
+        still[i] = response[stillStart + i];
+    int timeoutIdx = stillStart + gateCount;
+    int timeout = 0;
+    if (timeoutIdx + 1 < static_cast<int>(response.size()))
+        timeout = response[timeoutIdx] | (response[timeoutIdx + 1] << 8);
+
+    for (int i = 0; i < 9; ++i)
+        gateThresholds[i] = {move[i], still[i]};
+
+    std::string body = "{\"max_gate\":" + std::to_string(maxGate) +
+        ",\"max_move_gate\":" + std::to_string(maxMoveGate) +
+        ",\"max_still_gate\":" + std::to_string(maxStillGate) +
+        ",\"move_thresholds\":[";
+    for (int i = 0; i < 9; ++i) {
+        if (i) body += ",";
+        body += std::to_string(move[i]);
+    }
+    body += "],\"still_thresholds\":[";
+    for (int i = 0; i < 9; ++i) {
+        if (i) body += ",";
+        body += std::to_string(still[i]);
+    }
+    body += "],\"timeout_seconds\":" + std::to_string(timeout) + "}";
+    _pub(paramsTopic, body, true);
+}
+
+void LD2410Sensor::readParametersAndPublish(const std::string& paramsTopic) {
+    std::lock_guard<std::mutex> lk(_commandThreadsMtx);
+    _commandThreads.emplace_back([this, paramsTopic] {
+        _readParametersAndPublishImpl(paramsTopic);
+    });
+}
+
 void LD2410Sensor::_run() {
     std::vector<uint8_t> buf;
     buf.reserve(512);
@@ -398,8 +480,34 @@ void LD2410Sensor::_run() {
 
 void LD2410Sensor::_process(std::vector<uint8_t>& buf) {
     while (true) {
+        auto cmdIt = std::search(buf.begin(), buf.end(), CMD_HEAD, CMD_HEAD + 4);
+        auto dataIt = std::search(buf.begin(), buf.end(), HEAD, HEAD + 4);
+        if (cmdIt != buf.end() && (dataIt == buf.end() || cmdIt < dataIt)) {
+            if (cmdIt != buf.begin()) buf.erase(buf.begin(), cmdIt);
+            if (buf.size() < 10) return;
+            size_t dl = static_cast<size_t>(buf[4]) | (static_cast<size_t>(buf[5]) << 8);
+            if (dl > 512) {
+                buf.clear();
+                return;
+            }
+            size_t total = 4 + 2 + dl + 4;
+            if (buf.size() < total) return;
+            if (std::memcmp(buf.data() + total - 4, CMD_TAIL, 4) != 0) {
+                buf.erase(buf.begin());
+                continue;
+            }
+            std::vector<uint8_t> payload(buf.begin() + 6, buf.begin() + 6 + static_cast<std::ptrdiff_t>(dl));
+            {
+                std::lock_guard<std::mutex> lk(_cmdResponseMtx);
+                _cmdResponses.push_back(std::move(payload));
+            }
+            _cmdResponseCv.notify_all();
+            buf.erase(buf.begin(), buf.begin() + static_cast<std::ptrdiff_t>(total));
+            continue;
+        }
+
         // Find the 4-byte data frame header.
-        auto it = std::search(buf.begin(), buf.end(), HEAD, HEAD + 4);
+        auto it = dataIt;
         if (it == buf.end()) {
             if (buf.size() > 1024) buf.erase(buf.begin(), buf.end() - 4);
             return;

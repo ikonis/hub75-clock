@@ -25,7 +25,7 @@ input[type=range]{width:100%;accent-color:var(--thresh)}.hint{color:var(--dim);f
 <main class="app">
   <div class="top">
     <div><h1>LD2410 Tuner</h1><div class="state" id="status">Connecting...</div></div>
-    <button class="btn danger" id="btn-engineering">Engineering</button>
+    <div class="row"><button class="btn" id="btn-read">Read Sensor</button><button class="btn danger" id="btn-engineering">Engineering</button></div>
   </div>
 
   <section class="card">
@@ -47,6 +47,8 @@ input[type=range]{width:100%;accent-color:var(--thresh)}.hint{color:var(--dim);f
       <div class="metric"><span>Target State</span><strong id="target">-</strong></div>
       <div class="metric"><span>Move Distance</span><strong id="move-distance">-</strong></div>
       <div class="metric"><span>Still Distance</span><strong id="still-distance">-</strong></div>
+      <div class="metric"><span>Max Move Gate</span><strong id="max-move-gate">-</strong></div>
+      <div class="metric"><span>Max Still Gate</span><strong id="max-still-gate">-</strong></div>
     </div>
   </section>
 
@@ -72,9 +74,11 @@ input[type=range]{width:100%;accent-color:var(--thresh)}.hint{color:var(--dim);f
 const state={move_gates:Array(9).fill(0),still_gates:Array(9).fill(0),move_thresholds:Array(9).fill(50),still_thresholds:Array(9).fill(30),engineering:false,presence:null};
 const el=id=>document.getElementById(id);
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function ft(cm){return (Number(cm||0)/30.48).toFixed(1)+' ft'}
+function gateFt(i){return ((i*0.75)/0.3048).toFixed(1)+' ft'}
 function gateRow(kind,i){
   const row=document.createElement('div');row.className='gate';
-  row.innerHTML=`<label>G${i}</label><input type="range" min="0" max="100" step="1" value="${state[kind+'_thresholds'][i]}"><span class="value">${state[kind+'_thresholds'][i]}</span>`;
+  row.innerHTML=`<label title="${gateFt(i)}">G${i}</label><input type="range" min="0" max="100" step="1" value="${state[kind+'_thresholds'][i]}"><span class="value">${state[kind+'_thresholds'][i]}</span>`;
   const input=row.querySelector('input'), value=row.querySelector('.value');
   input.oninput=()=>{value.textContent=input.value;state[kind+'_thresholds'][i]=parseInt(input.value)||0;draw()};
   input.onchange=()=>setGate(i,kind,parseInt(input.value)||0);
@@ -83,6 +87,16 @@ function gateRow(kind,i){
 function buildSliders(){
   const m=el('move-sliders'),s=el('still-sliders');m.innerHTML='';s.innerHTML='';
   for(let i=0;i<9;i++){m.appendChild(gateRow('move',i));s.appendChild(gateRow('still',i))}
+}
+function updateSliderValues(){
+  for(const kind of ['move','still']){
+    const wrap=el(kind+'-sliders');
+    [...wrap.querySelectorAll('.gate')].forEach((row,i)=>{
+      const input=row.querySelector('input'), value=row.querySelector('.value');
+      const v=state[kind+'_thresholds'][i]??0;
+      input.value=v;value.textContent=v;
+    });
+  }
 }
 async function api(path,body){
   const opts=body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'};
@@ -94,6 +108,10 @@ async function setGate(gate,kind,value){
 }
 async function setEngineering(enable){
   try{await api('/api/engineering',{enable});state.engineering=enable;updateEngineeringButton();}
+  catch(e){el('status').textContent=e.message}
+}
+async function readSensor(){
+  try{await api('/api/read',{read:true});el('status').textContent='Reading sensor settings...';}
   catch(e){el('status').textContent=e.message}
 }
 function updateEngineeringButton(){const b=el('btn-engineering');b.textContent=state.engineering?'Engineering On':'Engineering Off';b.classList.toggle('primary',state.engineering)}
@@ -117,8 +135,11 @@ function applyState(d){
   Object.assign(state,d);
   el('presence').textContent=state.presence===null?'-':(state.presence?'Yes':'No');
   el('target').textContent=state.target_state??'-';
-  el('move-distance').textContent=state.move_distance==null?'-':state.move_distance+' cm';
-  el('still-distance').textContent=state.still_distance==null?'-':state.still_distance+' cm';
+  el('move-distance').textContent=state.move_distance==null?'-':ft(state.move_distance);
+  el('still-distance').textContent=state.still_distance==null?'-':ft(state.still_distance);
+  el('max-move-gate').textContent=state.max_move_gate==null?'-':'G'+state.max_move_gate+' / '+gateFt(state.max_move_gate);
+  el('max-still-gate').textContent=state.max_still_gate==null?'-':'G'+state.max_still_gate+' / '+gateFt(state.max_still_gate);
+  updateSliderValues();
   updateEngineeringButton();draw();
 }
 async function poll(){
@@ -126,6 +147,7 @@ async function poll(){
   catch(e){el('status').textContent=e.message}
 }
 el('btn-engineering').onclick=()=>setEngineering(!state.engineering);
+el('btn-read').onclick=()=>readSensor();
 buildSliders();draw();poll();setInterval(poll,500);
 </script>
 </body>

@@ -42,6 +42,10 @@ class TunerState:
             "move_distance": None,
             "still_distance": None,
             "engineering": False,
+            "max_gate": 8,
+            "max_move_gate": 8,
+            "max_still_gate": 8,
+            "timeout_seconds": None,
             "updated_at": None,
         }
         self.client = None
@@ -92,9 +96,11 @@ class TunerState:
         client.subscribe(self.topic("motion", f"{cid}/motion"))
         client.subscribe(self.topic("presence", f"{cid}/presence"))
         client.subscribe(self.topic("engineering_mode", f"{cid}/engineering_mode") + "/state")
+        client.subscribe(self.topic("ld2410_params", f"{cid}/ld2410/params"))
         client.subscribe(f"{cid}/gate/+/move_thresh")
         client.subscribe(f"{cid}/gate/+/still_thresh")
         self.set_engineering(True)
+        self.read_parameters()
 
     def _on_message(self, client, userdata, msg):
         topic = msg.topic
@@ -125,6 +131,18 @@ class TunerState:
                         self.data[key] = payload[key]
             elif topic == self.topic("engineering_mode", f"{cid}/engineering_mode") + "/state":
                 self.data["engineering"] = raw.strip().lower() == "on"
+            elif topic == self.topic("ld2410_params", f"{cid}/ld2410/params"):
+                try:
+                    payload = json.loads(raw)
+                except Exception:
+                    return
+                if isinstance(payload.get("move_thresholds"), list):
+                    self.data["move_thresholds"] = [int(v) for v in payload["move_thresholds"][:9]]
+                if isinstance(payload.get("still_thresholds"), list):
+                    self.data["still_thresholds"] = [int(v) for v in payload["still_thresholds"][:9]]
+                for key in ("max_gate", "max_move_gate", "max_still_gate", "timeout_seconds"):
+                    if key in payload:
+                        self.data[key] = payload[key]
             else:
                 parts = topic.split("/")
                 if len(parts) == 4 and parts[0] == cid and parts[1] == "gate":
@@ -150,6 +168,12 @@ class TunerState:
         with self.lock:
             self.data["engineering"] = bool(enable)
 
+    def read_parameters(self):
+        if not self.client:
+            return
+        topic = self.topic("ld2410_read", f"{self.client_id}/ld2410/read")
+        self.client.publish(topic, "read", retain=False)
+
     def set_gate(self, gate, kind, value):
         gate = int(gate)
         value = max(0, min(100, int(value)))
@@ -160,6 +184,7 @@ class TunerState:
         self.client.publish(topic, str(value), retain=False)
         with self.lock:
             self.data[f"{kind}_thresholds"][gate] = value
+        threading.Timer(0.6, self.read_parameters).start()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -183,6 +208,9 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
             if path == "/api/engineering":
                 self.server.tuner.set_engineering(bool(payload.get("enable")))
+                return _json_response(self, 200, {"ok": True})
+            if path == "/api/read":
+                self.server.tuner.read_parameters()
                 return _json_response(self, 200, {"ok": True})
             if path == "/api/gate":
                 self.server.tuner.set_gate(payload.get("gate"), payload.get("kind"), payload.get("value"))

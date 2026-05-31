@@ -121,6 +121,8 @@ static json defaults() {
                 {"update_install",   "hub75_clock/update/install"},
                 {"update_state",     "hub75_clock/update/state"},
                 {"update_latest",    "hub75_clock/update/latest"},
+                {"ld2410_params",    "hub75_clock/ld2410/params"},
+                {"ld2410_read",      "hub75_clock/ld2410/read"},
             }},
         }},
         {"ha_discovery", {
@@ -958,6 +960,7 @@ static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
     sub("bucket",           cid + "/bucket");
     sub("update_check",     cid + "/update/check");
     sub("update_install",   topics.value("update", cid + "/update/install"));
+    sub("ld2410_read",      cid + "/ld2410/read");
 
     // Gate threshold wildcard topics: {client_id}/gate/+/move_thresh etc.
     mosquitto_subscribe(mosq, nullptr, (cid + "/gate/+/move_thresh").c_str(),  0);
@@ -1197,6 +1200,12 @@ static void mqttOnMessage(mosquitto* mosq, void* obj,
 
     } else if (topic == topics.value("update_install", topics.value("update", cid + "/update/install"))) {
         installUpdateAsync(mosq, *ctx->cfg);
+
+    } else if (topic == topics.value("ld2410_read", cid + "/ld2410/read")) {
+        if (ctx->ld2410 && !msg->retain) {
+            ctx->ld2410->readParametersAndPublish(
+                topics.value("ld2410_params", cid + "/ld2410/params"));
+        }
     }
 }
 

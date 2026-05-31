@@ -318,9 +318,9 @@ make ld2410-tuner
 # open http://<clock-ip>:8766/
 ```
 
-It uses MQTT instead of opening the UART directly, so the clock can keep running while the tuner turns engineering mode on, graphs live move/still gate energy, and publishes gate threshold changes through the same commands the clock already understands. Set `ld2410_tuner.mode` to `ha` to expose an HA switch and URL sensor, or `always` to keep the tuner service running.
+It uses MQTT instead of opening the UART directly, so the clock can keep running while the tuner turns engineering mode on, reads the sensor's saved thresholds, graphs live move/still gate energy, and publishes gate threshold changes through the same commands the clock already understands. Set `ld2410_tuner.mode` to `ha` to expose an HA switch and URL sensor, or `always` to keep the tuner service running.
 
-The LD2410 stores normal gate sensitivity after successful configuration commands. The next tuning layer can expose max-distance, timeout, and distance-resolution controls; distance resolution requires a module restart before it truly takes effect.
+Distances in the tuner are shown in feet. The LD2410 stores normal gate sensitivity after successful configuration commands. The next tuning layer can expose max-distance, timeout, and distance-resolution controls; distance resolution requires a module restart before it truly takes effect.
 
 ---
 

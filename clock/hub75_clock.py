@@ -21,6 +21,7 @@ import random
 import re
 import importlib.util
 import subprocess
+import queue
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Tuple
 
@@ -129,6 +130,8 @@ DEFAULTS = {
             "update_install":   "hub75_clock/update/install",
             "update_state":     "hub75_clock/update/state",
             "update_latest":    "hub75_clock/update/latest",
+            "ld2410_params":    "hub75_clock/ld2410/params",
+            "ld2410_read":      "hub75_clock/ld2410/read",
         },
     },
     "ha_discovery": {
@@ -1103,6 +1106,7 @@ class LD2410Sensor:
         self._stopping = False
         self._thread = None
         self._io_lock = threading.Lock()
+        self._cmd_responses = queue.Queue(maxsize=8)
         self._gate_thresholds = {i: {"move": 50, "still": 30} for i in range(9)}
         if HAS_LD2410:
             try:
@@ -1145,6 +1149,26 @@ class LD2410Sensor:
             if not self._stopping:
                 print(f"[ld2410] cmd error: {e}")
 
+    def _drain_cmd_responses(self):
+        while True:
+            try:
+                self._cmd_responses.get_nowait()
+            except queue.Empty:
+                return
+
+    def _send_cmd_wait(self, cmd_word: bytes, data: bytes = b"", timeout: float = 1.0):
+        self._drain_cmd_responses()
+        self._send_cmd(cmd_word, data)
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                payload = self._cmd_responses.get(timeout=max(0.05, deadline - time.time()))
+            except queue.Empty:
+                break
+            if len(payload) >= 2 and payload[:2] == bytes([cmd_word[0], cmd_word[1] + 1]):
+                return payload
+        return None
+
     def _enable_engineering_mode(self):
         self._send_cmd(b"\xFF\x00")
         time.sleep(0.1)
@@ -1185,6 +1209,49 @@ class LD2410Sensor:
             if not self._stopping:
                 print(f"[ld2410] gate config error: {e}")
 
+    def read_parameters(self):
+        if self._stopping or not self.serial:
+            return None
+        try:
+            self._send_cmd(b"\xFF\x00")
+            time.sleep(0.1)
+            response = self._send_cmd_wait(b"\x61\x00", timeout=1.0)
+            time.sleep(0.1)
+            self._send_cmd(b"\xFE\x00")
+            if not response or len(response) < 28:
+                return None
+            if response[2] != 0x00 or response[3] != 0x00 or response[4] != 0xAA:
+                return None
+            max_gate = int(response[5])
+            max_move_gate = int(response[6])
+            max_still_gate = int(response[7])
+            gate_count = min(9, max_gate + 1)
+            move = [int(v) for v in response[8:8 + gate_count]]
+            still_start = 8 + gate_count
+            still = [int(v) for v in response[still_start:still_start + gate_count]]
+            while len(move) < 9:
+                move.append(0)
+            while len(still) < 9:
+                still.append(0)
+            timeout_idx = still_start + gate_count
+            timeout = 0
+            if len(response) >= timeout_idx + 2:
+                timeout = response[timeout_idx] | (response[timeout_idx + 1] << 8)
+            for gate in range(9):
+                self._gate_thresholds[gate] = {"move": move[gate], "still": still[gate]}
+            return {
+                "max_gate": max_gate,
+                "max_move_gate": max_move_gate,
+                "max_still_gate": max_still_gate,
+                "move_thresholds": move,
+                "still_thresholds": still,
+                "timeout_seconds": timeout,
+            }
+        except Exception as e:
+            if not self._stopping:
+                print(f"[ld2410] read parameters error: {e}")
+            return None
+
     def _run(self):
         buf = bytearray()
         while self.running:
@@ -1206,7 +1273,32 @@ class LD2410Sensor:
 
     def _process(self, buf: bytearray):
         while True:
-            i = buf.find(self.HEAD)
+            cmd_i = buf.find(self.CMD_HEAD)
+            data_i = buf.find(self.HEAD)
+            if cmd_i >= 0 and (data_i < 0 or cmd_i < data_i):
+                if cmd_i > 0:
+                    del buf[:cmd_i]
+                if len(buf) < 10:
+                    return
+                dl = buf[4] | (buf[5] << 8)
+                if dl > 512:
+                    del buf[:]
+                    return
+                total = 4 + 2 + dl + 4
+                if len(buf) < total:
+                    return
+                if bytes(buf[total-4:total]) != self.CMD_TAIL:
+                    del buf[:1]
+                    continue
+                payload = bytes(buf[6:6+dl])
+                try:
+                    self._cmd_responses.put_nowait(payload)
+                except queue.Full:
+                    pass
+                del buf[:total]
+                continue
+
+            i = data_i
             if i < 0:
                 if len(buf) > 1024: del buf[:-4]
                 return
@@ -1402,6 +1494,19 @@ class HUB75Clock:
             args=(gate, move_thresh, still_thresh),
             daemon=True,
         ).start()
+
+    def _read_ld2410_params_async(self):
+        if self.ld2410 is None:
+            return
+
+        def _target():
+            params = self.ld2410.read_parameters()
+            if params:
+                client_id = self.cfg["mqtt"]["client_id"]
+                topic = self.cfg["mqtt"]["topics"].get("ld2410_params", f"{client_id}/ld2410/params")
+                self.mqtt_client.publish(topic, json.dumps(params), retain=True)
+
+        threading.Thread(target=_target, daemon=True).start()
 
     def _theme_builder_cfg(self):
         return self.cfg.get("theme_builder", {})
@@ -1671,6 +1776,7 @@ class HUB75Clock:
                   topics.get("bucket", f"{client_id}/bucket"),
                   topics.get("update_check", f"{client_id}/update/check"),
                   topics.get("update_install", topics.get("update", f"{client_id}/update/install")),
+                  topics.get("ld2410_read", f"{client_id}/ld2410/read"),
                   topics["theme"]):
             client.subscribe(t)
         client.publish(topics["themes_available"],
@@ -1870,6 +1976,10 @@ class HUB75Clock:
             if not getattr(msg, "retain", False):
                 self._install_update_async()
 
+        elif msg.topic == topics.get("ld2410_read", f"{client_id}/ld2410/read"):
+            if not getattr(msg, "retain", False):
+                self._read_ld2410_params_async()
+
         elif msg.topic == topics.get("theme"):
             theme_name = payload if isinstance(payload, str) else payload.get("theme", "")
             theme = self.theme_loader.get_theme(theme_name)
@@ -1962,29 +2072,14 @@ class HUB75Clock:
                 f"{prefix}/sensor/{s['unique_id']}/config",
                 json.dumps({**s, "device": device, "availability": avail, "has_entity_name": True}), retain=True)
 
-        # --- Gate energy diagnostic sensors (only available when engineering mode is on) ---
-        if self.ld2410 is not None:
-            gate_avail = [
-                {"topic": self.topic_avail},
-                {"topic": em_state_t, "payload_available": "on", "payload_not_available": "off"},
-            ]
-            for gate in range(9):
-                for energy_type, label in (("move", "Move"), ("still", "Still")):
-                    uid = f"{client_id}_g{gate}_{energy_type}_energy"
-                    self.mqtt_client.publish(
-                        f"{prefix}/sensor/{uid}/config",
-                        json.dumps({
-                            "name":           f"Gate {gate} {label} Energy",
-                            "unique_id":      uid,
-                            "device":         device,
-                            "availability":   gate_avail,
-                            "availability_mode": "all",
-                            "state_topic":    topics["motion"],
-                            "value_template": f"{{{{ value_json.{energy_type}_gates[{gate}] }}}}",
-                            "state_class":    "measurement",
-                            "entity_category": "diagnostic",
-                            "has_entity_name": True,
-                        }), retain=True)
+        # Remove old per-gate energy diagnostic entities; the tuner owns that detail now.
+        for gate in range(9):
+            for energy_type in ("move", "still"):
+                self.mqtt_client.publish(
+                    f"{prefix}/sensor/{client_id}_g{gate}_{energy_type}_energy/config",
+                    "",
+                    retain=True,
+                )
 
         # --- Binary sensors ---
         binary_configs = []

@@ -4,7 +4,9 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <mutex>
 #include <string>
@@ -91,6 +93,7 @@ public:
     // Thread-safe: runs command writes off the MQTT callback thread.
     void enableEngineeringMode(bool enable);
     void writeGateConfig(int gate, int moveThresh, int stillThresh);
+    void readParametersAndPublish(const std::string& paramsTopic);
 
     bool engineeringMode() const { return _engineeringMode.load(); }
 
@@ -110,6 +113,9 @@ private:
     std::vector<std::thread> _commandThreads;
     std::mutex        _writeMtx;
     std::mutex        _commandThreadsMtx;
+    std::mutex        _cmdResponseMtx;
+    std::condition_variable _cmdResponseCv;
+    std::deque<std::vector<uint8_t>> _cmdResponses;
     std::chrono::steady_clock::time_point _lastPub{};
 
     // Frame magic bytes (Python HEAD/TAIL/CMD_HEAD/CMD_TAIL)
@@ -123,6 +129,9 @@ private:
                   const uint8_t* data = nullptr, size_t dataLen = 0);
     void _enableEngineeringModeImpl(bool enable);
     void _writeGateConfigImpl(int gate, int moveT, int stillT);
+    std::vector<uint8_t> _sendCmdWait(const uint8_t* cmdWord, size_t cwLen,
+                                      const uint8_t* data = nullptr, size_t dataLen = 0);
+    void _readParametersAndPublishImpl(const std::string& paramsTopic);
     void _run();
     void _process(std::vector<uint8_t>& buf);
     void _parseBasic(const uint8_t* data, size_t len);

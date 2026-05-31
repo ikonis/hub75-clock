@@ -198,6 +198,8 @@ mqtt:
     update_install:   ${CLIENT_ID}/update/install
     update_state:     ${CLIENT_ID}/update/state
     update_latest:    ${CLIENT_ID}/update/latest
+    ld2410_params:    ${CLIENT_ID}/ld2410/params
+    ld2410_read:      ${CLIENT_ID}/ld2410/read
 
 ha_discovery:
   enabled: true
