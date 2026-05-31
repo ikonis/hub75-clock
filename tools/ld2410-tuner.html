@@ -120,6 +120,15 @@ function updateSliderValues(){
     });
   }
 }
+function mergeThresholds(kind, values){
+  if(!Array.isArray(values))return;
+  const key=kind+'_thresholds';
+  state[key]=state[key]||Array(9).fill(0);
+  for(let i=0;i<9;i++){
+    if(sliderHeld(kind,i))continue;
+    if(values[i]!==undefined)state[key][i]=values[i];
+  }
+}
 async function api(path,body){
   const opts=body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'};
   const r=await fetch(path,opts);const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'request failed');return d;
@@ -154,7 +163,12 @@ function draw(){
   function line(x,v,len,color){ctx.strokeStyle=color;ctx.lineWidth=4;const y=yFor(v);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+len,y);ctx.stroke()}
 }
 function applyState(d){
-  Object.assign(state,d);
+  const next=Object.assign({},d);
+  delete next.move_thresholds;
+  delete next.still_thresholds;
+  Object.assign(state,next);
+  mergeThresholds('move',d.move_thresholds);
+  mergeThresholds('still',d.still_thresholds);
   el('presence').textContent=state.presence===null?'-':(state.presence?'Yes':'No');
   el('target').textContent=state.target_state??'-';
   el('move-distance').textContent=state.move_distance==null?'-':ft(state.move_distance);

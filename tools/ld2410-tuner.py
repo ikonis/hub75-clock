@@ -48,6 +48,7 @@ class TunerState:
             "timeout_seconds": None,
             "updated_at": None,
         }
+        self.threshold_hold_until = {}
         self.client = None
 
     @property
@@ -73,13 +74,13 @@ class TunerState:
             client.username_pw_set(username, password)
         client.on_connect = self._on_connect
         client.on_message = self._on_message
+        self.client = client
         client.connect(
             self.mqtt_cfg.get("broker", "localhost"),
             int(self.mqtt_cfg.get("port", 1883)),
             keepalive=30,
         )
         client.loop_start()
-        self.client = client
 
     def stop_mqtt(self):
         if self.client:
@@ -100,7 +101,7 @@ class TunerState:
         client.subscribe(f"{cid}/gate/+/move_thresh")
         client.subscribe(f"{cid}/gate/+/still_thresh")
         self.set_engineering(True)
-        self.read_parameters()
+        threading.Timer(0.8, self.read_parameters).start()
 
     def _on_message(self, client, userdata, msg):
         topic = msg.topic
@@ -137,9 +138,9 @@ class TunerState:
                 except Exception:
                     return
                 if isinstance(payload.get("move_thresholds"), list):
-                    self.data["move_thresholds"] = [int(v) for v in payload["move_thresholds"][:9]]
+                    self._merge_thresholds_locked("move", payload["move_thresholds"])
                 if isinstance(payload.get("still_thresholds"), list):
-                    self.data["still_thresholds"] = [int(v) for v in payload["still_thresholds"][:9]]
+                    self._merge_thresholds_locked("still", payload["still_thresholds"])
                 for key in ("max_gate", "max_move_gate", "max_still_gate", "timeout_seconds"):
                     if key in payload:
                         self.data[key] = payload[key]
@@ -152,9 +153,22 @@ class TunerState:
                     except Exception:
                         return
                     if 0 <= gate < 9 and parts[3] == "move_thresh":
-                        self.data["move_thresholds"][gate] = value
+                        self._set_threshold_locked("move", gate, value)
                     elif 0 <= gate < 9 and parts[3] == "still_thresh":
-                        self.data["still_thresholds"][gate] = value
+                        self._set_threshold_locked("still", gate, value)
+
+    def _threshold_held_locked(self, kind, gate):
+        return self.threshold_hold_until.get((kind, gate), 0) > time.time()
+
+    def _set_threshold_locked(self, kind, gate, value):
+        if not self._threshold_held_locked(kind, gate):
+            self.data[f"{kind}_thresholds"][gate] = value
+
+    def _merge_thresholds_locked(self, kind, values):
+        target = self.data[f"{kind}_thresholds"]
+        for gate, value in enumerate(values[:9]):
+            if not self._threshold_held_locked(kind, gate):
+                target[gate] = int(value)
 
     def snapshot(self):
         with self.lock:
@@ -184,6 +198,7 @@ class TunerState:
         self.client.publish(topic, str(value), retain=False)
         with self.lock:
             self.data[f"{kind}_thresholds"][gate] = value
+            self.threshold_hold_until[(kind, gate)] = time.time() + 3.0
         threading.Timer(1.5, self.read_parameters).start()
 
 
