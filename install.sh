@@ -106,6 +106,25 @@ esac
 echo "      Theme builder mode: $THEME_BUILDER_MODE"
 export THEME_BUILDER_MODE
 
+echo ""
+echo "LD2410 tuner webserver:"
+echo "  off     - do not install/start the tuner"
+echo "  ha      - install it stopped; let Home Assistant switch it on/off"
+echo "  always  - run it all the time"
+read -p "LD2410 tuner mode [off/ha/always] [ha]: " LD2410_TUNER_MODE
+LD2410_TUNER_MODE="${LD2410_TUNER_MODE:-ha}"
+case "$LD2410_TUNER_MODE" in
+    off|none|no|disabled) LD2410_TUNER_MODE="off" ;;
+    ha|toggle|switch) LD2410_TUNER_MODE="ha" ;;
+    always|on|yes) LD2410_TUNER_MODE="always" ;;
+    *)
+        echo "[error] Unknown LD2410 tuner mode: $LD2410_TUNER_MODE"
+        exit 1
+        ;;
+esac
+echo "      LD2410 tuner mode: $LD2410_TUNER_MODE"
+export LD2410_TUNER_MODE
+
 echo "[4/11] Building rpi-rgb-led-matrix..."
 if [ ! -d "$HOME/rpi-rgb-led-matrix" ]; then
     git clone https://github.com/hzeller/rpi-rgb-led-matrix "$HOME/rpi-rgb-led-matrix"
@@ -215,6 +234,8 @@ sudo cp "$REPO_DIR/scripts/test_display.py"  "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
 sudo cp "$REPO_DIR/tools/theme-server.py" "$CLOCK_DIR/tools/"
 sudo cp "$REPO_DIR/tools/sprite-builder.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/ld2410-tuner.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/ld2410-tuner.py" "$CLOCK_DIR/tools/"
 # Copy built-in themes only if the themes dir is empty (preserve user edits)
 if [ -z "$(ls -A "$CONFIG_DIR/themes" 2>/dev/null)" ]; then
     sudo cp "$REPO_DIR/themes/"*.json "$CONFIG_DIR/themes/"
@@ -312,6 +333,38 @@ else
     sudo systemctl disable hub75-theme-builder.service >/dev/null 2>&1 || true
     sudo systemctl stop hub75-theme-builder.service >/dev/null 2>&1 || true
     echo "      Theme builder service installed but stopped."
+fi
+
+echo "      Installing LD2410 tuner service..."
+sudo tee /etc/systemd/system/hub75-ld2410-tuner.service > /dev/null << EOF
+[Unit]
+Description=HUB75 LD2410 Tuner
+After=network-online.target hub75-clock.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$CLOCK_DIR
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/ld2410-tuner.py --config $CONFIG_DIR/config.yaml --host 0.0.0.0 --port 8766
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+if [ "$LD2410_TUNER_MODE" = "always" ]; then
+    sudo systemctl enable hub75-ld2410-tuner.service
+    sudo systemctl restart hub75-ld2410-tuner.service
+    echo "      LD2410 tuner service enabled."
+else
+    sudo systemctl disable hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+    sudo systemctl stop hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+    echo "      LD2410 tuner service installed but stopped."
 fi
 
 echo "[10/11] Installing update script..."

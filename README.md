@@ -278,6 +278,7 @@ make config     # open config wizard (reconfigure)
 make rgb        # run test_display.py (panel pixel test)
 make theme-builder # edit repo themes in the browser
 make sprite-builder # edit sprite JSON files in the browser
+make ld2410-tuner # tune LD2410 gate thresholds from a phone-friendly page
 ```
 
 After editing `/etc/hub75-clock/config.yaml` directly:
@@ -305,6 +306,21 @@ sudo python3 tools/theme-server.py --themes-dir /etc/hub75-clock/themes --host 0
 Then browse to `http://<clock-ip>:8765/`. Only run it on a trusted network.
 
 During install, the theme builder can be disabled, left always running, or controlled from Home Assistant. In HA-controlled mode, the clock publishes a Theme Builder switch and a Theme Builder URL sensor through MQTT discovery. The switch starts/stops the `hub75-theme-builder` service; the URL sensor gives you the browser address.
+
+---
+
+## LD2410 Tuner
+
+The LD2410 tuner is a tiny mobile-friendly web UI for live gate tuning:
+
+```bash
+make ld2410-tuner
+# open http://<clock-ip>:8766/
+```
+
+It uses MQTT instead of opening the UART directly, so the clock can keep running while the tuner turns engineering mode on, graphs live move/still gate energy, and publishes gate threshold changes through the same commands the clock already understands. Set `ld2410_tuner.mode` to `ha` to expose an HA switch and URL sensor, or `always` to keep the tuner service running.
+
+The LD2410 stores normal gate sensitivity after successful configuration commands. The next tuning layer can expose max-distance, timeout, and distance-resolution controls; distance resolution requires a module restart before it truly takes effect.
 
 ---
 

@@ -42,6 +42,14 @@ esac
 THEME_BUILDER_PORT="${THEME_BUILDER_PORT:-8765}"
 THEME_BUILDER_HOST="${THEME_BUILDER_HOST:-0.0.0.0}"
 THEME_BUILDER_URL="${THEME_BUILDER_URL:-http://$(hostname).local:${THEME_BUILDER_PORT}/}"
+LD2410_TUNER_MODE="${LD2410_TUNER_MODE:-off}"
+case "$LD2410_TUNER_MODE" in
+    off|ha|always) ;;
+    *) LD2410_TUNER_MODE="off" ;;
+esac
+LD2410_TUNER_PORT="${LD2410_TUNER_PORT:-8766}"
+LD2410_TUNER_HOST="${LD2410_TUNER_HOST:-0.0.0.0}"
+LD2410_TUNER_URL="${LD2410_TUNER_URL:-http://$(hostname).local:${LD2410_TUNER_PORT}/}"
 
 # ── MQTT ─────────────────────────────────────────────────────────────────────
 echo ""
@@ -203,6 +211,13 @@ theme_builder:
   host: "$THEME_BUILDER_HOST"
   port: $THEME_BUILDER_PORT
   url: "$THEME_BUILDER_URL"
+
+ld2410_tuner:
+  mode: "$LD2410_TUNER_MODE"
+  service_name: hub75-ld2410-tuner
+  host: "$LD2410_TUNER_HOST"
+  port: $LD2410_TUNER_PORT
+  url: "$LD2410_TUNER_URL"
 
 panel:
   hardware_mapping: $HW_MAP

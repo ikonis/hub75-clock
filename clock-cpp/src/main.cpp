@@ -136,6 +136,13 @@ static json defaults() {
             {"port", 8765},
             {"url", ""},
         }},
+        {"ld2410_tuner", {
+            {"mode", "off"},
+            {"service_name", "hub75-ld2410-tuner"},
+            {"host", "0.0.0.0"},
+            {"port", 8766},
+            {"url", ""},
+        }},
         {"panel", {
             {"hardware_mapping",    "regular"},
             {"gpio_slowdown",       2},
@@ -530,6 +537,56 @@ static void ensureThemeBuilderStartupState(const json& cfg) {
     std::system(cmd.c_str());
 }
 
+static std::string ld2410TunerStateTopic(const json& cfg) {
+    std::string cid = cfg["mqtt"].value("client_id", "hub75_clock");
+    return cid + "/ld2410_tuner/state";
+}
+
+static std::string ld2410TunerUrlTopic(const json& cfg) {
+    std::string cid = cfg["mqtt"].value("client_id", "hub75_clock");
+    return cid + "/ld2410_tuner/url";
+}
+
+static std::string ld2410TunerUrl(const json& cfg) {
+    const auto& lt = cfg["ld2410_tuner"];
+    std::string configured = lt.value("url", "");
+    if (!configured.empty()) return configured;
+    std::string cid = cfg["mqtt"].value("client_id", "hub75_clock");
+    int port = lt.value("port", 8766);
+    return "http://" + cid + ".local:" + std::to_string(port) + "/";
+}
+
+static bool ld2410TunerActive(const json& cfg) {
+    std::string service = cfg["ld2410_tuner"].value("service_name", "hub75-ld2410-tuner");
+    std::string cmd = "systemctl is-active --quiet " + service;
+    return std::system(cmd.c_str()) == 0;
+}
+
+static void publishLd2410TunerState(mosquitto* mosq, const json& cfg) {
+    if (cfg["ld2410_tuner"].value("mode", "off") == "off") return;
+    std::string state = ld2410TunerActive(cfg) ? "on" : "off";
+    std::string stateTopic = ld2410TunerStateTopic(cfg);
+    std::string urlTopic = ld2410TunerUrlTopic(cfg);
+    std::string url = ld2410TunerUrl(cfg);
+    mosquitto_publish(mosq, nullptr, stateTopic.c_str(), int(state.size()), state.c_str(), 0, 1);
+    mosquitto_publish(mosq, nullptr, urlTopic.c_str(), int(url.size()), url.c_str(), 0, 1);
+}
+
+static void setLd2410TunerService(mosquitto* mosq, const json& cfg, bool enable) {
+    if (cfg["ld2410_tuner"].value("mode", "off") == "off") return;
+    std::string service = cfg["ld2410_tuner"].value("service_name", "hub75-ld2410-tuner");
+    std::string cmd = std::string("systemctl ") + (enable ? "start " : "stop ") + service;
+    std::system(cmd.c_str());
+    publishLd2410TunerState(mosq, cfg);
+}
+
+static void ensureLd2410TunerStartupState(const json& cfg) {
+    if (cfg["ld2410_tuner"].value("mode", "off") != "ha") return;
+    std::string service = cfg["ld2410_tuner"].value("service_name", "hub75-ld2410-tuner");
+    std::string cmd = "systemctl stop " + service + " >/dev/null 2>&1";
+    std::system(cmd.c_str());
+}
+
 static bool updateEnabled(const json& cfg) {
     return cfg.contains("update") && cfg["update"].value("enabled", false);
 }
@@ -809,6 +866,25 @@ static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
         pub(prefix + "/sensor/" + cid + "_theme_builder_url/config", sensor);
     }
 
+    if (cfg["ld2410_tuner"].value("mode", "off") == "ha") {
+        json sw = base("LD2410 Tuner", cid + "_ld2410_tuner");
+        sw["command_topic"] = topics.value("config", cid + "/config");
+        sw["payload_on"] = "{\"ld2410_tuner\": true}";
+        sw["payload_off"] = "{\"ld2410_tuner\": false}";
+        sw["state_topic"] = ld2410TunerStateTopic(cfg);
+        sw["state_on"] = "on";
+        sw["state_off"] = "off";
+        sw["entity_category"] = "config";
+        sw["icon"] = "mdi:radar";
+        pub(prefix + "/switch/" + cid + "_ld2410_tuner/config", sw);
+
+        json sensor = base("LD2410 Tuner URL", cid + "_ld2410_tuner_url");
+        sensor["state_topic"] = ld2410TunerUrlTopic(cfg);
+        sensor["entity_category"] = "diagnostic";
+        sensor["icon"] = "mdi:web";
+        pub(prefix + "/sensor/" + cid + "_ld2410_tuner_url/config", sensor);
+    }
+
     if (updateEnabled(cfg)) {
         std::string stateTopic = updateStateTopic(cfg);
 
@@ -914,6 +990,7 @@ static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
         pub(emStateTopic, ctx->ld2410->engineeringMode() ? "on" : "off", true);
     }
     publishThemeBuilderState(mosq, *ctx->cfg);
+    publishLd2410TunerState(mosq, *ctx->cfg);
     publishHomeAssistantDiscovery(mosq, *ctx->cfg, themeNames);
     if (updateEnabled(*ctx->cfg) && (*ctx->cfg)["update"].value("check_on_startup", true))
         checkForUpdateAsync(mosq, *ctx->cfg);
@@ -1049,6 +1126,14 @@ static void mqttOnMessage(mosquitto* mosq, void* obj,
                     setThemeBuilderService(mosq, *ctx->cfg, payload["theme_builder"].get<bool>());
                 }
             }
+            if (payload.contains("ld2410_tuner")) {
+                if (msg->retain) {
+                    std::cout << "[ld2410_tuner] ignored retained command\n";
+                    publishLd2410TunerState(mosq, *ctx->cfg);
+                } else {
+                    setLd2410TunerService(mosq, *ctx->cfg, payload["ld2410_tuner"].get<bool>());
+                }
+            }
         } catch (...) {}
 
     // ── alert ─────────────────────────────────────────────────────────────
@@ -1181,6 +1266,7 @@ int main(int argc, char* argv[]) {
     // ── Weather animator ──────────────────────────────────────────────────
     WeatherAnimator animator(matrix->width(), matrix->height(), cfg, matrix);
     ensureThemeBuilderStartupState(cfg);
+    ensureLd2410TunerStartupState(cfg);
 
     std::string defaultTheme = cfg["themes"].value("default_theme", "Day");
     animator.setTheme(defaultTheme, themeLoader);

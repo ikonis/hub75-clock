@@ -76,6 +76,8 @@ echo "[update] installing theme builder files..."
 sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
 sudo cp "$REPO_DIR/tools/theme-server.py" "$CLOCK_DIR/tools/"
 sudo cp "$REPO_DIR/tools/sprite-builder.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/ld2410-tuner.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/ld2410-tuner.py" "$CLOCK_DIR/tools/"
 if [ ! -f "$CONFIG_DIR/animations.yaml" ] && [ -f "$REPO_DIR/clock-cpp/animations.example.yaml" ]; then
     echo "[update] installing default animation settings..."
     sudo cp "$REPO_DIR/clock-cpp/animations.example.yaml" "$CONFIG_DIR/animations.yaml"
@@ -92,6 +94,26 @@ Type=simple
 User=root
 WorkingDirectory=$CLOCK_DIR
 ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --sprites-dir $CONFIG_DIR/sprites --animations-dir $CONFIG_DIR/sprite-animations --host 0.0.0.0 --port 8765
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo tee /etc/systemd/system/hub75-ld2410-tuner.service > /dev/null << EOF
+[Unit]
+Description=HUB75 LD2410 Tuner
+After=network-online.target hub75-clock.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$CLOCK_DIR
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/ld2410-tuner.py --config $CONFIG_DIR/config.yaml --host 0.0.0.0 --port 8766
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
@@ -128,6 +150,35 @@ case "$THEME_BUILDER_MODE" in
         echo "[update] theme builder mode=off; disabling service..."
         sudo systemctl disable hub75-theme-builder.service >/dev/null 2>&1 || true
         sudo systemctl stop hub75-theme-builder.service >/dev/null 2>&1 || true
+        ;;
+esac
+
+LD2410_TUNER_MODE="$(python3 - "$CONFIG_DIR/config.yaml" <<'PY'
+import sys
+try:
+    import yaml
+    with open(sys.argv[1], encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    print((cfg.get("ld2410_tuner") or {}).get("mode", "off"))
+except Exception:
+    print("off")
+PY
+)"
+case "$LD2410_TUNER_MODE" in
+    always)
+        echo "[update] ld2410 tuner mode=always; enabling service..."
+        sudo systemctl enable hub75-ld2410-tuner.service >/dev/null
+        sudo systemctl restart hub75-ld2410-tuner.service
+        ;;
+    ha)
+        echo "[update] ld2410 tuner mode=ha; leaving service stopped for HA control..."
+        sudo systemctl disable hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+        ;;
+    *)
+        echo "[update] ld2410 tuner mode=off; disabling service..."
+        sudo systemctl disable hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-ld2410-tuner.service >/dev/null 2>&1 || true
         ;;
 esac
 

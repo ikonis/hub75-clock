@@ -144,6 +144,13 @@ DEFAULTS = {
         "port": 8765,
         "url": "",
     },
+    "ld2410_tuner": {
+        "mode": "off",
+        "service_name": "hub75-ld2410-tuner",
+        "host": "0.0.0.0",
+        "port": 8766,
+        "url": "",
+    },
     "panel": {
         "hardware_mapping":    "regular",
         "gpio_slowdown":       2,
@@ -1354,6 +1361,7 @@ class HUB75Clock:
         self._update_stop = threading.Event()
         self._update_thread_started = False
         self._ensure_theme_builder_startup_state()
+        self._ensure_ld2410_tuner_startup_state()
 
     # ------------------------------------------------------------------
     # MQTT
@@ -1460,6 +1468,72 @@ class HUB75Clock:
             )
         except Exception as e:
             print(f"[theme_builder] startup stop failed: {e}")
+
+    def _ld2410_tuner_cfg(self):
+        return self.cfg.get("ld2410_tuner", {})
+
+    def _ld2410_tuner_state_topic(self):
+        client_id = self.cfg["mqtt"]["client_id"]
+        return f"{client_id}/ld2410_tuner/state"
+
+    def _ld2410_tuner_url_topic(self):
+        client_id = self.cfg["mqtt"]["client_id"]
+        return f"{client_id}/ld2410_tuner/url"
+
+    def _ld2410_tuner_url(self):
+        lt = self._ld2410_tuner_cfg()
+        if lt.get("url"):
+            return lt["url"]
+        return f"http://{self.cfg['mqtt']['client_id']}.local:{int(lt.get('port', 8766))}/"
+
+    def _ld2410_tuner_is_active(self) -> bool:
+        service = self._ld2410_tuner_cfg().get("service_name", "hub75-ld2410-tuner")
+        try:
+            return subprocess.run(
+                ["systemctl", "is-active", "--quiet", service],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode == 0
+        except Exception:
+            return False
+
+    def _publish_ld2410_tuner_state(self):
+        if self._ld2410_tuner_cfg().get("mode", "off") == "off":
+            return
+        active = self._ld2410_tuner_is_active()
+        self.mqtt_client.publish(self._ld2410_tuner_state_topic(), "on" if active else "off", retain=True)
+        self.mqtt_client.publish(self._ld2410_tuner_url_topic(), self._ld2410_tuner_url(), retain=True)
+
+    def _set_ld2410_tuner(self, enable: bool):
+        lt = self._ld2410_tuner_cfg()
+        if lt.get("mode", "off") == "off":
+            return
+        service = lt.get("service_name", "hub75-ld2410-tuner")
+        action = "start" if enable else "stop"
+        try:
+            subprocess.run(["systemctl", action, service], check=False)
+        except Exception as e:
+            print(f"[ld2410_tuner] {action} failed: {e}")
+        self._publish_ld2410_tuner_state()
+
+    def _set_ld2410_tuner_async(self, enable: bool):
+        threading.Thread(target=self._set_ld2410_tuner, args=(enable,), daemon=True).start()
+
+    def _ensure_ld2410_tuner_startup_state(self):
+        lt = self._ld2410_tuner_cfg()
+        if lt.get("mode", "off") != "ha":
+            return
+        service = lt.get("service_name", "hub75-ld2410-tuner")
+        try:
+            subprocess.run(
+                ["systemctl", "stop", service],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception as e:
+            print(f"[ld2410_tuner] startup stop failed: {e}")
 
     def _update_cfg(self):
         return self.cfg.get("update", {})
@@ -1616,6 +1690,7 @@ class HUB75Clock:
         if self.ld2410 is not None:
             client.publish(em_state_topic, "on" if self.ld2410.engineering_mode else "off", retain=True)
         self._publish_theme_builder_state()
+        self._publish_ld2410_tuner_state()
         self._start_update_scheduler()
         if self._update_enabled() and self._update_cfg().get("check_on_startup", True):
             self._check_for_update_async()
@@ -1691,6 +1766,13 @@ class HUB75Clock:
                     self._publish_theme_builder_state()
                 else:
                     self._set_theme_builder_async(bool(payload["theme_builder"]))
+
+            if "ld2410_tuner" in payload:
+                if getattr(msg, "retain", False):
+                    print("[ld2410_tuner] ignored retained command")
+                    self._publish_ld2410_tuner_state()
+                else:
+                    self._set_ld2410_tuner_async(bool(payload["ld2410_tuner"]))
 
             if "bucket" in payload:
                 self._apply_bucket(payload["bucket"])
@@ -2003,6 +2085,38 @@ class HUB75Clock:
                     "device":        device,
                     "availability":  avail,
                     "state_topic":   self._theme_builder_url_topic(),
+                    "entity_category": "diagnostic",
+                    "icon":          "mdi:web",
+                    "has_entity_name": True,
+                }), retain=True)
+
+        # --- Switch + URL sensor: LD2410 tuner webserver ---
+        if self.ld2410 is not None and self._ld2410_tuner_cfg().get("mode", "off") == "ha":
+            self.mqtt_client.publish(
+                f"{prefix}/switch/{client_id}_ld2410_tuner/config",
+                json.dumps({
+                    "name":          "LD2410 Tuner",
+                    "unique_id":     f"{client_id}_ld2410_tuner",
+                    "device":        device,
+                    "availability":  avail,
+                    "command_topic": topics["config"],
+                    "payload_on":    '{"ld2410_tuner": true}',
+                    "payload_off":   '{"ld2410_tuner": false}',
+                    "state_topic":   self._ld2410_tuner_state_topic(),
+                    "state_on":      "on",
+                    "state_off":     "off",
+                    "entity_category": "config",
+                    "icon":          "mdi:radar",
+                    "has_entity_name": True,
+                }), retain=True)
+            self.mqtt_client.publish(
+                f"{prefix}/sensor/{client_id}_ld2410_tuner_url/config",
+                json.dumps({
+                    "name":          "LD2410 Tuner URL",
+                    "unique_id":     f"{client_id}_ld2410_tuner_url",
+                    "device":        device,
+                    "availability":  avail,
+                    "state_topic":   self._ld2410_tuner_url_topic(),
                     "entity_category": "diagnostic",
                     "icon":          "mdi:web",
                     "has_entity_name": True,

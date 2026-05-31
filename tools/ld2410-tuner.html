@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LD2410 Tuner</title>
+<style>
+:root{--bg:#101116;--panel:#1b1c24;--panel2:#242630;--border:#393b49;--text:#e3e5ee;--dim:#8d91a6;--move:#68d391;--still:#63b3ed;--thresh:#f6ad55;--danger:#fc8181;--ok:#9ae6b4;--accent:#a3bffa}
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}
+.app{max-width:980px;margin:0 auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+.top{display:flex;gap:8px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:2;background:linear-gradient(var(--bg),rgba(16,17,22,.92));padding:6px 0 10px}
+h1{font-size:18px;color:#c7d2fe}.state{font-size:12px;color:var(--dim)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.card-h{padding:10px 12px;background:var(--panel2);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);font-weight:700}
+.card-b{padding:12px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.btn{border:1px solid var(--border);border-radius:6px;background:#2b2d38;color:var(--text);padding:10px 12px;font:inherit}.btn.primary{border-color:var(--accent);background:#30364a}.btn.danger{border-color:var(--danger)}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{background:#14151c;border:1px solid #2b2d38;border-radius:6px;padding:8px}.metric span{display:block;color:var(--dim);font-size:11px}.metric strong{font-size:20px}
+canvas{width:100%;height:auto;display:block;background:#08090d;border-radius:6px;border:1px solid #2b2d38;touch-action:none}
+.gate{display:grid;grid-template-columns:36px 1fr 46px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #2b2d38}.gate:last-child{border-bottom:0}.gate label{font-weight:700;color:#cbd5e1}.gate .value{text-align:right;color:var(--dim);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--thresh)}.hint{color:var(--dim);font-size:12px}.legend{display:flex;gap:12px;flex-wrap:wrap}.key{display:inline-flex;gap:6px;align-items:center}.dot{width:12px;height:12px;border-radius:3px}.move{background:var(--move)}.still{background:var(--still)}.thresh{background:var(--thresh)}
+@media (max-width:640px){.app{padding:8px}.top{align-items:flex-start}.metrics{grid-template-columns:1fr}.card-b{padding:10px}.btn{flex:1}.gate{grid-template-columns:30px 1fr 42px}}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="top">
+    <div><h1>LD2410 Tuner</h1><div class="state" id="status">Connecting...</div></div>
+    <button class="btn danger" id="btn-engineering">Engineering</button>
+  </div>
+
+  <section class="card">
+    <div class="card-h">Live Gate Energy</div>
+    <div class="card-b">
+      <canvas id="graph" width="900" height="360"></canvas>
+      <div class="legend" style="margin-top:10px">
+        <span class="key"><span class="dot move"></span>Move energy</span>
+        <span class="key"><span class="dot still"></span>Still energy</span>
+        <span class="key"><span class="dot thresh"></span>Thresholds</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-h">Current Target</div>
+    <div class="card-b metrics">
+      <div class="metric"><span>Presence</span><strong id="presence">-</strong></div>
+      <div class="metric"><span>Target State</span><strong id="target">-</strong></div>
+      <div class="metric"><span>Move Distance</span><strong id="move-distance">-</strong></div>
+      <div class="metric"><span>Still Distance</span><strong id="still-distance">-</strong></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-h">Move Thresholds</div>
+    <div class="card-b" id="move-sliders"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h">Still Thresholds</div>
+    <div class="card-b" id="still-sliders"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h">Notes</div>
+    <div class="card-b">
+      <p class="hint">Threshold changes are sent immediately through the clock's MQTT gate commands. The LD2410 stores normal gate sensitivity settings after a successful command; distance resolution changes require a module restart.</p>
+    </div>
+  </section>
+</main>
+<script>
+'use strict';
+const state={move_gates:Array(9).fill(0),still_gates:Array(9).fill(0),move_thresholds:Array(9).fill(50),still_thresholds:Array(9).fill(30),engineering:false,presence:null};
+const el=id=>document.getElementById(id);
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function gateRow(kind,i){
+  const row=document.createElement('div');row.className='gate';
+  row.innerHTML=`<label>G${i}</label><input type="range" min="0" max="100" step="1" value="${state[kind+'_thresholds'][i]}"><span class="value">${state[kind+'_thresholds'][i]}</span>`;
+  const input=row.querySelector('input'), value=row.querySelector('.value');
+  input.oninput=()=>{value.textContent=input.value;state[kind+'_thresholds'][i]=parseInt(input.value)||0;draw()};
+  input.onchange=()=>setGate(i,kind,parseInt(input.value)||0);
+  return row;
+}
+function buildSliders(){
+  const m=el('move-sliders'),s=el('still-sliders');m.innerHTML='';s.innerHTML='';
+  for(let i=0;i<9;i++){m.appendChild(gateRow('move',i));s.appendChild(gateRow('still',i))}
+}
+async function api(path,body){
+  const opts=body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'};
+  const r=await fetch(path,opts);const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'request failed');return d;
+}
+async function setGate(gate,kind,value){
+  try{await api('/api/gate',{gate,kind,value});el('status').textContent=`Set G${gate} ${kind} ${value}`;}
+  catch(e){el('status').textContent=e.message}
+}
+async function setEngineering(enable){
+  try{await api('/api/engineering',{enable});state.engineering=enable;updateEngineeringButton();}
+  catch(e){el('status').textContent=e.message}
+}
+function updateEngineeringButton(){const b=el('btn-engineering');b.textContent=state.engineering?'Engineering On':'Engineering Off';b.classList.toggle('primary',state.engineering)}
+function draw(){
+  const c=el('graph'),ctx=c.getContext('2d'),w=c.width,h=c.height,pad=34,plotW=w-pad*2,plotH=h-pad*2;
+  ctx.clearRect(0,0,w,h);ctx.fillStyle='#08090d';ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle='#242630';ctx.lineWidth=1;ctx.font='18px system-ui';ctx.fillStyle='#8d91a6';
+  for(let v=0;v<=100;v+=25){const y=pad+plotH-(v/100)*plotH;ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(w-pad,y);ctx.stroke();ctx.fillText(v,6,y+6)}
+  const group=plotW/9,barW=Math.max(10,group*.24);
+  for(let i=0;i<9;i++){
+    const x=pad+i*group+group*.18;
+    ctx.fillStyle='#8d91a6';ctx.fillText('G'+i,x+group*.2,h-8);
+    bar(x,state.move_gates[i],barW,'#68d391');bar(x+barW+4,state.still_gates[i],barW,'#63b3ed');
+    line(x,state.move_thresholds[i],group*.75,'#f6ad55');line(x,state.still_thresholds[i],group*.75,'#fbd38d');
+  }
+  function yFor(v){return pad+plotH-(clamp(v,0,100)/100)*plotH}
+  function bar(x,v,bw,color){ctx.fillStyle=color;const y=yFor(v);ctx.fillRect(x,y,bw,pad+plotH-y)}
+  function line(x,v,len,color){ctx.strokeStyle=color;ctx.lineWidth=4;const y=yFor(v);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+len,y);ctx.stroke()}
+}
+function applyState(d){
+  Object.assign(state,d);
+  el('presence').textContent=state.presence===null?'-':(state.presence?'Yes':'No');
+  el('target').textContent=state.target_state??'-';
+  el('move-distance').textContent=state.move_distance==null?'-':state.move_distance+' cm';
+  el('still-distance').textContent=state.still_distance==null?'-':state.still_distance+' cm';
+  updateEngineeringButton();draw();
+}
+async function poll(){
+  try{const d=await api('/api/state');applyState(d.state);el('status').textContent='Live';}
+  catch(e){el('status').textContent=e.message}
+}
+el('btn-engineering').onclick=()=>setEngineering(!state.engineering);
+buildSliders();draw();poll();setInterval(poll,500);
+</script>
+</body>
+</html>
