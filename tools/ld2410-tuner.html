@@ -73,15 +73,36 @@ input[type=range]{width:100%;accent-color:var(--thresh)}.hint{color:var(--dim);f
 'use strict';
 const state={move_gates:Array(9).fill(0),still_gates:Array(9).fill(0),move_thresholds:Array(9).fill(50),still_thresholds:Array(9).fill(30),engineering:false,presence:null};
 const el=id=>document.getElementById(id);
+let activeSlider=null;
+const holdUntil={};
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function ft(cm){return (Number(cm||0)/30.48).toFixed(1)+' ft'}
 function gateFt(i){return ((i*0.75)/0.3048).toFixed(1)+' ft'}
+function sliderKey(kind,i){return `${kind}:${i}`}
+function holdSlider(kind,i,ms=2000){holdUntil[sliderKey(kind,i)]=Date.now()+ms}
+function releaseSlider(kind,i,ms=900){
+  const key=sliderKey(kind,i);
+  holdSlider(kind,i,ms);
+  if(activeSlider===key)setTimeout(()=>{if(activeSlider===key)activeSlider=null},ms);
+}
+function sliderHeld(kind,i){
+  const key=sliderKey(kind,i);
+  return activeSlider===key||(holdUntil[key]||0)>Date.now();
+}
 function gateRow(kind,i){
   const row=document.createElement('div');row.className='gate';
   row.innerHTML=`<label title="${gateFt(i)}">G${i}</label><input type="range" min="0" max="100" step="1" value="${state[kind+'_thresholds'][i]}"><span class="value">${state[kind+'_thresholds'][i]}</span>`;
   const input=row.querySelector('input'), value=row.querySelector('.value');
-  input.oninput=()=>{value.textContent=input.value;state[kind+'_thresholds'][i]=parseInt(input.value)||0;draw()};
-  input.onchange=()=>setGate(i,kind,parseInt(input.value)||0);
+  const begin=()=>{activeSlider=sliderKey(kind,i);holdSlider(kind,i,2500)};
+  const end=()=>releaseSlider(kind,i,1600);
+  input.addEventListener('pointerdown',begin);
+  input.addEventListener('touchstart',begin,{passive:true});
+  input.addEventListener('focus',begin);
+  input.addEventListener('pointerup',end);
+  input.addEventListener('pointercancel',end);
+  input.addEventListener('blur',end);
+  input.oninput=()=>{begin();value.textContent=input.value;state[kind+'_thresholds'][i]=parseInt(input.value)||0;draw()};
+  input.onchange=async()=>{begin();await setGate(i,kind,parseInt(input.value)||0);releaseSlider(kind,i,3000)};
   return row;
 }
 function buildSliders(){
@@ -94,6 +115,7 @@ function updateSliderValues(){
     [...wrap.querySelectorAll('.gate')].forEach((row,i)=>{
       const input=row.querySelector('input'), value=row.querySelector('.value');
       const v=state[kind+'_thresholds'][i]??0;
+      if(sliderHeld(kind,i)){value.textContent=input.value;return}
       input.value=v;value.textContent=v;
     });
   }

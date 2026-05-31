@@ -184,7 +184,7 @@ class TunerState:
         self.client.publish(topic, str(value), retain=False)
         with self.lock:
             self.data[f"{kind}_thresholds"][gate] = value
-        threading.Timer(0.6, self.read_parameters).start()
+        threading.Timer(1.5, self.read_parameters).start()
 
 
 class Handler(BaseHTTPRequestHandler):
