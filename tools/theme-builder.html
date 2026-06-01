@@ -982,6 +982,14 @@ function setThemeDirty(dirty) {
   document.body.classList.toggle('dirty', themeDirty || jsonDirty);
 }
 
+function markThemeSaved() {
+  themeDirty = false;
+  updateJSON(false);
+  jsonDirty = false;
+  document.body.classList.remove('dirty');
+  setJSONStatus('Saved', 'ok');
+}
+
 function hasUnsavedChanges() {
   return themeDirty || jsonDirty;
 }
@@ -1080,8 +1088,9 @@ async function saveServerTheme(fileOverride = '') {
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || 'Unable to save theme');
     currentThemeFile = data.file;
+    selectedThemeFile = data.file;
     await refreshServerThemes(currentThemeFile);
-    setThemeDirty(false);
+    markThemeSaved();
     const savedTo = Array.isArray(data.saved_to) && data.saved_to.length
       ? `Saved to ${data.saved_to.join(', ')}`
       : `Saved ${data.file}`;
@@ -1217,9 +1226,9 @@ function applyThemeData(data, markDirty = false) {
     if (k === 'colors') {
       if (data.colors) Object.assign(theme.colors, data.colors);
     } else if (k === 'cameos') {
-      theme.cameos = incomingCameos
+      theme.cameos = uniqueCameos(incomingCameos
         .filter(c => c.name !== 'stars' && c.name !== 'clouds')
-        .map(c => ({...c}));
+        .map(c => ({...c})));
     } else if (data[k] !== undefined) {
       theme[k] = data[k];
     }
@@ -1230,6 +1239,7 @@ function applyThemeData(data, markDirty = false) {
   if (data.shooting_stars_enabled && !theme.cameos.some(c => c.name === 'shooting_star')) {
     theme.cameos.push({ name: 'shooting_star', chance_per_minute: 8 });
   }
+  theme.cameos = uniqueCameos(theme.cameos);
   syncFormToTheme();
   initStars(); initClouds();
   render(); updateJSON(markDirty);
@@ -1311,7 +1321,7 @@ function buildCameoList() {
   list.innerHTML = '';
   theme.cameos.forEach((c, idx) => {
     const opts = ALL_ANIMATIONS.map(n =>
-      `<option value="${n}"${c.name===n?' selected':''}>${n}</option>`
+      `<option value="${n}"${c.name===n?' selected':''}${cameoExists(n, idx)?' disabled':''}>${n}</option>`
     ).join('');
     const li = document.createElement('div');
     li.className = 'li';
@@ -1333,13 +1343,48 @@ function buildCameoList() {
     el.addEventListener('change', cameoFieldChange);
     el.addEventListener('input', cameoFieldChange);
   });
+  updateCameoAddOptions();
+}
+
+function cameoExists(name, exceptIdx = -1) {
+  return theme.cameos.some((c, idx) => idx !== exceptIdx && c.name === name);
+}
+
+function uniqueCameos(cameos) {
+  const seen = new Set();
+  return cameos.filter(c => {
+    if (!c.name || seen.has(c.name)) return false;
+    seen.add(c.name);
+    return true;
+  });
+}
+
+function updateCameoAddOptions() {
+  const sel = document.getElementById('cameo-add-sel');
+  if (!sel) return;
+  const used = new Set(theme.cameos.map(c => c.name));
+  let firstAvailable = '';
+  [...sel.options].forEach(opt => {
+    opt.disabled = used.has(opt.value);
+    if (!opt.disabled && !firstAvailable) firstAvailable = opt.value;
+  });
+  if (sel.value && !used.has(sel.value)) return;
+  sel.value = firstAvailable;
 }
 
 function cameoFieldChange(e) {
   const idx = +e.target.dataset.ci;
   const field = e.target.dataset.f;
   if (field === 'del') { theme.cameos.splice(idx, 1); buildCameoList(); }
-  else if (field === 'name') { theme.cameos[idx].name = e.target.value; }
+  else if (field === 'name') {
+    if (cameoExists(e.target.value, idx)) {
+      alert(`${e.target.value} is already in this theme.`);
+      e.target.value = theme.cameos[idx].name;
+      return;
+    }
+    theme.cameos[idx].name = e.target.value;
+    buildCameoList();
+  }
   else if (field === 'cpm') { theme.cameos[idx].chance_per_minute = parseFloat(e.target.value) || 8; }
   render(); updateJSON();
 }
@@ -1422,6 +1467,12 @@ function wireControls() {
   // Cameos
   document.getElementById('cameo-add-btn').addEventListener('click', () => {
     const name = document.getElementById('cameo-add-sel').value;
+    if (!name) return;
+    if (cameoExists(name)) {
+      alert(`${name} is already in this theme.`);
+      updateCameoAddOptions();
+      return;
+    }
     theme.cameos.push({ name, chance_per_minute: 8 });
     buildCameoList(); render(); updateJSON();
   });

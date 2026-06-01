@@ -45,6 +45,7 @@ body.mode-animation .sprite-only{display:none!important}
 body.mode-sprite .anim-only{display:none!important}
 body.mode-animation #grid{display:none}
 body.mode-animation #anim-stage{display:flex}
+body:not(.cameo-custom) .custom-only{display:none!important}
 </style>
 </head>
 <body>
@@ -103,20 +104,25 @@ body.mode-animation #anim-stage{display:flex}
         <div class="row"><button class="btn" id="btn-anim-new">New</button><button class="btn btn-p" id="btn-anim-save">Save</button><button class="btn" id="btn-anim-save-as">Save As</button></div>
         <div class="f"><label>Name</label><input id="a-name" type="text" value="new_cameo"></div>
         <div class="f"><label>Speed</label><input id="a-speed" type="number" min="0.05" max="5" step="0.05" value="1"></div>
-        <div class="f"><label>Move</label><select id="a-move-mode"><option value="straight">straight</option><option value="random_walk">random walk</option><option value="point_shoot">point + shoot</option></select></div>
-        <div class="f"><label>Direction</label><select id="a-direction"><option value="left">left</option><option value="right">right</option><option value="up">up</option><option value="down">down</option><option value="random">random</option></select></div>
+        <div class="f"><label>Move</label><select id="a-move-mode"><option value="random_sweep">Random sweep</option><option value="fly_random_height">Fly random height</option><option value="fly_fixed">Fly fixed</option><option value="fly_diagonal">Fly diagonal</option><option value="launch">Launch</option><option value="drift">Drift swarm</option><option value="custom">Custom frames</option></select></div>
+        <div class="f"><label>Direction</label><select id="a-direction"><option value="left_to_right">left to right</option><option value="right_to_left">right to left</option><option value="down_right">down right</option><option value="down_left">down left</option><option value="up_right">up right</option><option value="up_left">up left</option><option value="up">up</option><option value="down">down</option><option value="random">random</option></select></div>
         <div class="row"><label class="hint"><input type="checkbox" id="a-random-start" checked> Random start</label><label class="hint"><input type="checkbox" id="a-random-facing"> Random facing</label></div>
+        <div class="row"><label class="hint"><input type="checkbox" id="a-persistent"> Persistent</label></div>
+        <div class="f"><label>Fixed X</label><input id="a-fixed-x" type="number" min="-64" max="128" value="28"></div>
+        <div class="f"><label>Fixed Y</label><input id="a-fixed-y" type="number" min="-32" max="64" value="12"></div>
+        <div class="f"><label>Sprites</label><input id="a-count" type="number" min="1" max="12" value="1"></div>
+        <div class="f"><label>Stray</label><input id="a-stray" type="number" min="0" max="12" step="0.5" value="3"></div>
         <div class="f"><label>Spin</label><select id="a-spin"><option value="false">off</option><option value="true">on</option></select></div>
         <div class="f"><label>Spin Speed</label><input id="a-spin-speed" type="number" min="-5" max="5" step="0.1" value="0"></div>
         <div class="f"><label>Loop</label><select id="a-loop"><option value="true">yes</option><option value="false">no</option></select></div>
-        <div class="row"><button class="btn" id="btn-frame-prev">Prev</button><span class="hint" id="frame-label">Frame 1/1</span><button class="btn" id="btn-frame-next">Next</button></div>
-        <div class="row"><button class="btn" id="btn-frame-add">Add</button><button class="btn" id="btn-frame-dupe">Duplicate</button><button class="btn" id="btn-frame-del">Delete</button><button class="btn" id="btn-anim-play">Play</button></div>
-        <div class="f"><label>Duration</label><input id="f-duration" type="number" min="20" step="10" value="100"><span class="pct-val">ms</span></div>
+        <div class="row custom-only"><button class="btn" id="btn-frame-prev">Prev</button><span class="hint" id="frame-label">Frame 1/1</span><button class="btn" id="btn-frame-next">Next</button></div>
+        <div class="row"><button class="btn custom-only" id="btn-frame-add">Add</button><button class="btn custom-only" id="btn-frame-dupe">Duplicate</button><button class="btn custom-only" id="btn-frame-del">Delete</button><button class="btn" id="btn-anim-play">Play</button></div>
+        <div class="f custom-only"><label>Duration</label><input id="f-duration" type="number" min="20" step="10" value="100"><span class="pct-val">ms</span></div>
         <div class="f"><label>Sprite</label><select id="f-sprite"></select></div>
-        <div class="f"><label>X</label><input id="f-x" type="number" min="-64" max="128" value="0"></div>
-        <div class="f"><label>Y</label><input id="f-y" type="number" min="-32" max="64" value="0"></div>
-        <div class="f"><label>Rotation</label><input id="f-rotation" type="number" min="-360" max="360" step="5" value="0"><span class="pct-val">deg</span></div>
-        <p class="hint">Cameo scaffold: place framed sprites, preview motion ideas, save JSON. Drag the sprite in the preview to change X/Y.</p>
+        <div class="f custom-only"><label>X</label><input id="f-x" type="number" min="-64" max="128" value="0"></div>
+        <div class="f custom-only"><label>Y</label><input id="f-y" type="number" min="-32" max="64" value="0"></div>
+        <div class="f custom-only"><label>Rotation</label><input id="f-rotation" type="number" min="-360" max="360" step="5" value="0"><span class="pct-val">deg</span></div>
+        <p class="hint">Preset movement defines where sprites go. Custom frames give full manual frame-by-frame control.</p>
       </div>
     </div>
   </div>
@@ -144,7 +150,7 @@ let sprite={name:'new_sprite',width:8,height:8,motion:'left',speed:0.5,pixels:[]
 let currentFile='', selectedFile='', color='#dcdce6', alpha=255, tool='paint', dirty=false, syncing=false;
 let zoom=parseInt(localStorage.getItem('hub75-sprite-zoom')||'25',10)||25;
 let spriteFrameIndex=0;
-let animation={name:'new_cameo',width:64,height:32,speed:1,loop:true,movement:{mode:'straight',direction:'left',random_start:true,random_facing:false,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]};
+let animation={name:'new_cameo',width:64,height:32,speed:1,loop:true,persistent:false,movement:{mode:'random_sweep',direction:'left_to_right',random_start:true,random_facing:false,fixed_x:28,fixed_y:12,count:1,stray:3,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]};
 let currentAnimFile='', selectedAnimFile='', animDirty=false, frameIndex=0, playing=false, playTimer=null;
 let animDrag=null;
 const requestedMode=new URLSearchParams(location.search).get('mode');
@@ -159,8 +165,9 @@ const fileName=()=>cleanName(sprite.name)+'.json';
 const animFileName=()=>cleanName(animation.name)+'.json';
 const blankPixels=(w,h)=>Array.from({length:h},()=>Array.from({length:w},()=>null));
 const blank=(name='new_sprite',w=8,h=8)=>({name,width:w,height:h,motion:'left',speed:0.5,movement:{mode:'straight',direction:'left',random_start:true,random_facing:false},frame_duration_ms:100,frames:[{duration_ms:100,pixels:blankPixels(w,h)}],pixels:blankPixels(w,h)});
-const blankAnimation=(name='new_cameo')=>({name,width:64,height:32,speed:1,loop:true,movement:{mode:'straight',direction:'left',random_start:true,random_facing:false,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]});
+const blankAnimation=(name='new_cameo')=>({name,width:64,height:32,speed:1,loop:true,persistent:false,movement:{mode:'random_sweep',direction:'left_to_right',random_start:true,random_facing:false,fixed_x:28,fixed_y:12,count:1,stray:3,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]});
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+const isCustomMovement=()=>((animation.movement||{}).mode||'random_sweep')==='custom';
 
 function markDirty(v=true){dirty=v; el('status').textContent=v?'Unsaved':'Ready';}
 function markAnimDirty(v=true){animDirty=v}
@@ -173,6 +180,9 @@ function setMode(mode){
   el('tab-animation').classList.toggle('active',builderMode==='animation');
   updateJSON();
   renderAnimationPreview();
+}
+function updateCameoModeUI(){
+  document.body.classList.toggle('cameo-custom',builderMode==='animation'&&isCustomMovement());
 }
 function cellSize(){return Math.max(8,Math.round(24*(zoom/25)))}
 function setZoom(v){
@@ -309,7 +319,9 @@ async function getSpriteData(name){
 function syncAnimationFields(){
   const mv=animation.movement||{};
   el('a-name').value=animation.name||'new_cameo';el('a-speed').value=animation.speed??1;el('a-loop').value=animation.loop===false?'false':'true';
-  el('a-move-mode').value=mv.mode||'straight';el('a-direction').value=mv.direction||'left';el('a-random-start').checked=mv.random_start!==false;el('a-random-facing').checked=!!mv.random_facing;el('a-spin').value=mv.spin?'true':'false';el('a-spin-speed').value=mv.spin_speed??0;
+  el('a-persistent').checked=!!animation.persistent;
+  el('a-move-mode').value=mv.mode||'random_sweep';el('a-direction').value=mv.direction||'left_to_right';el('a-random-start').checked=mv.random_start!==false;el('a-random-facing').checked=!!mv.random_facing;el('a-fixed-x').value=mv.fixed_x??28;el('a-fixed-y').value=mv.fixed_y??12;el('a-count').value=mv.count??1;el('a-stray').value=mv.stray??3;el('a-spin').value=mv.spin?'true':'false';el('a-spin-speed').value=mv.spin_speed??0;
+  updateCameoModeUI();
   const total=(animation.frames||[]).length||1;frameIndex=clamp(frameIndex,0,total-1);el('frame-label').textContent=`Frame ${frameIndex+1}/${total}`;
   const f=animation.frames[frameIndex]||{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]};
   const item=(f.sprites&&f.sprites[0])||{sprite:'rocket',x:0,y:0,rotation:0};
@@ -317,14 +329,52 @@ function syncAnimationFields(){
 }
 function fromAnimationFields(){
   animation.name=el('a-name').value||'new_cameo';animation.speed=parseFloat(el('a-speed').value)||1;animation.loop=el('a-loop').value!=='false';
+  animation.persistent=el('a-persistent').checked;
   delete animation.fps;
-  animation.movement={mode:el('a-move-mode').value,direction:el('a-direction').value,random_start:el('a-random-start').checked,random_facing:el('a-random-facing').checked,spin:el('a-spin').value==='true',spin_speed:parseFloat(el('a-spin-speed').value)||0};
+  animation.movement={mode:el('a-move-mode').value,direction:el('a-direction').value,random_start:el('a-random-start').checked,random_facing:el('a-random-facing').checked,fixed_x:parseInt(el('a-fixed-x').value)||0,fixed_y:parseInt(el('a-fixed-y').value)||0,count:clamp(parseInt(el('a-count').value)||1,1,12),stray:Math.max(0,parseFloat(el('a-stray').value)||0),spin:el('a-spin').value==='true',spin_speed:parseFloat(el('a-spin-speed').value)||0};
   if(!animation.frames||!animation.frames.length)animation.frames=blankAnimation(animation.name).frames;
   const f=animation.frames[frameIndex]||{duration_ms:100,sprites:[{}]};
   const item=(f.sprites&&f.sprites[0])||{};
   f.duration_ms=parseInt(el('f-duration').value)||100;
   item.sprite=el('f-sprite').value||'rocket';item.x=parseInt(el('f-x').value)||0;item.y=parseInt(el('f-y').value)||0;item.rotation=parseFloat(el('f-rotation').value)||0;
   f.sprites=[item];animation.frames[frameIndex]=f;
+  updateCameoModeUI();
+}
+function dirSign(dir){
+  if(dir==='right_to_left'||dir==='down_left'||dir==='up_left'||dir==='left')return -1;
+  return 1;
+}
+function ensurePresetFrames(){
+  if(isCustomMovement())return;
+  const mv=animation.movement||{}, mode=mv.mode||'random_sweep', dir=mv.direction||'left_to_right';
+  const spriteName=el('f-sprite').value||((animation.frames?.[frameIndex]?.sprites?.[0]||{}).sprite)||'rocket';
+  const frames=[], steps=24, dur=80, amp=Math.max(1,parseFloat(mv.stray)||3);
+  const fixedX=clamp(parseInt(mv.fixed_x)||28,-64,128), fixedY=clamp(parseInt(mv.fixed_y)||12,-32,64);
+  const count=mode==='drift'?clamp(parseInt(mv.count)||3,1,12):1;
+  for(let i=0;i<steps;i++){
+    const t=i/(steps-1), sprites=[];
+    for(let n=0;n<count;n++){
+      let x=fixedX,y=fixedY,rot=0;
+      const phase=n*1.7, spread=(n-(count-1)/2)*4;
+      if(mode==='random_sweep'){
+        const s=dirSign(dir); x=s>0?-12+t*88:76-t*88; y=fixedY+Math.sin(t*Math.PI*2+phase)*amp;
+      }else if(mode==='fly_random_height'||mode==='fly_fixed'){
+        const s=dirSign(dir); x=s>0?-12+t*88:76-t*88; y=mode==='fly_fixed'?fixedY:fixedY+spread;
+      }else if(mode==='fly_diagonal'){
+        const right=dir.includes('right')||dir==='random', down=dir.includes('down')||dir==='random';
+        x=right?-12+t*88:76-t*88; y=down?-8+t*48:36-t*48; rot=down?(right?28:-28):(right?-28:28);
+      }else if(mode==='launch'){
+        x=fixedX+spread; y=36-t*52; rot=-90;
+      }else if(mode==='drift'){
+        x=fixedX+spread+Math.sin(t*Math.PI*2+phase)*amp; y=fixedY+Math.cos(t*Math.PI*2+phase)*amp;
+      }
+      if(mv.spin)rot+=i*(parseFloat(mv.spin_speed)||0);
+      sprites.push({sprite:spriteName,x:Math.round(x),y:Math.round(y),rotation:Math.round(rot)});
+    }
+    frames.push({duration_ms:dur,sprites});
+  }
+  animation.frames=frames;
+  frameIndex=clamp(frameIndex,0,animation.frames.length-1);
 }
 async function renderAnimationFrame(idx){
   const cv=el('anim-preview'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,cv.width,cv.height);ctx.fillStyle='#020005';ctx.fillRect(0,0,cv.width,cv.height);
@@ -379,17 +429,28 @@ function endAnimationDrag(e){
 }
 async function renderAnimationPreview(){
   fromAnimationFields();
+  ensurePresetFrames();
+  syncAnimationFields();
   await renderAnimationFrame(frameIndex);
 }
-function buildAnimationJSON(){fromAnimationFields();return JSON.stringify(animation,null,2)}
-function applyAnimation(data,dirtyState=false){animation={...blankAnimation(),...data};if(!Array.isArray(animation.frames)||!animation.frames.length)animation.frames=blankAnimation(animation.name).frames;frameIndex=0;syncAnimationFields();renderAnimationPreview();markAnimDirty(dirtyState)}
+function buildAnimationJSON(){fromAnimationFields();ensurePresetFrames();return JSON.stringify(animation,null,2)}
+function normalizeMovement(){
+  animation.movement=animation.movement||{};
+  if(animation.movement.mode==='straight')animation.movement.mode='fly_fixed';
+  if(animation.movement.mode==='random_walk'||animation.movement.mode==='point_shoot')animation.movement.mode='custom';
+  if(animation.movement.direction==='left')animation.movement.direction='right_to_left';
+  if(animation.movement.direction==='right')animation.movement.direction='left_to_right';
+  if(animation.persistent===undefined)animation.persistent=false;
+}
+function applyAnimation(data,dirtyState=false){animation={...blankAnimation(),...data};normalizeMovement();if(!Array.isArray(animation.frames)||!animation.frames.length)animation.frames=blankAnimation(animation.name).frames;frameIndex=0;syncAnimationFields();renderAnimationPreview();markAnimDirty(dirtyState)}
 async function refreshAnimations(select=currentAnimFile){const r=await fetch('/api/animations',{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation list failed');const s=el('anim-select');s.innerHTML='';for(const f of d.animations){const o=document.createElement('option');o.value=f;o.textContent=f;s.appendChild(o)}if(select&&d.animations.includes(select))s.value=select;else if(d.animations.length)s.value=d.animations[0];selectedAnimFile=s.value||''}
 async function loadAnimation(file){const f=file||el('anim-select').value;if(!f)return;const r=await fetch('/api/animation?file='+encodeURIComponent(f),{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation load failed');currentAnimFile=selectedAnimFile=d.file;el('anim-select').value=d.file;applyAnimation(d.animation,false)}
-async function saveAnimation(file=''){fromAnimationFields();const f=file||currentAnimFile||animFileName();const r=await fetch('/api/animation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:f,animation})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation save failed');currentAnimFile=selectedAnimFile=d.file;await refreshAnimations(currentAnimFile);markAnimDirty(false);el('status').textContent=`Saved ${d.file}`}
+async function saveAnimation(file=''){fromAnimationFields();ensurePresetFrames();const f=file||currentAnimFile||animFileName();const r=await fetch('/api/animation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:f,animation})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation save failed');currentAnimFile=selectedAnimFile=d.file;await refreshAnimations(currentAnimFile);markAnimDirty(false);el('status').textContent=`Saved ${d.file}`}
 function stepFrame(delta){fromAnimationFields();frameIndex=clamp(frameIndex+delta,0,animation.frames.length-1);syncAnimationFields();renderAnimationPreview()}
 function setPlaying(v){playing=v;el('btn-anim-play').textContent=v?'Stop':'Play';if(playTimer){clearTimeout(playTimer);playTimer=null}if(v){fromAnimationFields();playNextFrame()}}
 function playNextFrame(){
   if(!playing)return;
+  ensurePresetFrames();
   syncAnimationFields();
   renderAnimationFrame(frameIndex);
   const f=animation.frames[frameIndex]||{};
@@ -467,7 +528,7 @@ function wire(){
   el('btn-apply').onclick=()=>{try{builderMode==='animation'?applyAnimation(JSON.parse(el('json-out').value),true):applySprite(JSON.parse(el('json-out').value),true)}catch(e){alert(e.message)}};
   el('btn-copy').onclick=()=>navigator.clipboard&&navigator.clipboard.writeText(el('json-out').value);
   el('tab-sprite').onclick=()=>setMode('sprite');el('tab-animation').onclick=()=>setMode('animation');
-  ['a-name','a-speed','a-loop','a-move-mode','a-direction','a-random-start','a-random-facing','a-spin','a-spin-speed','f-duration','f-sprite','f-x','f-y','f-rotation'].forEach(id=>el(id).addEventListener('input',()=>{fromAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)}));
+  ['a-name','a-speed','a-loop','a-move-mode','a-direction','a-random-start','a-random-facing','a-persistent','a-fixed-x','a-fixed-y','a-count','a-stray','a-spin','a-spin-speed','f-duration','f-sprite','f-x','f-y','f-rotation'].forEach(id=>el(id).addEventListener('input',()=>{fromAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)}));
   el('anim-preview').addEventListener('pointerdown',e=>startAnimationDrag(e));
   el('anim-preview').addEventListener('pointermove',moveAnimationDrag);
   el('anim-preview').addEventListener('pointerup',endAnimationDrag);
