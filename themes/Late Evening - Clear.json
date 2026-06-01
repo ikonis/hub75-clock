@@ -17,10 +17,33 @@
   "moon_enabled": true,
   "cloud_density": "medium",
   "cloud_speed": "medium",
-  "precipitation": "none",
   "cameos": [
-    {"name": "stars"},
-    {"name": "shooting_star", "chance_per_minute": 8},
-    {"name": "firefly",       "chance_per_minute": 4}
+    {
+      "name": "stars"
+    },
+    {
+      "name": "shooting_star",
+      "chance_per_minute": 8
+    },
+    {
+      "name": "firefly",
+      "chance_per_minute": 4
+    },
+    {
+      "name": "airplane",
+      "chance_per_minute": 2
+    },
+    {
+      "name": "comet",
+      "chance_per_minute": 0.5
+    },
+    {
+      "name": "meteor",
+      "chance_per_minute": 0.5
+    },
+    {
+      "name": "satellite",
+      "chance_per_minute": 1
+    }
   ]
 }
