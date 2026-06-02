@@ -26,6 +26,20 @@ BRANCH="${BRANCH:-$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null |
 
 echo "[update] mode=python branch=$BRANCH repo=$REPO_DIR"
 
+fix_repo_ownership() {
+    for path in \
+        "$REPO_DIR/.git" \
+        "$REPO_DIR/themes" \
+        "$REPO_DIR/sprites" \
+        "$REPO_DIR/sprite-animations"
+    do
+        if [ -e "$path" ]; then
+            sudo chown -R "$(id -u):$(id -g)" "$path"
+        fi
+    done
+}
+
+fix_repo_ownership
 git -C "$REPO_DIR" fetch origin
 git -C "$REPO_DIR" checkout "$BRANCH"
 
@@ -59,6 +73,7 @@ fi
 
 if [ "${COMMIT_LOCAL_THEMES:-true}" = "true" ] && [ -n "$(git -C "$REPO_DIR" status --porcelain -- themes sprites sprite-animations)" ]; then
     echo "[update] committing locally installed theme/sprite changes..."
+    fix_repo_ownership
     git -C "$REPO_DIR" add themes sprites sprite-animations
     if git -C "$REPO_DIR" commit -m "Add user made themes sprites and animations"; then
         echo "[update] local theme/sprite changes committed"
