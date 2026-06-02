@@ -28,9 +28,6 @@ echo "[update] mode=cpp branch=$BRANCH repo=$REPO_DIR"
 
 git -C "$REPO_DIR" fetch origin
 git -C "$REPO_DIR" checkout "$BRANCH"
-git -C "$REPO_DIR" pull --ff-only origin "$BRANCH"
-
-echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
 
 sudo mkdir -p "$CLOCK_DIR" "$CLOCK_DIR/tools" "$CONFIG_DIR/themes" "$CONFIG_DIR/sprites" "$CONFIG_DIR/sprite-animations"
 mkdir -p "$REPO_DIR/themes" "$REPO_DIR/sprites" "$REPO_DIR/sprite-animations"
@@ -60,17 +57,23 @@ if [ "${PRESERVE_LOCAL_SPRITE_ANIMATIONS:-true}" = "true" ] && compgen -G "$CONF
     sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/sprite-animations"
 fi
 
-if [ "${COMMIT_LOCAL_THEMES:-true}" = "true" ] && ! git -C "$REPO_DIR" diff --quiet -- themes sprites sprite-animations; then
+if [ "${COMMIT_LOCAL_THEMES:-true}" = "true" ] && [ -n "$(git -C "$REPO_DIR" status --porcelain -- themes sprites sprite-animations)" ]; then
     echo "[update] committing locally installed theme/sprite changes..."
     git -C "$REPO_DIR" add themes sprites sprite-animations
     if git -C "$REPO_DIR" commit -m "Add user made themes sprites and animations"; then
-        if [ "${PUSH_LOCAL_THEMES:-true}" = "true" ]; then
-            git -C "$REPO_DIR" push origin "$BRANCH" || echo "[update] warning: theme/sprite commit push failed"
-        fi
+        echo "[update] local theme/sprite changes committed"
     else
         echo "[update] warning: theme/sprite commit failed; files are preserved locally but repo is dirty"
     fi
 fi
+
+git -C "$REPO_DIR" pull --rebase origin "$BRANCH"
+
+if [ "${PUSH_LOCAL_THEMES:-true}" = "true" ]; then
+    git -C "$REPO_DIR" push origin "$BRANCH" || echo "[update] warning: theme/sprite commit push failed"
+fi
+
+echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
 
 echo "[update] installing theme builder files..."
 sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
