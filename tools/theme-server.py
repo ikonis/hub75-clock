@@ -156,7 +156,7 @@ class ThemeBuilderHandler(BaseHTTPRequestHandler):
     def _write_json_file(self, path, data):
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
         os.replace(tmp, path)
 
     def _send_file(self, path):

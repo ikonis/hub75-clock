@@ -80,6 +80,7 @@ def save_auth(path, user, password):
     path.write_text(
         json.dumps({"user": user, "password": password}, indent=2) + "\n",
         encoding="utf-8",
+        newline="\n",
     )
     try:
         os.chmod(path, 0o600)
@@ -266,7 +267,7 @@ class IkonisThemeHandler(theme_server.ThemeBuilderHandler):
             path = safe_path(local_dir, name)
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(path.suffix + ".tmp")
-            tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+            tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
             os.replace(tmp, path)
         except Exception as exc:
             return theme_server._json_response(self, 400, {"ok": False, "error": str(exc)})
