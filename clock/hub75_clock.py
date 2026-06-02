@@ -22,8 +22,7 @@ import re
 import importlib.util
 import subprocess
 import queue
-import shlex
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
 import yaml
@@ -127,10 +126,6 @@ DEFAULTS = {
             "theme":            "hub75_clock/theme/set",
             "theme_state":      "hub75_clock/theme/state",
             "themes_available": "hub75_clock/themes/available",
-            "update_check":     "hub75_clock/update/check",
-            "update_install":   "hub75_clock/update/install",
-            "update_state":     "hub75_clock/update/state",
-            "update_latest":    "hub75_clock/update/latest",
             "ld2410_params":    "hub75_clock/ld2410/params",
             "ld2410_read":      "hub75_clock/ld2410/read",
         },
@@ -228,14 +223,6 @@ DEFAULTS = {
         "animations_dir": "/etc/hub75-clock/animations",
         "sprites_dir": "/etc/hub75-clock/sprites",
         "settings_path": "/etc/hub75-clock/animations.yaml",
-    },
-    "update": {
-        "enabled": False,
-        "repo_path": "/home/pi/hub75-clock",
-        "branch": "",
-        "command": "/home/pi/update-clock.sh",
-        "check_on_startup": True,
-        "check_time": "03:30",
     },
 }
 
@@ -1451,8 +1438,6 @@ class HUB75Clock:
         self._alert_show_message = False
         self._engineering_lock = threading.Lock()
         self._engineering_running = False
-        self._update_stop = threading.Event()
-        self._update_thread_started = False
         self._ensure_theme_builder_startup_state()
         self._ensure_ld2410_tuner_startup_state()
 
@@ -1641,154 +1626,6 @@ class HUB75Clock:
         except Exception as e:
             print(f"[ld2410_tuner] startup stop failed: {e}")
 
-    def _update_cfg(self):
-        return self.cfg.get("update", {})
-
-    def _update_enabled(self) -> bool:
-        return bool(self._update_cfg().get("enabled", False))
-
-    def _update_state_topic(self):
-        topics = self.cfg["mqtt"]["topics"]
-        client_id = self.cfg["mqtt"]["client_id"]
-        return topics.get("update_state", f"{client_id}/update/state")
-
-    def _update_latest_topic(self):
-        topics = self.cfg["mqtt"]["topics"]
-        client_id = self.cfg["mqtt"]["client_id"]
-        return topics.get("update_latest", f"{client_id}/update/latest")
-
-    def _run_git(self, args, repo_path: str) -> str:
-        cmd = ["git", "-c", f"safe.directory={repo_path}", "-C", repo_path, *args]
-        try:
-            return subprocess.check_output(
-                cmd,
-                stderr=subprocess.STDOUT,
-                text=True,
-                timeout=30,
-            ).strip()
-        except subprocess.CalledProcessError as e:
-            output = (e.output or "").strip()
-            if output:
-                raise RuntimeError(output) from e
-            raise RuntimeError(f"{' '.join(cmd)} returned {e.returncode}") from e
-
-    def _update_branch(self, repo_path: str) -> str:
-        branch = str(self._update_cfg().get("branch") or "").strip()
-        if branch:
-            return branch
-        return self._run_git(["branch", "--show-current"], repo_path)
-
-    def _publish_update_state(self, state: dict):
-        if not self._update_enabled():
-            return
-        payload = json.dumps(state, separators=(",", ":"))
-        self.mqtt_client.publish(self._update_state_topic(), payload, retain=True)
-        if "remote" in state:
-            self.mqtt_client.publish(self._update_latest_topic(), state["remote"], retain=True)
-
-    def _check_for_update(self):
-        if not self._update_enabled():
-            return
-        repo_path = self._update_cfg().get("repo_path") or "/home/pi/hub75-clock"
-        try:
-            branch = self._update_branch(repo_path)
-            self._run_git(["fetch", "origin", branch], repo_path)
-            local = self._run_git(["rev-parse", "--short", "HEAD"], repo_path)
-            remote = self._run_git(["rev-parse", "--short", f"origin/{branch}"], repo_path)
-            state = {
-                "available": local != remote,
-                "branch": branch,
-                "local": local,
-                "remote": remote,
-                "checked_at": datetime.now(timezone.utc).isoformat(),
-            }
-            self._publish_update_state(state)
-            print(f"[update] checked {branch}: local={local} remote={remote}")
-        except Exception as e:
-            self._publish_update_state({
-                "available": False,
-                "error": str(e),
-                "checked_at": datetime.now(timezone.utc).isoformat(),
-            })
-            print(f"[update] check failed: {e}")
-
-    def _check_for_update_async(self):
-        threading.Thread(target=self._check_for_update, daemon=True).start()
-
-    def _update_command(self) -> List[str]:
-        configured = str(self._update_cfg().get("command") or "").strip()
-        repo_path = str(self._update_cfg().get("repo_path") or "").strip()
-        candidates = []
-        if configured:
-            candidates.append(configured)
-        if repo_path:
-            repo = os.path.abspath(os.path.expanduser(repo_path))
-            home = os.path.dirname(repo.rstrip(os.sep))
-            candidates.append(os.path.join(home, "update-clock.sh"))
-        candidates.append(os.path.expanduser("~/update-clock.sh"))
-
-        seen = set()
-        for candidate in candidates:
-            if not candidate or candidate in seen:
-                continue
-            seen.add(candidate)
-            parts = shlex.split(os.path.expanduser(candidate))
-            if parts and os.path.exists(parts[0]):
-                runner = os.path.basename(parts[0])
-                if runner in ("bash", "sh"):
-                    return parts
-                return ["bash", parts[0], *parts[1:]]
-        raise FileNotFoundError(f"update script not found; tried: {', '.join(candidates)}")
-
-    def _install_update(self):
-        if not self._update_enabled():
-            return
-        try:
-            command = self._update_command()
-            self._publish_update_state({
-                "available": False,
-                "installing": True,
-                "command": " ".join(shlex.quote(p) for p in command),
-                "checked_at": datetime.now(timezone.utc).isoformat(),
-            })
-            subprocess.Popen(command)
-            print(f"[update] install started: {' '.join(command)}")
-        except Exception as e:
-            self._publish_update_state({
-                "available": False,
-                "installing": False,
-                "error": str(e),
-                "checked_at": datetime.now(timezone.utc).isoformat(),
-            })
-            print(f"[update] install failed: {e}")
-
-    def _install_update_async(self):
-        threading.Thread(target=self._install_update, daemon=True).start()
-
-    def _seconds_until_update_check(self) -> float:
-        check_time = str(self._update_cfg().get("check_time", "03:30"))
-        try:
-            hour, minute = [int(part) for part in check_time.split(":", 1)]
-            hour = max(0, min(23, hour))
-            minute = max(0, min(59, minute))
-        except Exception:
-            hour, minute = 3, 30
-        now = datetime.now()
-        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if target <= now:
-            target += timedelta(days=1)
-        return max(60.0, (target - now).total_seconds())
-
-    def _update_daily_loop(self):
-        while self.running and not self._update_stop.wait(self._seconds_until_update_check()):
-            self._check_for_update()
-
-    def _start_update_scheduler(self):
-        if not self._update_enabled() or self._update_thread_started:
-            return
-        self._update_thread_started = True
-        threading.Thread(target=self._update_daily_loop, daemon=True).start()
-
     def _on_connect(self, client, userdata, flags, rc):
         if rc != 0:
             print(f"[mqtt] connect failed rc={rc}"); return
@@ -1801,8 +1638,6 @@ class HUB75Clock:
                   topics.get("gates", f"{client_id}/gates"),
                   topics.get("engineering_mode", f"{client_id}/engineering_mode"),
                   topics.get("bucket", f"{client_id}/bucket"),
-                  topics.get("update_check", f"{client_id}/update/check"),
-                  topics.get("update_install", topics.get("update", f"{client_id}/update/install")),
                   topics.get("ld2410_read", f"{client_id}/ld2410/read"),
                   topics["theme"]):
             client.subscribe(t)
@@ -1824,9 +1659,6 @@ class HUB75Clock:
             client.publish(em_state_topic, "on" if self.ld2410.engineering_mode else "off", retain=True)
         self._publish_theme_builder_state()
         self._publish_ld2410_tuner_state()
-        self._start_update_scheduler()
-        if self._update_enabled() and self._update_cfg().get("check_on_startup", True):
-            self._check_for_update_async()
         if self.cfg["ha_discovery"]["enabled"]:
             self._publish_discovery()
 
@@ -1994,14 +1826,6 @@ class HUB75Clock:
         elif msg.topic == topics.get("bucket", f"{client_id}/bucket"):
             if "bucket" in payload:
                 self._apply_bucket(payload["bucket"])
-
-        elif msg.topic == topics.get("update_check", f"{client_id}/update/check"):
-            if not getattr(msg, "retain", False):
-                self._check_for_update_async()
-
-        elif msg.topic == topics.get("update_install", topics.get("update", f"{client_id}/update/install")):
-            if not getattr(msg, "retain", False):
-                self._install_update_async()
 
         elif msg.topic == topics.get("ld2410_read", f"{client_id}/ld2410/read"):
             if not getattr(msg, "retain", False):
@@ -2244,64 +2068,18 @@ class HUB75Clock:
                     "has_entity_name": True,
                 }), retain=True)
 
-        # --- Update status + actions ---
-        if self._update_enabled():
-            update_state_topic = self._update_state_topic()
+        # Remove old update entities if they were previously discovered.
+        for component, uid in (
+            ("binary_sensor", f"{client_id}_update_available"),
+            ("sensor", f"{client_id}_update_info"),
+            ("button", f"{client_id}_update_check"),
+            ("button", f"{client_id}_update_install"),
+        ):
             self.mqtt_client.publish(
-                f"{prefix}/binary_sensor/{client_id}_update_available/config",
-                json.dumps({
-                    "name":          "Update Available",
-                    "unique_id":     f"{client_id}_update_available",
-                    "device":        device,
-                    "availability":  avail,
-                    "state_topic":   update_state_topic,
-                    "value_template": "{{ 'ON' if value_json.available else 'OFF' }}",
-                    "payload_on":    "ON",
-                    "payload_off":   "OFF",
-                    "entity_category": "diagnostic",
-                    "icon":          "mdi:update",
-                    "has_entity_name": True,
-                }), retain=True)
-            self.mqtt_client.publish(
-                f"{prefix}/sensor/{client_id}_update_info/config",
-                json.dumps({
-                    "name":          "Update Info",
-                    "unique_id":     f"{client_id}_update_info",
-                    "device":        device,
-                    "availability":  avail,
-                    "state_topic":   update_state_topic,
-                    "value_template": "{{ value_json.local ~ ' -> ' ~ value_json.remote if value_json.remote is defined else value_json.error | default('unknown') }}",
-                    "json_attributes_topic": update_state_topic,
-                    "entity_category": "diagnostic",
-                    "icon":          "mdi:source-branch",
-                    "has_entity_name": True,
-                }), retain=True)
-            self.mqtt_client.publish(
-                f"{prefix}/button/{client_id}_update_check/config",
-                json.dumps({
-                    "name":          "Check Update",
-                    "unique_id":     f"{client_id}_update_check",
-                    "device":        device,
-                    "availability":  avail,
-                    "command_topic": topics.get("update_check", f"{client_id}/update/check"),
-                    "payload_press": "check",
-                    "entity_category": "diagnostic",
-                    "icon":          "mdi:cloud-search",
-                    "has_entity_name": True,
-                }), retain=True)
-            self.mqtt_client.publish(
-                f"{prefix}/button/{client_id}_update_install/config",
-                json.dumps({
-                    "name":          "Install Update",
-                    "unique_id":     f"{client_id}_update_install",
-                    "device":        device,
-                    "availability":  avail,
-                    "command_topic": topics.get("update_install", topics.get("update", f"{client_id}/update/install")),
-                    "payload_press": "install",
-                    "entity_category": "config",
-                    "icon":          "mdi:download",
-                    "has_entity_name": True,
-                }), retain=True)
+                f"{prefix}/{component}/{uid}/config",
+                "",
+                retain=True,
+            )
 
         # --- Select: theme ---
         self.mqtt_client.publish(
@@ -2341,7 +2119,6 @@ class HUB75Clock:
     def stop(self):
         print("[clock] stopping")
         self.running = False
-        self._update_stop.set()
         if self.veml   is not None: self.veml.stop()
         if self.pir    is not None: self.pir.stop()
         if self.ld2410 is not None: self.ld2410.stop()

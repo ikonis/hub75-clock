@@ -38,10 +38,6 @@ mqtt:
     theme:            hub75_clock/theme/set
     theme_state:      hub75_clock/theme/state
     themes_available: hub75_clock/themes/available
-    update_check:     hub75_clock/update/check
-    update_install:   hub75_clock/update/install
-    update_state:     hub75_clock/update/state
-    update_latest:    hub75_clock/update/latest
 
 # -----------------------------------------------------------------------------
 # Home Assistant MQTT Discovery
@@ -149,18 +145,6 @@ sensors:
 time_format:
   use_24h:     false
   blink_colon: false
-
-# -----------------------------------------------------------------------------
-# OTA Updates - pull latest code from GitHub and restart
-# Trigger via MQTT or HA button entity created by ha_discovery.
-# -----------------------------------------------------------------------------
-update:
-  enabled: true
-  repo_path: /home/YOUR_USERNAME/hub75-clock  # path where you cloned the repo
-  branch: ""                                  # empty = current checked-out branch
-  command: /home/YOUR_USERNAME/update-clock.sh
-  check_on_startup: true
-  check_time: "03:30"                         # daily branch check
 
 # -----------------------------------------------------------------------------
 # Themes - background, color, and animation presets loaded from JSON files

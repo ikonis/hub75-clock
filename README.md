@@ -243,8 +243,6 @@ make update
 # or: ~/update-clock.sh
 ```
 
-When `update.enabled` is true, the clock can also check the currently checked-out branch at startup, once daily at `update.check_time`, or from the Home Assistant **Check Update** button. It publishes retained update status to MQTT and only runs `update.command` when the Home Assistant **Install Update** button is pressed.
-
 ### scripts/configure.sh
 
 Interactive configuration wizard. Prompts for your MQTT broker, device name, sensor hardware, GPIO pin, and `gpio_slowdown`, then writes `/etc/hub75-clock/config.yaml` automatically. Launched by `install.sh` on first install; can be re-run any time.
