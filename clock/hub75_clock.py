@@ -22,6 +22,7 @@ import re
 import importlib.util
 import subprocess
 import queue
+import shlex
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Tuple
 
@@ -1714,18 +1715,44 @@ class HUB75Clock:
     def _check_for_update_async(self):
         threading.Thread(target=self._check_for_update, daemon=True).start()
 
+    def _update_command(self) -> List[str]:
+        configured = str(self._update_cfg().get("command") or "").strip()
+        repo_path = str(self._update_cfg().get("repo_path") or "").strip()
+        candidates = []
+        if configured:
+            candidates.append(configured)
+        if repo_path:
+            repo = os.path.abspath(os.path.expanduser(repo_path))
+            home = os.path.dirname(repo.rstrip(os.sep))
+            candidates.append(os.path.join(home, "update-clock.sh"))
+        candidates.append(os.path.expanduser("~/update-clock.sh"))
+
+        seen = set()
+        for candidate in candidates:
+            if not candidate or candidate in seen:
+                continue
+            seen.add(candidate)
+            parts = shlex.split(os.path.expanduser(candidate))
+            if parts and os.path.exists(parts[0]):
+                runner = os.path.basename(parts[0])
+                if runner in ("bash", "sh"):
+                    return parts
+                return ["bash", parts[0], *parts[1:]]
+        raise FileNotFoundError(f"update script not found; tried: {', '.join(candidates)}")
+
     def _install_update(self):
         if not self._update_enabled():
             return
-        command = self._update_cfg().get("command") or "/home/pi/update-clock.sh"
-        self._publish_update_state({
-            "available": False,
-            "installing": True,
-            "checked_at": datetime.now(timezone.utc).isoformat(),
-        })
         try:
-            subprocess.Popen(str(command), shell=True)
-            print(f"[update] install started: {command}")
+            command = self._update_command()
+            self._publish_update_state({
+                "available": False,
+                "installing": True,
+                "command": " ".join(shlex.quote(p) for p in command),
+                "checked_at": datetime.now(timezone.utc).isoformat(),
+            })
+            subprocess.Popen(command)
+            print(f"[update] install started: {' '.join(command)}")
         except Exception as e:
             self._publish_update_state({
                 "available": False,

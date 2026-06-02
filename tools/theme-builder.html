@@ -129,7 +129,7 @@ input[type=range]{accent-color:var(--accent)}
 <!-- ===== LEFT CONTROLS ===== -->
 <div class="ctrl">
   <!-- Identity -->
-  <div class="sec" data-help="Theme name and note. Save uses the loaded filename; new themes save from the name until you use Save As." data-highlight="banner">
+  <div class="sec" data-help="Theme name and note. Save writes to the current file shown in the header; use Save As to create or rename a theme file." data-highlight="banner">
     <div class="sec-hdr">Identity</div>
     <div class="sec-body">
       <div class="f"><label>Name</label><input type="text" id="i-name" value="My Theme"></div>
@@ -963,6 +963,11 @@ function setServerStatus(msg) {
   if (el) el.textContent = msg;
 }
 
+function currentSaveLabel(prefix = 'File') {
+  const file = currentThemeFile || themeFileName();
+  setServerStatus(`${prefix}: ${file}`);
+}
+
 let serverMode = false;
 let currentThemeFile = '';
 let selectedThemeFile = '';
@@ -1036,7 +1041,8 @@ async function refreshServerThemes(selectFile = currentThemeFile) {
   if (selectFile && data.themes.includes(selectFile)) sel.value = selectFile;
   else if (data.themes.length) sel.value = data.themes[0];
   selectedThemeFile = sel.value || '';
-  setServerStatus(data.themes.length ? `${data.themes.length} themes` : 'No themes');
+  if (currentThemeFile) currentSaveLabel();
+  else setServerStatus(data.themes.length ? `${data.themes.length} themes` : 'No themes');
 }
 
 async function initServerMode() {
@@ -1064,7 +1070,7 @@ async function loadServerTheme(file) {
     currentThemeFile = data.file;
     selectedThemeFile = data.file;
     document.getElementById('server-theme-select').value = data.file;
-    setServerStatus(`Loaded ${data.file}`);
+    currentSaveLabel('Loaded');
   } catch (err) {
     setServerStatus('Load failed');
     alert('Load failed: ' + err.message);
@@ -1078,6 +1084,14 @@ async function saveServerTheme(fileOverride = '') {
     return;
   }
   const file = fileOverride || currentThemeFile || themeFileName();
+  const impliedFile = themeFileName();
+  if (!fileOverride && currentThemeFile && currentThemeFile !== impliedFile) {
+    const ok = confirm(`Save writes to the loaded file:\n\n${currentThemeFile}\n\nThe theme name suggests:\n\n${impliedFile}\n\nUse Save As if you meant to create/rename the file. Save to ${currentThemeFile}?`);
+    if (!ok) {
+      currentSaveLabel('Still loaded');
+      return;
+    }
+  }
   setServerStatus('Saving...');
   try {
     const res = await fetch('/api/theme', {

@@ -629,6 +629,38 @@ static std::string runCommandCapture(const std::string& cmd) {
     return trim(result);
 }
 
+static std::string expandHome(std::string path) {
+    if (path == "~" || path.rfind("~/", 0) == 0) {
+        const char* home = std::getenv("HOME");
+        if (home) return std::string(home) + path.substr(1);
+    }
+    return path;
+}
+
+static std::string resolveUpdateCommand(const json& cfg) {
+    std::vector<std::string> candidates;
+    std::string configured = trim(cfg["update"].value("command", ""));
+    std::string repo = trim(cfg["update"].value("repo_path", ""));
+    if (!configured.empty()) candidates.push_back(configured);
+    if (!repo.empty()) {
+        fs::path repoPath = fs::absolute(fs::path(expandHome(repo)));
+        if (repoPath.has_parent_path())
+            candidates.push_back((repoPath.parent_path() / "update-clock.sh").string());
+    }
+    candidates.push_back(expandHome("~/update-clock.sh"));
+
+    std::vector<std::string> tried;
+    for (const auto& candidateRaw : candidates) {
+        std::string candidate = expandHome(candidateRaw);
+        if (candidate.empty()) continue;
+        tried.push_back(candidate);
+        if (fs::exists(candidate)) return "bash " + shellQuote(candidate);
+    }
+    std::string msg = "update script not found; tried:";
+    for (const auto& item : tried) msg += " " + item;
+    throw std::runtime_error(msg);
+}
+
 static std::string gitBaseCommand(const std::string& repo) {
     return "git -c safe.directory=" + shellQuote(repo) + " -C " + shellQuote(repo);
 }
@@ -685,14 +717,26 @@ static void checkForUpdateAsync(mosquitto* mosq, json cfg) {
 static void installUpdateAsync(mosquitto* mosq, json cfg) {
     std::thread([mosq, cfg]() {
         if (!updateEnabled(cfg)) return;
-        publishUpdateState(mosq, cfg, {
-            {"available", false},
-            {"installing", true},
-            {"checked_at", std::time(nullptr)},
-        });
-        std::string command = cfg["update"].value("command", "/home/pi/update-clock.sh");
-        std::system((command + " &").c_str());
-        std::cout << "[update] install started: " << command << "\n";
+        try {
+            std::string command = resolveUpdateCommand(cfg);
+            publishUpdateState(mosq, cfg, {
+                {"available", false},
+                {"installing", true},
+                {"command", command},
+                {"checked_at", std::time(nullptr)},
+            });
+            int rc = std::system((command + " &").c_str());
+            if (rc != 0) throw std::runtime_error("failed to start update command");
+            std::cout << "[update] install started: " << command << "\n";
+        } catch (const std::exception& e) {
+            publishUpdateState(mosq, cfg, {
+                {"available", false},
+                {"installing", false},
+                {"error", e.what()},
+                {"checked_at", std::time(nullptr)},
+            });
+            std::cerr << "[update] install failed: " << e.what() << "\n";
+        }
     }).detach();
 }
 

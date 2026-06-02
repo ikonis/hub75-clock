@@ -156,6 +156,7 @@ def pull_json_dir_paramiko(paramiko, user, source_host, password, remote_dir, ca
 def push_json_paramiko(paramiko, user, host, password, remote_dir, path, restart, label):
     remote_path = remote_dir + "/" + path.name
     remote_tmp = f"/tmp/hub75-{label}-upload-{os.getpid()}.json"
+    expected = path.read_bytes()
 
     print(f"[ikonis-theme-builder] push {path.name} -> {host}:{remote_path}")
     client = ssh_connect(paramiko, user, host, password)
@@ -171,6 +172,15 @@ def push_json_paramiko(paramiko, user, host, password, remote_dir, path, restart
             password,
             f"install -D -m 0644 {shlex.quote(remote_tmp)} {shlex.quote(remote_path)} && rm -f {shlex.quote(remote_tmp)}",
         )
+
+        sftp = client.open_sftp()
+        try:
+            with sftp.open(remote_path, "rb") as remote_file:
+                actual = remote_file.read()
+            if actual != expected:
+                raise RuntimeError(f"remote verify failed for {remote_path}")
+        finally:
+            sftp.close()
 
         if restart:
             run_sudo(client, password, "systemctl restart hub75-clock")
@@ -196,6 +206,7 @@ def push_json_scp(user, host, remote_dir, path, restart, label):
     dest = remote(user, host)
     remote_path = remote_dir + "/" + path.name
     remote_tmp = f"/tmp/hub75-{label}-upload-{os.getpid()}.json"
+    verify_tmp = path.parent / (path.name + f".{host}.verify")
 
     run_cmd(["scp", str(path), f"{dest}:{remote_tmp}"])
 
@@ -206,6 +217,16 @@ def push_json_scp(user, host, remote_dir, path, restart, label):
         f"rm -f {shlex.quote(remote_tmp)}"
     )
     run_cmd(["ssh", "-t", dest, install_cmd])
+
+    try:
+        run_cmd(["scp", f"{dest}:{remote_path}", str(verify_tmp)])
+        if verify_tmp.read_bytes() != path.read_bytes():
+            raise RuntimeError(f"remote verify failed for {host}:{remote_path}")
+    finally:
+        try:
+            verify_tmp.unlink()
+        except OSError:
+            pass
 
     if restart:
         run_cmd(["ssh", "-t", dest, "sudo systemctl restart hub75-clock"])
