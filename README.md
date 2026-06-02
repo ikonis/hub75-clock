@@ -454,15 +454,13 @@ With defaults (`client_id: hub75_clock`, `ha_discovery_name: "HUB75 Clock"`):
 | Entity | Description |
 |---|---|
 | `sensor.hub75_clock_illuminance` | VEML7700 lux |
-| `sensor.hub75_clock_move_energy` | LD2410C move energy |
-| `sensor.hub75_clock_still_energy` | LD2410C still energy |
 | `sensor.hub75_clock_move_distance` | LD2410C move distance (cm) |
 | `sensor.hub75_clock_still_distance` | LD2410C still distance (cm) |
 | `binary_sensor.hub75_clock_pir` | PIR motion (shown as "Motion" in HA) |
 | `binary_sensor.hub75_clock_presence` | LD2410C occupancy |
 | `number.hub75_clock_brightness` | Brightness control (1–100) |
 
-Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registered.
+Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registered. LD2410 gate energy, gate thresholds, and engineering mode are intentionally kept out of Home Assistant; use the LD2410 tuner web UI or RadarTools for tuning.
 
 ### MQTT Topics
 

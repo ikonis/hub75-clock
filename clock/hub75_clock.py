@@ -1894,7 +1894,6 @@ class HUB75Clock:
             device["suggested_area"] = self.cfg["ha_discovery"]["ha_discovery_area"]
 
         avail      = [{"topic": self.topic_avail}]
-        em_state_t = topics.get("engineering_mode", f"{client_id}/engineering_mode") + "/state"
 
         # --- Sensors ---
         sensor_configs = []
@@ -1905,12 +1904,6 @@ class HUB75Clock:
                  "unit_of_measurement": "lx", "device_class": "illuminance", "state_class": "measurement"})
         if self.ld2410 is not None:
             sensor_configs += [
-                {"name": "Move Energy", "unique_id": f"{client_id}_move_energy",
-                 "state_topic": topics["motion"], "value_template": "{{ value_json.move_energy }}",
-                 "state_class": "measurement"},
-                {"name": "Still Energy", "unique_id": f"{client_id}_still_energy",
-                 "state_topic": topics["motion"], "value_template": "{{ value_json.still_energy }}",
-                 "state_class": "measurement"},
                 {"name": "Move Distance", "unique_id": f"{client_id}_move_distance",
                  "state_topic": topics["presence"], "value_template": "{{ value_json.move_distance }}",
                  "unit_of_measurement": "cm", "device_class": "distance", "state_class": "measurement"},
@@ -1923,11 +1916,27 @@ class HUB75Clock:
                 f"{prefix}/sensor/{s['unique_id']}/config",
                 json.dumps({**s, "device": device, "availability": avail, "has_entity_name": True}), retain=True)
 
-        # Remove old per-gate energy diagnostic entities; the tuner owns that detail now.
+        # Remove old LD2410 tuning/detail entities; the tuner owns that detail now.
+        for component, uid in (
+            ("sensor", f"{client_id}_move_energy"),
+            ("sensor", f"{client_id}_still_energy"),
+            ("switch", f"{client_id}_engineering_mode"),
+        ):
+            self.mqtt_client.publish(
+                f"{prefix}/{component}/{uid}/config",
+                "",
+                retain=True,
+            )
         for gate in range(9):
             for energy_type in ("move", "still"):
                 self.mqtt_client.publish(
                     f"{prefix}/sensor/{client_id}_g{gate}_{energy_type}_energy/config",
+                    "",
+                    retain=True,
+                )
+            for thresh_type in ("move", "still"):
+                self.mqtt_client.publish(
+                    f"{prefix}/number/{client_id}_g{gate}_{thresh_type}_thresh/config",
                     "",
                     retain=True,
                 )
@@ -1964,45 +1973,6 @@ class HUB75Clock:
                 "entity_category":  "config",
                 "has_entity_name":  True,
             }), retain=True)
-
-        # --- Number: gate thresholds (18 entities) ---
-        if self.ld2410 is not None:
-            for gate in range(9):
-                for thresh_type, label in (("move", "Move"), ("still", "Still")):
-                    uid       = f"{client_id}_g{gate}_{thresh_type}_thresh"
-                    cmd_topic = f"{client_id}/gate/{gate}/{thresh_type}_thresh"
-                    self.mqtt_client.publish(
-                        f"{prefix}/number/{uid}/config",
-                        json.dumps({
-                            "name":            f"Gate {gate} {label} Threshold",
-                            "unique_id":       uid,
-                            "device":          device,
-                            "availability":    avail,
-                            "command_topic":   cmd_topic,
-                            "state_topic":     cmd_topic,
-                            "min": 0, "max": 100, "step": 5,
-                            "entity_category": "config",
-                            "has_entity_name": True,
-                        }), retain=True)
-
-        # --- Switch: engineering mode ---
-        if self.ld2410 is not None:
-            self.mqtt_client.publish(
-                f"{prefix}/switch/{client_id}_engineering_mode/config",
-                json.dumps({
-                    "name":          "Engineering Mode",
-                    "unique_id":     f"{client_id}_engineering_mode",
-                    "device":        device,
-                    "availability":  avail,
-                    "command_topic": topics["config"],
-                    "payload_on":    '{"engineering_mode": true}',
-                    "payload_off":   '{"engineering_mode": false}',
-                    "state_topic":   em_state_t,
-                    "state_on":      "on",
-                    "state_off":     "off",
-                    "entity_category": "config",
-                    "has_entity_name": True,
-                }), retain=True)
 
         # --- Switch + URL sensor: theme builder webserver ---
         if self._theme_builder_cfg().get("mode", "off") == "ha":

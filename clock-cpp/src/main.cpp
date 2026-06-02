@@ -639,18 +639,6 @@ static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
     lux["state_class"] = "measurement";
     pub(prefix + "/sensor/" + cid + "_lux/config", lux);
 
-    json moveEnergy = base("Move Energy", cid + "_move_energy");
-    moveEnergy["state_topic"] = topics.value("motion", cid + "/motion");
-    moveEnergy["value_template"] = "{{ value_json.move_energy }}";
-    moveEnergy["state_class"] = "measurement";
-    pub(prefix + "/sensor/" + cid + "_move_energy/config", moveEnergy);
-
-    json stillEnergy = base("Still Energy", cid + "_still_energy");
-    stillEnergy["state_topic"] = topics.value("motion", cid + "/motion");
-    stillEnergy["value_template"] = "{{ value_json.still_energy }}";
-    stillEnergy["state_class"] = "measurement";
-    pub(prefix + "/sensor/" + cid + "_still_energy/config", stillEnergy);
-
     json moveDistance = base("Move Distance", cid + "_move_distance");
     moveDistance["state_topic"] = topics.value("presence", cid + "/presence");
     moveDistance["value_template"] = "{{ value_json.move_distance }}";
@@ -680,18 +668,6 @@ static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
     presence["payload_off"] = "False";
     presence["device_class"] = "occupancy";
     pub(prefix + "/binary_sensor/" + cid + "_presence/config", presence);
-
-    std::string engineeringTopic = topics.value("engineering_mode", cid + "/engineering_mode");
-    json engineering = base("Engineering Mode", cid + "_engineering_mode");
-    engineering["command_topic"] = engineeringTopic;
-    engineering["state_topic"] = engineeringTopic + "/state";
-    engineering["payload_on"] = "{\"engineering_mode\": true}";
-    engineering["payload_off"] = "{\"engineering_mode\": false}";
-    engineering["state_on"] = "on";
-    engineering["state_off"] = "off";
-    engineering["entity_category"] = "config";
-    engineering["icon"] = "mdi:tune-variant";
-    pub(prefix + "/switch/" + cid + "_engineering_mode/config", engineering);
 
     if (cfg["theme_builder"].value("mode", "off") == "ha") {
         json sw = base("Theme Builder", cid + "_theme_builder");
@@ -732,12 +708,21 @@ static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
     }
 
     for (const auto& entry : std::vector<std::pair<std::string, std::string>>{
+             {"sensor", cid + "_move_energy"},
+             {"sensor", cid + "_still_energy"},
+             {"switch", cid + "_engineering_mode"},
              {"binary_sensor", cid + "_update_available"},
              {"sensor", cid + "_update_info"},
              {"button", cid + "_update_check"},
              {"button", cid + "_update_install"},
          }) {
         pub(prefix + "/" + entry.first + "/" + entry.second + "/config", "");
+    }
+    for (int gate = 0; gate < 9; ++gate) {
+        for (const auto& kind : {"move", "still"}) {
+            pub(prefix + "/sensor/" + cid + "_g" + std::to_string(gate) + "_" + kind + "_energy/config", "");
+            pub(prefix + "/number/" + cid + "_g" + std::to_string(gate) + "_" + kind + "_thresh/config", "");
+        }
     }
 
     std::cout << "[mqtt] HA discovery published\n";
