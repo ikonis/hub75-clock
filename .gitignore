@@ -11,3 +11,4 @@ dist/
 .DS_Store
 *.swp
 .git-credentials
+ROADMAP-personal.md
