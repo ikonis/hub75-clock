@@ -75,7 +75,9 @@ if [ "${COMMIT_LOCAL_THEMES:-true}" = "true" ] && [ -n "$(git -C "$REPO_DIR" sta
     echo "[update] committing locally installed theme/sprite changes..."
     fix_repo_ownership
     git -C "$REPO_DIR" add themes sprites sprite-animations
-    if git -C "$REPO_DIR" commit -m "Add user made themes sprites and animations"; then
+    if git -C "$REPO_DIR" diff --cached --quiet -- themes sprites sprite-animations; then
+        echo "[update] no committed theme/sprite changes needed"
+    elif git -C "$REPO_DIR" commit -m "Add user made themes sprites and animations"; then
         echo "[update] local theme/sprite changes committed"
     else
         echo "[update] warning: theme/sprite commit failed; files are preserved locally but repo is dirty"
