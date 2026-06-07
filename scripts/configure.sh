@@ -193,11 +193,9 @@ mqtt:
     gates:            ${CLIENT_ID}/gates
     engineering_mode: ${CLIENT_ID}/engineering_mode
     bucket:           ${CLIENT_ID}/bucket
-    update:           ${CLIENT_ID}/update/install
-    update_check:     ${CLIENT_ID}/update/check
-    update_install:   ${CLIENT_ID}/update/install
-    update_state:     ${CLIENT_ID}/update/state
-    update_latest:    ${CLIENT_ID}/update/latest
+    theme:            ${CLIENT_ID}/theme/set
+    theme_state:      ${CLIENT_ID}/theme/state
+    themes_available: ${CLIENT_ID}/themes/available
     ld2410_params:    ${CLIENT_ID}/ld2410/params
     ld2410_read:      ${CLIENT_ID}/ld2410/read
 
@@ -285,13 +283,6 @@ time_format:
   blink_colon: false
   use_24h: false
 
-update:
-  enabled: true
-  repo_path: "$REPO_DIR"
-  branch: ""
-  command: "/home/$USER/update-clock.sh"
-  check_on_startup: true
-  check_time: "03:30"
 EOF
 sudo chmod 666 "$CONFIG_FILE"
 

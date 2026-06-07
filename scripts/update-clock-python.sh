@@ -17,6 +17,10 @@ if [ ! -d "$REPO_DIR/.git" ]; then
     fi
 fi
 
+if [ ! -d "$REPO_DIR/.git" ] && [ -d "$HOME/hub75-clock/.git" ]; then
+    REPO_DIR="$HOME/hub75-clock"
+fi
+
 if [ ! -d "$REPO_DIR/.git" ]; then
     echo "[update] repo not found: $REPO_DIR" >&2
     exit 1

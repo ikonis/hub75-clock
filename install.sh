@@ -43,23 +43,6 @@ if ! grep -q "bookworm" /etc/os-release 2>/dev/null; then
     fi
 fi
 
-echo "[1/11] Updating package lists..."
-sudo apt update -q
-
-echo "[2/11] Installing system packages..."
-sudo apt-get install -y git build-essential python3-dev python3-pip \
-    python3-pillow cython3 libgraphicsmagick++-dev libwebp-dev \
-    i2c-tools wget python3-yaml rsync cmake pkg-config \
-    libyaml-cpp-dev nlohmann-json3-dev libmosquitto-dev libgpiod-dev gpiod
-
-echo "[3/11] Installing Python packages..."
-sudo pip3 install paho-mqtt --break-system-packages
-sudo pip3 install RPi.GPIO --break-system-packages
-sudo pip3 install PyYAML --break-system-packages
-sudo pip3 install pyserial --break-system-packages
-sudo pip3 install adafruit-circuitpython-veml7700 adafruit-blinka --break-system-packages
-sudo pip3 install watchdog --break-system-packages
-
 PI_MODEL=$(cat /proc/cpuinfo | grep "Model" | cut -d: -f2 | xargs)
 IS_ZERO_W=false
 if echo "$PI_MODEL" | grep -qi "Zero W"; then
@@ -73,8 +56,12 @@ if [ "$IS_ZERO_W" = true ]; then
 fi
 echo ""
 echo "Clock runtime:"
-echo "  python  - recommended default for multicore Pis"
-echo "  cpp     - recommended for Pi Zero / lowest CPU overhead"
+echo "  python  - Python Clock"
+echo "            Fast updates, no compilation required."
+echo "            Uses more system resources; slower hardware may need reduced visual fidelity."
+echo "  cpp     - C++ Clock [EXPERIMENTAL]"
+echo "            Lower system overhead and smoother rendering on constrained hardware."
+echo "            Requires compilation during install/update."
 read -p "Install runtime [python/cpp] [$DEFAULT_RUNTIME]: " CLOCK_RUNTIME
 CLOCK_RUNTIME="${CLOCK_RUNTIME:-$DEFAULT_RUNTIME}"
 case "$CLOCK_RUNTIME" in
@@ -85,7 +72,37 @@ case "$CLOCK_RUNTIME" in
         exit 1
         ;;
 esac
-echo "      Selected runtime: $CLOCK_RUNTIME"
+if [ "$CLOCK_RUNTIME" = "cpp" ]; then
+    echo "      Selected runtime: C++ Clock [EXPERIMENTAL]"
+else
+    echo "      Selected runtime: Python Clock"
+fi
+
+echo "[1/11] Updating package lists..."
+sudo apt update -q
+
+echo "[2/11] Installing system packages..."
+COMMON_APT_DEPS=(
+    git build-essential python3-dev python3-pip
+    python3-pillow cython3 libgraphicsmagick++-dev libwebp-dev
+    i2c-tools wget python3-yaml rsync gpiod
+)
+CPP_APT_DEPS=(
+    cmake pkg-config libyaml-cpp-dev nlohmann-json3-dev
+    libmosquitto-dev libgpiod-dev
+)
+sudo apt-get install -y "${COMMON_APT_DEPS[@]}"
+if [ "$CLOCK_RUNTIME" = "cpp" ]; then
+    sudo apt-get install -y "${CPP_APT_DEPS[@]}"
+fi
+
+echo "[3/11] Installing Python packages..."
+sudo pip3 install paho-mqtt --break-system-packages
+sudo pip3 install RPi.GPIO --break-system-packages
+sudo pip3 install PyYAML --break-system-packages
+sudo pip3 install pyserial --break-system-packages
+sudo pip3 install adafruit-circuitpython-veml7700 adafruit-blinka --break-system-packages
+sudo pip3 install watchdog --break-system-packages
 
 echo ""
 echo "Theme builder webserver:"
@@ -162,6 +179,7 @@ if [ "$CLOCK_RUNTIME" = "cpp" ]; then
     if [ "$IS_ZERO_W" != true ]; then
         git checkout 86df760
     fi
+    echo "      Building rpi-rgb-led-matrix C++ library for experimental runtime..."
     make -j"$(nproc)" || { echo "[error] rpi-rgb-led-matrix C++ build failed"; exit 1; }
 fi
 cd "$REPO_DIR"
@@ -264,6 +282,7 @@ if [ "$CLOCK_RUNTIME" = "python" ]; then
     sudo chmod 644 "$CONFIG_DIR/animations/"*.py
     echo "      Python clock and animations installed."
 else
+    echo "      Building experimental C++ runtime..."
     cmake -S "$REPO_DIR/clock-cpp" -B "$REPO_DIR/clock-cpp/build"
     cmake --build "$REPO_DIR/clock-cpp/build"
     sudo install -m 0755 "$REPO_DIR/clock-cpp/build/hub75_clock" "$CLOCK_DIR/hub75_clock"

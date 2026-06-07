@@ -158,7 +158,7 @@ cd hub75-clock
 bash install.sh
 ```
 
-`install.sh` handles everything in one step, then launches the interactive configuration wizard (`scripts/configure.sh`) and prompts to reboot. See [Scripts](#scripts) for the full list of what it does.
+`install.sh` handles everything in one step, asks which runtime to install, then launches the interactive configuration wizard (`scripts/configure.sh`) and prompts to reboot. The Python runtime is the stable/public path. The C++ runtime is available as **experimental** for lower overhead, but fresh installs still need more testing.
 
 ### 3. Reboot
 
@@ -195,7 +195,7 @@ C++ runtime:
 sudo /opt/hub75-clock/hub75_clock /etc/hub75-clock/config.yaml
 ```
 
-Root required for matrix DMA/PWM. Panel should light up with time. Banner shows `--/-- CLEAR` until HA pushes weather.
+Root required for matrix DMA/PWM. Panel should light up with time. Banner shows `--/-- CLEAR` until HA pushes weather. The C++ runtime is **experimental** and may require dependency/build troubleshooting on fresh installs.
 
 ### 6. Start the service
 
@@ -215,9 +215,11 @@ make status
 Run once on a fresh Pi. Does everything in sequence:
 
 1. Updates apt package lists
-2. Installs system packages for both runtimes (git, build-essential, Python headers/tools, CMake, Mosquitto, yaml-cpp, gpiod, and others)
+2. Installs common system packages, then installs C++ build dependencies only when the C++ runtime is selected
 3. Installs Python packages (paho-mqtt, PyYAML, pyserial, RPi.GPIO, adafruit-circuitpython-veml7700, adafruit-blinka, watchdog)
-4. Lets you choose the clock runtime: Python is the suggested default for multicore Pis; C++ is suggested for Pi Zero / lowest CPU overhead
+4. Lets you choose the clock runtime:
+   - Python Clock: stable path, fast updates, no clock compile required
+   - C++ Clock **[EXPERIMENTAL]**: lower overhead, smoother on constrained hardware, compiles during install/update
 5. Lets you choose the theme builder mode: off, Home Assistant controlled, or always running
 6. Builds and installs `rpi-rgb-led-matrix` with Python bindings. Pi 4: installs a pinned commit via pip. Pi Zero W: clones, checks out commit `076c54b`, and builds with `make build-python` / `make install-python`. The C++ runtime also builds the matrix C++ library. See `docs/pi-zero-w.md`.
 7. Downloads fonts (rpi-rgb-led-matrix bundled BDF fonts + Spleen 12x24/16x32) to `~/hub75-fonts`
@@ -243,7 +245,7 @@ make update
 # or: ~/update-clock.sh
 ```
 
-For C++ clocks, `make update` rebuilds the C++ binary after syncing themes, sprites, and sprite-animation JSON. Normal theme/sprite JSON edits do not require a rebuild by themselves; the C++ clock reloads theme JSON changes while running. New C++ animation code or changes under `clock-cpp/src/animations/` require `make update`.
+For C++ clocks, `make update` rebuilds the C++ binary after syncing themes, sprites, and sprite-animation JSON. Normal theme/sprite JSON edits do not require a rebuild by themselves; the C++ clock reloads theme JSON changes while running. New C++ animation code or changes under `clock-cpp/src/animations/` require `make update`. Treat this runtime as **experimental** until the install path has been tested on more fresh Pi images.
 
 The C++ updater checks for build dependencies before compiling. If a migrated clock is missing them, install:
 
@@ -259,6 +261,49 @@ git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
 cd rpi-rgb-led-matrix
 make
 ```
+
+### switching runtimes
+
+The installed runtime is controlled by the `hub75-clock` systemd service and the updater copied to `~/update-clock.sh`.
+
+To switch from Python to C++ **[EXPERIMENTAL]**:
+
+```bash
+cp ~/hub75-clock/scripts/update-clock-cpp.sh ~/update-clock.sh
+chmod +x ~/update-clock.sh
+make update
+sudo systemctl edit --full hub75-clock
+```
+
+Set `ExecStart` to:
+
+```ini
+ExecStart=/opt/hub75-clock/hub75_clock /etc/hub75-clock/config.yaml
+```
+
+Then:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart hub75-clock
+```
+
+To roll back to Python:
+
+```bash
+cp ~/hub75-clock/scripts/update-clock-python.sh ~/update-clock.sh
+chmod +x ~/update-clock.sh
+make update
+sudo systemctl edit --full hub75-clock
+```
+
+Set `ExecStart` to:
+
+```ini
+ExecStart=/usr/bin/python3 /opt/hub75-clock/hub75_clock.py
+```
+
+Then reload and restart systemd again.
 
 ### scripts/configure.sh
 
@@ -356,7 +401,7 @@ Use sprites from a theme cameo like:
 { "name": "sprite", "sprite": "rocket", "chance_per_minute": 4 }
 ```
 
-Sprite pixels use `null` for transparent cells, `#RRGGBB` for solid color, or `#RRGGBBAA` for alpha-blended pixels. Sprite JSON can also carry early `movement` metadata for future cameo behavior work. Animation JSON editing is scaffolded for design work; runtime playback comes later.
+Sprite pixels use `null` for transparent cells, `#RRGGBB` for solid color, or `#RRGGBBAA` for alpha-blended pixels. Sprite JSON can also carry early `movement` metadata for future cameo behavior work. The sprite animation and cameo designer UI is scaffold/experimental design tooling; generated movement JSON is not yet a complete public runtime system.
 
 ---
 
@@ -369,7 +414,7 @@ make update
 # or: ~/update-clock.sh
 ```
 
-This pulls from the `main` branch, copies the updated files to `/opt/hub75-clock/`, and restarts the service.
+This pulls from the current branch, copies the updated files to `/opt/hub75-clock/`, and restarts the service. On the C++ runtime it also rebuilds the binary; on Python it copies the `.py` files directly.
 
 ---
 
