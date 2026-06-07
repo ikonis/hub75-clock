@@ -1,33 +1,25 @@
 # ============================================================================
-# HUB75 Clocks - Set Theme and Brightness
+# HUB75 Clock - Optional Theme and Brightness Example
 # ============================================================================
-# Fires whenever the house bucket changes, the sun rises/sets, a clock comes
-# online, or the mapped weather condition changes. Sets brightness on both
-# clocks directly, then calls script.clocks_select_theme to pick the theme.
+# This is an example, not required clock plumbing.
 #
-# ── Required helpers ──────────────────────────────────────────────────────────
-#   input_select.house_bucket  — your time-of-day bucket selector
-#     Suggested options: Day, Sunrise, Sunset, after_sunset, Late Evening,
-#                        Night, Away
-#   input_text.clock_condition — set by automation 02_push_weather.yaml
-#     Values: CLEAR, SUNNY, PARTLYCLOUDY, CLOUDY, RAIN, SNOW, SLEET, TSTORM,
-#             ICE, and aliases resolved by the clock (BLIZZARD, HURRICANE, …)
+# It sets brightness and calls script.clocks_select_theme whenever the sun
+# rises/sets, HA starts, the clock comes online, or the optional weather
+# condition helper changes.
 #
-# ── Required script ───────────────────────────────────────────────────────────
-#   script.clocks_select_theme — defined in 01b_select_theme_script.yaml
-#   Import it as a script in HA (not as an automation). See that file for
-#   instructions.
+# Customize these before use:
+#   input_select.clock_daypart          optional helper: Day, Evening, Night, Away
+#   input_text.clock_condition          optional helper updated by 02_push_weather
+#   number.YOUR_CLOCK_CLIENT_ID_brightness
+#   binary_sensor.YOUR_CLOCK_CLIENT_ID_online
+#   script.clocks_select_theme          see 01b_select_theme_script.yaml
 #
-# ── Customize ─────────────────────────────────────────────────────────────────
-#   number.bedroom_clock_brightness     — auto-discovered via MQTT Discovery
-#   number.living_room_clock_brightness — auto-discovered via MQTT Discovery
-#   Brightness values below: Away=1, Night=5, after_sunset=30, all others=60
+# Duplicate the brightness target and online trigger for additional clocks.
 # ============================================================================
 
-alias: "HUB75 Clocks - Set Theme and Brightness"
+alias: "HUB75 Clock - Optional Theme and Brightness"
 description: >
-  Sets brightness on both clocks and calls clocks_select_theme to pick the
-  right theme based on house bucket and current weather condition.
+  Example automation that sets brightness and calls clocks_select_theme.
 mode: queued
 max: 2
 triggers:
@@ -38,36 +30,30 @@ triggers:
     event: sunset
     id: sunset
   - trigger: state
-    entity_id: input_select.house_bucket
-    id: bucket_change
+    entity_id: input_select.clock_daypart
+    id: daypart_change
   - trigger: homeassistant
     event: start
     id: ha_start
   - trigger: state
-    entity_id: binary_sensor.bedroom_clock_online
+    entity_id: binary_sensor.YOUR_CLOCK_CLIENT_ID_online
     to: "on"
-    id: bedroom_online
-  - trigger: state
-    entity_id: binary_sensor.living_room_clock_online
-    to: "on"
-    id: living_room_online
+    id: clock_online
   - trigger: state
     entity_id: input_text.clock_condition
     id: condition_change
 actions:
   - variables:
-      bucket: "{{ states('input_select.house_bucket') }}"
+      daypart: "{{ states('input_select.clock_daypart') }}"
       after_sunset: "{{ is_state('sun.sun', 'below_horizon') }}"
       brightness: >
-        {% if bucket == 'Away' %}1
-        {% elif bucket == 'Night' %}5
+        {% if daypart == 'Away' %}1
+        {% elif daypart == 'Night' %}5
         {% elif after_sunset %}30
         {% else %}60{% endif %}
   - action: number.set_value
     target:
-      entity_id:
-        - number.bedroom_clock_brightness
-        - number.living_room_clock_brightness
+      entity_id: number.YOUR_CLOCK_CLIENT_ID_brightness
     data:
       value: "{{ brightness }}"
   - action: script.clocks_select_theme

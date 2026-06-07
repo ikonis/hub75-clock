@@ -1,39 +1,21 @@
 # ============================================================================
-# HUB75 Clocks - Push Weather Data
+# HUB75 Clock - Optional Weather Data Example
 # ============================================================================
-# Pushes hourly forecast data to both clocks every 15 minutes via a shared
-# MQTT topic that both clocks subscribe to.
+# Pushes hourly forecast data every 15 minutes via MQTT. If multiple clocks
+# subscribe to the same weather topic, they all receive the same weather data.
 #
-# Also updates input_text.clock_condition so that automation 01_set_theme
-# can react to condition changes and pick the right precipitation theme.
+# Optionally updates input_text.clock_condition so automation 01_set_theme can
+# react to condition changes and pick a weather-themed theme.
 #
-# ── Required helper ───────────────────────────────────────────────────────────
-#   input_text.clock_condition — create this text helper in HA:
-#     Settings → Devices & Services → Helpers → Create Helper → Text
-#     Name: clock_condition  |  Max length: 20
-#   It is written by this automation and read by script.clocks_select_theme.
-#
-# ── Customize ─────────────────────────────────────────────────────────────────
-#   weather.YOUR_WEATHER_ENTITY — your weather integration entity
-#   sensor.YOUR_OUTDOOR_TEMP   — your outdoor temperature sensor (or remove)
-#   binary_sensor.bedroom_clock_online      — bedroom clock online sensor
-#   binary_sensor.living_room_clock_online  — living room clock online sensor
-#
-# Condition logic:
-#   - Uses weighted precipitation probability over the next 12 hours
-#   - Most likely condition wins, severity as tiebreaker
-#   - High/low temps are the min/max over the next 24 hours
+# Customize:
+#   weather.YOUR_WEATHER_ENTITY            your weather integration entity
+#   sensor.YOUR_OUTDOOR_TEMP               your outdoor temperature sensor, or remove
+#   binary_sensor.YOUR_CLOCK_CLIENT_ID_online optional online sensor trigger
+#   input_text.clock_condition             optional text helper
 # ============================================================================
 
-alias: "HUB75 Clock - Push Weather"
-description: Pushes weather forecast to the clock every 15 minutes.
-# ── Customization ─────────────────────────────────────────────────────────────
-# Change condition_hours to adjust how far ahead the clock looks for weather
-# conditions (default 12 — shows the worst condition expected in the next 12h).
-# Change temp_hours to adjust the window for high/low temperature calculation
-# (default 24 — shows the warmest high and coldest low over the next 24h).
-# These are the only values you need to change for most customizations.
-# ──────────────────────────────────────────────────────────────────────────────
+alias: "HUB75 Clock - Optional Weather Push"
+description: Example that publishes weather forecast data to the clock.
 mode: single
 triggers:
   - trigger: time_pattern
@@ -41,10 +23,7 @@ triggers:
   - trigger: homeassistant
     event: start
   - trigger: state
-    entity_id: binary_sensor.bedroom_clock_online
-    to: "on"
-  - trigger: state
-    entity_id: binary_sensor.living_room_clock_online
+    entity_id: binary_sensor.YOUR_CLOCK_CLIENT_ID_online
     to: "on"
 actions:
   - action: weather.get_forecasts
@@ -55,8 +34,8 @@ actions:
     response_variable: fc
     continue_on_error: true
   - variables:
-      condition_hours: 12   # How many hours ahead to check for condition (1-48)
-      temp_hours: 24        # How many hours ahead for high/low temps (1-72)
+      condition_hours: 12
+      temp_hours: 24
       periods: >
         {{ (fc['weather.YOUR_WEATHER_ENTITY'].forecast | default([]))
            if fc is defined else [] }}
@@ -164,13 +143,11 @@ actions:
       retain: true
       payload: >
         {
-          "low_temp":     {{ low_temp }},
-          "high_temp":    {{ high_temp }},
-          "condition":    "{{ mapped_condition | trim }}",
+          "low_temp": {{ low_temp }},
+          "high_temp": {{ high_temp }},
+          "condition": "{{ mapped_condition | trim }}",
           "outdoor_temp": {{ outdoor_temp | trim }}
         }
-  # Update the shared condition helper so 01_set_theme can react and pick
-  # the right precipitation theme (Rainy Day, Stormy Night, Snowy Day, etc.)
   - action: input_text.set_value
     target:
       entity_id: input_text.clock_condition

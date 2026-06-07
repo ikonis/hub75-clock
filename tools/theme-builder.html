@@ -6,72 +6,90 @@
 <title>HUB75 Clock Theme Builder</title>
 <style>
 :root {
-  --bg: #09090e;
-  --bg2: #11111a;
-  --bg3: #181826;
-  --bg4: #0d0d18;
-  --border: #252538;
-  --border2: #32324e;
-  --text: #c0c0d4;
-  --dim: #60607a;
-  --accent: #4a80ff;
-  --accent2: #1e3a80;
-  --danger: #ff4466;
-  --r: 3px;
+  --bg: #0f0f14;
+  --bg2: #1b1b22;
+  --bg3: #24242d;
+  --bg4: #14141c;
+  --tab: #191920;
+  --tab-active: #2b2b34;
+  --border: #2f2f3a;
+  --border2: #41414f;
+  --text: #d0d0dc;
+  --dim: #858596;
+  --accent: #7aa2f7;
+  --accent2: #30343d;
+  --danger: #ff5f78;
+  --ok: #7bd88f;
+  --r: 4px;
   --fs: 12px;
+  --sidebar: 320px;
+  --field-h: 28px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',system-ui,sans-serif;display:flex;flex-direction:column}
 /* Header */
-.hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;gap:8px}
-.hdr-title{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.5px;white-space:nowrap}
-.hdr-btns{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.hdr{height:42px;display:flex;align-items:flex-end;justify-content:flex-start;padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;gap:8px}
+.hdr-title{width:calc(var(--sidebar) - 22px);font-size:13px;font-weight:600;color:#a8c7ff;white-space:nowrap;padding:0 0 9px;flex:0 0 calc(var(--sidebar) - 22px)}
+.hdr-btns,.row,.tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tabs{display:flex;align-items:flex-end;gap:2px;flex-wrap:wrap;margin:0 4px -1px 0;flex:0 0 auto}
+.tab{height:36px;padding:9px 16px 7px;text-decoration:none;border-radius:9px 9px 0 0;background:var(--tab);border-color:var(--border);border-bottom-color:var(--border);color:#a8a8b8}
+.tab:hover{background:#23232c}
+.tab.active{background:var(--tab-active);border-color:var(--border2);border-bottom-color:var(--tab-active);color:#f3f3f8}
 .server-only{display:none}
 .server-mode .server-only{display:flex}
-#server-theme-select{background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:var(--r);font:11px monospace;outline:none;min-width:190px;max-width:280px}
+select,input{border:1px solid var(--border2);border-radius:var(--r);background:var(--bg3);color:var(--text);font:12px 'Segoe UI',system-ui,sans-serif}
+select,input[type=text],input[type=number]{height:var(--field-h);padding:5px 7px;outline:none}
+input[type=color]{width:38px;height:var(--field-h);padding:2px}
+input[type=range]{accent-color:var(--accent)}
+#server-theme-select{height:var(--field-h);padding:5px 7px;outline:none;min-width:190px;max-width:280px}
 #server-theme-select:focus{border-color:var(--accent)}
 #server-status{align-items:center;color:var(--dim);font-size:11px;min-width:72px}
+.dirty #server-status::after{content:" *";color:var(--danger)}
 /* Layout */
-.body{display:grid;grid-template-columns:320px 1fr;flex:1;min-height:0;overflow:hidden}
+.body{display:grid;grid-template-columns:var(--sidebar) 1fr;flex:1;min-height:0;overflow:hidden}
 /* Controls panel */
 .ctrl{overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border)}
 .sec{border-bottom:1px solid var(--border)}
-.sec-hdr{padding:7px 10px;background:var(--bg3);font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--dim);font-weight:600;user-select:none}
-.sec-body{padding:10px;display:flex;flex-direction:column;gap:7px}
+.sec-hdr{height:30px;padding:8px 10px;background:var(--bg3);font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--dim);font-weight:600;user-select:none}
+.sec-body{padding:10px;display:flex;flex-direction:column;gap:8px}
 /* Fields */
-.f{display:flex;align-items:center;gap:6px}
-.f label{font-size:11px;color:var(--dim);flex:0 0 106px;white-space:nowrap}
-.f input[type=text],.f input[type=number],.f select{flex:1;background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:var(--r);font:11px/1 monospace;outline:none;min-width:0}
+.f{display:flex;align-items:center;gap:7px;min-height:var(--field-h)}
+.f label{font-size:11px;color:var(--dim);flex:0 0 96px;white-space:nowrap}
+.f input[type=text],.f input[type=number],.f select{min-width:0;flex:1}
 .f input:focus,.f select:focus{border-color:var(--accent)}
-.f input[type=color]{width:38px;height:24px;border:1px solid var(--border);border-radius:var(--r);background:none;padding:2px;cursor:pointer;flex-shrink:0}
+.f input[type=color]{cursor:pointer;flex-shrink:0}
 .f input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--accent);flex-shrink:0}
-.f input[type=range]{flex:1;accent-color:var(--accent)}
+.f input[type=range]{flex:1}
 .f .rv{min-width:34px;text-align:right;font:11px monospace;color:var(--dim)}
-.f .chx{width:76px;font:11px monospace;background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:var(--r);outline:none;flex-shrink:0}
+.f .chx{width:76px;font:12px 'Segoe UI',system-ui,sans-serif;padding:5px 7px;outline:none;flex-shrink:0}
 .f .chx:focus{border-color:var(--accent)}
 /* Buttons */
-.btn{padding:5px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg3);color:var(--text);font:var(--fs) 'Segoe UI',system-ui,sans-serif;cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s}
-.btn:hover{background:var(--border);border-color:var(--border2)}
-.btn-p{background:var(--accent2);border-color:var(--accent);color:#ddf}
-.btn-p:hover{background:var(--accent)}
-.btn-d{padding:2px 9px;font-size:11px;background:transparent;border-color:var(--danger);color:var(--danger);min-width:24px;text-align:center;flex-shrink:0}
+.btn{min-height:var(--field-h);padding:5px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg3);color:var(--text);font:var(--fs) 'Segoe UI',system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--border)}
+.btn-p{background:#30343d;border-color:var(--accent);color:var(--text)}
+.btn-p:hover{background:var(--border)}
+.btn.tab{height:36px;min-height:36px;padding:9px 16px 7px;border-radius:9px 9px 0 0;background:var(--tab);border-color:var(--border);border-bottom-color:var(--border);color:#a8a8b8}
+.btn.tab:hover{background:#23232c}
+.btn.tab.active{background:var(--tab-active);border-color:var(--border2);border-bottom-color:var(--tab-active);color:#f3f3f8}
+.btn-d{padding:2px 7px;font-size:11px;background:transparent;border-color:var(--danger);color:var(--danger);width:28px;min-width:28px;text-align:center;flex-shrink:0}
 .btn-d:hover{background:var(--danger);color:#fff}
-.btn-sm{padding:3px 8px;font-size:11px}
+.btn-sm{padding:5px 10px;font-size:12px}
 /* List items (cameos) */
-.li{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:7px 8px;display:flex;flex-direction:column;gap:5px}
-.li-row{display:flex;align-items:center;gap:5px}
+.li{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:8px;display:flex;flex-direction:column;gap:6px}
+.li-row{display:flex;align-items:center;gap:6px}
 .li-row label{font-size:11px;color:var(--dim);flex-shrink:0}
-.li-row input,.li-row select{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:var(--r);font:11px monospace;outline:none}
+.li-row input,.li-row select{min-width:0}
 .li-row input:focus,.li-row select:focus{border-color:var(--accent)}
 .li-row input[type=number]{width:60px}
-.li-row .spacer{flex:1}
-.add-row{display:flex;gap:5px;align-items:center;margin-top:2px}
-.add-row select{background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:var(--r);font:11px monospace;outline:none}
+.li-row .spacer{display:none}
+.add-row{display:flex;gap:6px;align-items:center;margin-top:2px}
+.add-row select{outline:none}
 /* Preview panel */
 .pv{display:flex;flex-direction:column;overflow:hidden;padding:12px;gap:10px;background:var(--bg)}
 .matrix-wrap{display:flex;justify-content:center;flex-shrink:0}
 #matrix{display:block;border:1px solid var(--border2);border-radius:3px;image-rendering:pixelated;image-rendering:crisp-edges}
+.legend-on #matrix{border-color:var(--accent)}
 .pv-ctrl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);flex-shrink:0}
 .pv-ctrl .f{flex-shrink:0}
 .pv-ctrl .f label{min-width:unset;flex:none}
@@ -81,8 +99,8 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 .json-actions{display:flex;align-items:center;gap:6px}
 #json-status{font-size:11px;color:var(--dim);min-width:86px;text-align:right}
 #json-status.err{color:var(--danger)}
-#json-status.ok{color:#66c080}
-#json-out{flex:1;background:var(--bg4);color:#7ab0ff;border:none;padding:9px;font:11px/1.5 monospace;resize:none;outline:none;overflow:auto}
+#json-status.ok{color:var(--ok)}
+#json-out{flex:1;background:var(--bg4);color:#7ab0ff;border:none;padding:9px;font:11px/1.5 Consolas,monospace;resize:none;outline:none;overflow:auto}
 /* Scrollbar */
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
@@ -94,8 +112,9 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 <div class="hdr">
   <span class="hdr-title">HUB75 Theme Builder</span>
   <div class="hdr-btns">
+    <div class="tabs"><button class="btn tab active" type="button">Themes</button><a class="btn tab" href="/sprite-builder.html?mode=sprite">Sprite</a><a class="btn tab" href="/sprite-builder.html?mode=animation">Cameo</a></div>
     <select id="server-theme-select" class="server-only"></select>
-    <button class="btn server-only" id="btn-server-load">Load</button>
+    <button class="btn server-only" id="btn-server-new">New</button>
     <button class="btn btn-p server-only" id="btn-server-save">Save</button>
     <button class="btn server-only" id="btn-server-save-as">Save As</button>
     <span id="server-status" class="server-only"></span>
@@ -110,7 +129,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
 <!-- ===== LEFT CONTROLS ===== -->
 <div class="ctrl">
   <!-- Identity -->
-  <div class="sec">
+  <div class="sec" data-help="Theme name and note. Save writes to the current file shown in the header; use Save As to create or rename a theme file." data-highlight="banner">
     <div class="sec-hdr">Identity</div>
     <div class="sec-body">
       <div class="f"><label>Name</label><input type="text" id="i-name" value="My Theme"></div>
@@ -118,7 +137,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     </div>
   </div>
   <!-- Background -->
-  <div class="sec">
+  <div class="sec" data-help="The animation-zone background behind sun, moon, clouds, stars, and foreground cameos." data-highlight="animation">
     <div class="sec-hdr">Background</div>
     <div class="sec-body">
       <div class="f"><label>Type</label>
@@ -156,7 +175,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     </div>
   </div>
   <!-- Animations -->
-  <div class="sec">
+  <div class="sec" data-help="Built-in scene elements. Stars and clouds save as cameos; sun and moon are theme flags." data-highlight="scene">
     <div class="sec-hdr">Animations</div>
     <div class="sec-body">
       <div class="f"><label>Stars</label><input type="checkbox" id="i-stars"></div>
@@ -182,7 +201,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     </div>
   </div>
   <!-- Colors -->
-  <div class="sec">
+  <div class="sec" data-help="Banner text colors for time, low temperature, high temperature, and condition text." data-highlight="banner">
     <div class="sec-hdr">Colors</div>
     <div class="sec-body">
       <div class="f"><label>Time</label>
@@ -204,7 +223,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     </div>
   </div>
   <!-- Cameos -->
-  <div class="sec">
+  <div class="sec" data-help="Optional animations that can appear over the theme. Preview shows only the core scene and a simple shooting-star representation." data-highlight="animation">
     <div class="sec-hdr">Cameos</div>
     <div class="sec-body">
       <div id="cameo-list"></div>
@@ -212,12 +231,14 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
         <select id="cameo-add-sel">
           <option value="shooting_star">shooting_star</option>
           <option value="airplane">airplane</option>
+          <option value="biplane">biplane</option>
           <option value="bird_flock">bird_flock</option>
           <option value="butterfly">butterfly</option>
           <option value="comet">comet</option>
           <option value="easter_egg">easter_egg</option>
           <option value="firefly">firefly</option>
           <option value="fireworks">fireworks</option>
+          <option value="fish">fish</option>
           <option value="flutterflies">flutterflies</option>
           <option value="ghost">ghost</option>
           <option value="hot_air_balloon">hot_air_balloon</option>
@@ -228,7 +249,9 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
           <option value="santa">santa</option>
           <option value="satellite">satellite</option>
           <option value="snowman">snowman</option>
+          <option value="sprite">sprite</option>
           <option value="submarine">submarine</option>
+          <option value="tractor">tractor</option>
           <option value="tumbleweed">tumbleweed</option>
           <option value="ufo">ufo</option>
         </select>
@@ -265,6 +288,7 @@ body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 'Segoe UI',syste
     <div class="f"><label>High</label><input type="number" id="p-high" value="88"></div>
     <div class="f"><label>Condition text</label><input type="text" id="p-condtext" value="CLEAR" style="width:100px"></div>
     <div class="f"><label>Animate</label><input type="checkbox" id="p-animate"></div>
+    <div class="f"><label>Legend</label><input type="checkbox" id="p-legend"></div>
   </div>
   <div class="json-wrap">
     <div class="json-hdr">
@@ -306,6 +330,8 @@ const theme = {
 };
 
 const preview = { condition: 'CLEAR', nightMode: false, lowTemp: 68, highTemp: 88, condText: 'CLEAR', animate: false };
+let previewLegend = false;
+let previewHighlight = '';
 
 // =====================================================================
 // PIXEL BUFFER
@@ -812,6 +838,32 @@ function flushCanvas() {
   // Banner/animation separator line
   ctx.fillStyle = 'rgba(60,60,100,.4)';
   ctx.fillRect(0, BANNER_H * S, W * S, 1);
+
+  drawPreviewOverlay();
+}
+
+function overlayBox(x, y, w, h, label, color, active = true) {
+  ctx.save();
+  ctx.lineWidth = active ? 2 : 1;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.globalAlpha = active ? 0.95 : 0.38;
+  ctx.strokeRect(x * S + 1, y * S + 1, w * S - 2, h * S - 2);
+  ctx.font = '10px Segoe UI, sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.fillText(label, x * S + 4, y * S + 3);
+  ctx.restore();
+}
+
+function drawPreviewOverlay() {
+  if (!previewLegend && !previewHighlight) return;
+  const showAll = previewLegend;
+  const want = key => showAll || previewHighlight === key || (previewHighlight === 'scene' && ['sun','moon','clouds'].includes(key));
+  if (want('banner')) overlayBox(0, 0, W, BANNER_H, 'banner', '#4a80ff', previewHighlight === 'banner' || showAll);
+  if (want('animation')) overlayBox(0, ANIM_TOP, W, ANIM_BOT - ANIM_TOP + 1, 'animation', '#66c080', previewHighlight === 'animation' || showAll);
+  if (want('sun')) overlayBox(W - 21, ANIM_TOP, 21, 21, 'sun', '#ffaa33', previewHighlight === 'scene' || showAll);
+  if (want('moon')) overlayBox(0, ANIM_TOP, 10, 10, 'moon', '#d8d8c8', previewHighlight === 'scene' || showAll);
+  if (want('clouds')) overlayBox(0, ANIM_TOP + 4, W, 13, 'clouds', '#a0a0b8', previewHighlight === 'scene' || showAll);
 }
 
 // =====================================================================
@@ -908,16 +960,40 @@ function setServerStatus(msg) {
   if (el) el.textContent = msg;
 }
 
+function currentSaveLabel(prefix = 'File') {
+  const file = currentThemeFile || themeFileName();
+  setServerStatus(`${prefix}: ${file}`);
+}
+
 let serverMode = false;
 let currentThemeFile = '';
+let selectedThemeFile = '';
 let syncingJSON = false;
 let jsonDirty = false;
+let themeDirty = false;
 
 function setJSONStatus(msg, cls = '') {
   const el = document.getElementById('json-status');
   if (!el) return;
   el.textContent = msg;
   el.className = cls;
+}
+
+function setThemeDirty(dirty) {
+  themeDirty = !!dirty;
+  document.body.classList.toggle('dirty', themeDirty || jsonDirty);
+}
+
+function markThemeSaved() {
+  themeDirty = false;
+  updateJSON(false);
+  jsonDirty = false;
+  document.body.classList.remove('dirty');
+  setJSONStatus('Saved', 'ok');
+}
+
+function hasUnsavedChanges() {
+  return themeDirty || jsonDirty;
 }
 
 function parseJSONEditor() {
@@ -935,10 +1011,10 @@ function parseJSONEditor() {
   }
 }
 
-function applyJSONEditor() {
+function applyJSONEditor(markDirty = true) {
   const data = parseJSONEditor();
   if (!data) return false;
-  applyThemeData(data);
+  applyThemeData(data, markDirty);
   setJSONStatus('Applied', 'ok');
   return true;
 }
@@ -961,7 +1037,9 @@ async function refreshServerThemes(selectFile = currentThemeFile) {
   }
   if (selectFile && data.themes.includes(selectFile)) sel.value = selectFile;
   else if (data.themes.length) sel.value = data.themes[0];
-  setServerStatus(data.themes.length ? `${data.themes.length} themes` : 'No themes');
+  selectedThemeFile = sel.value || '';
+  if (currentThemeFile) currentSaveLabel();
+  else setServerStatus(data.themes.length ? `${data.themes.length} themes` : 'No themes');
 }
 
 async function initServerMode() {
@@ -969,6 +1047,9 @@ async function initServerMode() {
     await refreshServerThemes('');
     serverMode = true;
     document.body.classList.add('server-mode');
+    if (document.getElementById('server-theme-select').value) {
+      setServerStatus('Select a theme');
+    }
   } catch (err) {
     serverMode = false;
   }
@@ -982,10 +1063,11 @@ async function loadServerTheme(file) {
     const res = await fetch('/api/theme?file=' + encodeURIComponent(selected), { cache: 'no-store' });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || 'Unable to load theme');
-    applyThemeData(data.theme);
+    applyThemeData(data.theme, false);
     currentThemeFile = data.file;
+    selectedThemeFile = data.file;
     document.getElementById('server-theme-select').value = data.file;
-    setServerStatus('Loaded');
+    currentSaveLabel('Loaded');
   } catch (err) {
     setServerStatus('Load failed');
     alert('Load failed: ' + err.message);
@@ -999,6 +1081,14 @@ async function saveServerTheme(fileOverride = '') {
     return;
   }
   const file = fileOverride || currentThemeFile || themeFileName();
+  const impliedFile = themeFileName();
+  if (!fileOverride && currentThemeFile && currentThemeFile !== impliedFile) {
+    const ok = confirm(`Save writes to the loaded file:\n\n${currentThemeFile}\n\nThe theme name suggests:\n\n${impliedFile}\n\nUse Save As if you meant to create/rename the file. Save to ${currentThemeFile}?`);
+    if (!ok) {
+      currentSaveLabel('Still loaded');
+      return;
+    }
+  }
   setServerStatus('Saving...');
   try {
     const res = await fetch('/api/theme', {
@@ -1009,8 +1099,13 @@ async function saveServerTheme(fileOverride = '') {
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || 'Unable to save theme');
     currentThemeFile = data.file;
+    selectedThemeFile = data.file;
     await refreshServerThemes(currentThemeFile);
-    setServerStatus('Saved');
+    markThemeSaved();
+    const savedTo = Array.isArray(data.saved_to) && data.saved_to.length
+      ? `Saved to ${data.saved_to.join(', ')}`
+      : `Saved ${data.file}`;
+    setServerStatus(savedTo);
   } catch (err) {
     setServerStatus('Save failed');
     alert('Save failed: ' + err.message);
@@ -1030,11 +1125,50 @@ async function saveServerThemeAs() {
   await saveServerTheme(file);
 }
 
-function updateJSON() {
+function makeBlankTheme(name = 'New Theme') {
+  return {
+    name,
+    description: '',
+    background_type: 'solid',
+    background_color: '#000000',
+    background_top: '#000000',
+    background_bottom: '#000000',
+    background_split: 0.5,
+    background_gradient_direction: 'sunset',
+    colors: {
+      time: '#F0F0F0',
+      low_temp: '#00CCFF',
+      high_temp: '#FF8C00',
+      condition: '#909090'
+    },
+    sun_enabled: false,
+    moon_enabled: false,
+    cloud_density: 'medium',
+    cloud_speed: 'medium',
+    cameos: []
+  };
+}
+
+function newServerTheme() {
+  if (hasUnsavedChanges() && !confirm('Discard unsaved changes and start a new theme?')) return;
+  const entered = prompt('New theme name:', 'New Theme');
+  if (entered === null) return;
+  const name = entered.trim() || 'New Theme';
+  currentThemeFile = '';
+  selectedThemeFile = '';
+  const sel = document.getElementById('server-theme-select');
+  if (sel) sel.selectedIndex = -1;
+  applyThemeData(makeBlankTheme(name), true);
+  setServerStatus('New unsaved theme');
+}
+
+function updateJSON(markDirty = true) {
+  if (markDirty) themeDirty = true;
   syncingJSON = true;
   document.getElementById('json-out').value = buildJSON();
   syncingJSON = false;
   jsonDirty = false;
+  setThemeDirty(themeDirty);
   setJSONStatus('Generated');
 }
 
@@ -1081,13 +1215,13 @@ function loadFile(file) {
   reader.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
-      applyThemeData(data);
+      applyThemeData(data, false);
     } catch(err) { alert('Invalid JSON: ' + err.message); }
   };
   reader.readAsText(file);
 }
 
-function applyThemeData(data) {
+function applyThemeData(data, markDirty = false) {
   const incomingCameos = Array.isArray(data.cameos) ? data.cameos : [];
   const defaults = {
     name: 'Imported', description: '',
@@ -1103,9 +1237,9 @@ function applyThemeData(data) {
     if (k === 'colors') {
       if (data.colors) Object.assign(theme.colors, data.colors);
     } else if (k === 'cameos') {
-      theme.cameos = incomingCameos
+      theme.cameos = uniqueCameos(incomingCameos
         .filter(c => c.name !== 'stars' && c.name !== 'clouds')
-        .map(c => ({...c}));
+        .map(c => ({...c})));
     } else if (data[k] !== undefined) {
       theme[k] = data[k];
     }
@@ -1116,9 +1250,11 @@ function applyThemeData(data) {
   if (data.shooting_stars_enabled && !theme.cameos.some(c => c.name === 'shooting_star')) {
     theme.cameos.push({ name: 'shooting_star', chance_per_minute: 8 });
   }
+  theme.cameos = uniqueCameos(theme.cameos);
   syncFormToTheme();
   initStars(); initClouds();
-  render(); updateJSON();
+  render(); updateJSON(markDirty);
+  setThemeDirty(markDirty);
 }
 
 // =====================================================================
@@ -1185,10 +1321,10 @@ function showHideCloudOptions() {
 // CAMEO LIST
 // =====================================================================
 const ALL_ANIMATIONS = [
-  'shooting_star','airplane','bird_flock','butterfly','comet',
-  'easter_egg','firefly','fireworks','flutterflies','ghost','hot_air_balloon',
+  'shooting_star','airplane','biplane','bird_flock','butterfly','comet',
+  'easter_egg','firefly','fireworks','fish','flutterflies','ghost','hot_air_balloon',
   'jack_o_lantern','meteor','rainbow','rocket','santa','satellite',
-  'snowman','submarine','tumbleweed','ufo'
+  'snowman','sprite','submarine','tractor','tumbleweed','ufo'
 ];
 
 function buildCameoList() {
@@ -1196,7 +1332,7 @@ function buildCameoList() {
   list.innerHTML = '';
   theme.cameos.forEach((c, idx) => {
     const opts = ALL_ANIMATIONS.map(n =>
-      `<option value="${n}"${c.name===n?' selected':''}>${n}</option>`
+      `<option value="${n}"${c.name===n?' selected':''}${cameoExists(n, idx)?' disabled':''}>${n}</option>`
     ).join('');
     const li = document.createElement('div');
     li.className = 'li';
@@ -1218,13 +1354,48 @@ function buildCameoList() {
     el.addEventListener('change', cameoFieldChange);
     el.addEventListener('input', cameoFieldChange);
   });
+  updateCameoAddOptions();
+}
+
+function cameoExists(name, exceptIdx = -1) {
+  return theme.cameos.some((c, idx) => idx !== exceptIdx && c.name === name);
+}
+
+function uniqueCameos(cameos) {
+  const seen = new Set();
+  return cameos.filter(c => {
+    if (!c.name || seen.has(c.name)) return false;
+    seen.add(c.name);
+    return true;
+  });
+}
+
+function updateCameoAddOptions() {
+  const sel = document.getElementById('cameo-add-sel');
+  if (!sel) return;
+  const used = new Set(theme.cameos.map(c => c.name));
+  let firstAvailable = '';
+  [...sel.options].forEach(opt => {
+    opt.disabled = used.has(opt.value);
+    if (!opt.disabled && !firstAvailable) firstAvailable = opt.value;
+  });
+  if (sel.value && !used.has(sel.value)) return;
+  sel.value = firstAvailable;
 }
 
 function cameoFieldChange(e) {
   const idx = +e.target.dataset.ci;
   const field = e.target.dataset.f;
   if (field === 'del') { theme.cameos.splice(idx, 1); buildCameoList(); }
-  else if (field === 'name') { theme.cameos[idx].name = e.target.value; }
+  else if (field === 'name') {
+    if (cameoExists(e.target.value, idx)) {
+      alert(`${e.target.value} is already in this theme.`);
+      e.target.value = theme.cameos[idx].name;
+      return;
+    }
+    theme.cameos[idx].name = e.target.value;
+    buildCameoList();
+  }
   else if (field === 'cpm') { theme.cameos[idx].chance_per_minute = parseFloat(e.target.value) || 8; }
   render(); updateJSON();
 }
@@ -1307,6 +1478,12 @@ function wireControls() {
   // Cameos
   document.getElementById('cameo-add-btn').addEventListener('click', () => {
     const name = document.getElementById('cameo-add-sel').value;
+    if (!name) return;
+    if (cameoExists(name)) {
+      alert(`${name} is already in this theme.`);
+      updateCameoAddOptions();
+      return;
+    }
     theme.cameos.push({ name, chance_per_minute: 8 });
     buildCameoList(); render(); updateJSON();
   });
@@ -1334,13 +1511,25 @@ function wireControls() {
     preview.animate = e.target.checked;
     if (preview.animate) startAnim(); else { stopAnim(); render(); }
   });
+  document.getElementById('p-legend').addEventListener('change', e => {
+    previewLegend = e.target.checked;
+    document.body.classList.toggle('legend-on', previewLegend);
+    render();
+  });
 
   // Export / copy
-  document.getElementById('btn-server-load').addEventListener('click', () => loadServerTheme());
+  document.getElementById('btn-server-new').addEventListener('click', newServerTheme);
   document.getElementById('btn-server-save').addEventListener('click', () => saveServerTheme());
   document.getElementById('btn-server-save-as').addEventListener('click', saveServerThemeAs);
-  document.getElementById('server-theme-select').addEventListener('change', e => {
-    currentThemeFile = e.target.value;
+  document.getElementById('server-theme-select').addEventListener('change', async e => {
+    const nextFile = e.target.value;
+    if (!nextFile) return;
+    if (hasUnsavedChanges() && !confirm('Discard unsaved changes and load another theme?')) {
+      if (selectedThemeFile) e.target.value = selectedThemeFile;
+      else e.target.selectedIndex = -1;
+      return;
+    }
+    await loadServerTheme(nextFile);
   });
   document.getElementById('btn-export').addEventListener('click', exportJSON);
   document.getElementById('btn-copy').addEventListener('click', copyJSON);
@@ -1355,6 +1544,7 @@ function wireControls() {
   document.getElementById('json-out').addEventListener('input', () => {
     if (syncingJSON) return;
     jsonDirty = true;
+    setThemeDirty(themeDirty);
     parseJSONEditor();
   });
   document.getElementById('file-load').addEventListener('change', e => {
@@ -1363,18 +1553,52 @@ function wireControls() {
   });
 }
 
+function wireHelpTitles() {
+  document.querySelectorAll('[data-help]').forEach(el => {
+    el.title = el.dataset.help;
+    el.addEventListener('mouseenter', () => {
+      previewHighlight = el.dataset.highlight || '';
+      render();
+    });
+    el.addEventListener('mouseleave', () => {
+      previewHighlight = '';
+      render();
+    });
+  });
+
+  const help = {
+    'i-name': 'Displayed theme name. New unsaved themes use this to suggest a filename.',
+    'i-desc': 'Optional note stored in the JSON for humans.',
+    'i-bgtype': 'Solid uses one color; gradient blends top to bottom in the animation zone.',
+    'i-stars': 'Adds the persistent stars cameo.',
+    'i-sun': 'Draws the sun before clouds.',
+    'i-moon': 'Draws the moon before clouds.',
+    'i-clouds': 'Adds the persistent clouds cameo.',
+    'c-time': 'Clock time color.',
+    'c-low': 'Low temperature color.',
+    'c-high': 'High temperature and degree-symbol color.',
+    'c-cond': 'Weather condition text color.',
+    'p-legend': 'Shows labeled preview regions.'
+  };
+  for (const [id, text] of Object.entries(help)) {
+    const el = document.getElementById(id);
+    if (el) el.title = text;
+  }
+}
+
 // =====================================================================
 // INIT
 // =====================================================================
 function init() {
   wireControls();
+  wireHelpTitles();
   showHideBgGroups();
   showHideCloudOptions();
   buildCameoList();
   initStars();
   initClouds();
   render();
-  updateJSON();
+  updateJSON(false);
   initServerMode();
 
   // Live time update every 10 seconds when not animating

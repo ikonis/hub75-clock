@@ -21,13 +21,34 @@ import random
 import re
 import importlib.util
 import subprocess
-from datetime import datetime, timezone, timedelta
+import queue
+from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
 import yaml
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 import paho.mqtt.client as mqtt
 from theme_loader import ThemeLoader, Theme
+
+
+DEFAULT_ANIMATION_SETTINGS = {
+    "rocket": {"speed": 0.25},
+    "meteor": {"speed": 0.30},
+    "hot_air_balloon": {"speed": 0.5},
+    "santa": {"speed": 0.5},
+    "tumbleweed": {"speed": 0.5},
+    "fireworks": {"speed": 1.0},
+    "flutterflies": {"speed": 1.0},
+    "clouds": {
+        "speed": 1.0,
+        "particle_speed": 1.0,
+        "rain_speed": 1.0,
+        "heavy_rain_speed": 1.0,
+        "snow_speed": 1.0,
+        "sleet_fast_speed": 1.0,
+        "sleet_slow_speed": 1.0,
+    },
+}
 
 
 try:
@@ -104,10 +125,8 @@ DEFAULTS = {
             "theme":            "hub75_clock/theme/set",
             "theme_state":      "hub75_clock/theme/state",
             "themes_available": "hub75_clock/themes/available",
-            "update_check":     "hub75_clock/update/check",
-            "update_install":   "hub75_clock/update/install",
-            "update_state":     "hub75_clock/update/state",
-            "update_latest":    "hub75_clock/update/latest",
+            "ld2410_params":    "hub75_clock/ld2410/params",
+            "ld2410_read":      "hub75_clock/ld2410/read",
         },
     },
     "ha_discovery": {
@@ -121,6 +140,13 @@ DEFAULTS = {
         "service_name": "hub75-theme-builder",
         "host": "0.0.0.0",
         "port": 8765,
+        "url": "",
+    },
+    "ld2410_tuner": {
+        "mode": "off",
+        "service_name": "hub75-ld2410-tuner",
+        "host": "0.0.0.0",
+        "port": 8766,
         "url": "",
     },
     "panel": {
@@ -194,14 +220,8 @@ DEFAULTS = {
     },
     "animations": {
         "animations_dir": "/etc/hub75-clock/animations",
-    },
-    "update": {
-        "enabled": False,
-        "repo_path": "/home/pi/hub75-clock",
-        "branch": "",
-        "command": "/home/pi/update-clock.sh",
-        "check_on_startup": True,
-        "check_time": "03:30",
+        "sprites_dir": "/etc/hub75-clock/sprites",
+        "settings_path": "/etc/hub75-clock/animations.yaml",
     },
 }
 
@@ -272,12 +292,61 @@ def save_config(config_path: str, cfg: dict):
         for key in ("banner_path", "time_path", "alert_path"):
             fonts_save.pop(key, None)
         save["fonts"] = fonts_save
+        save.pop("animation_settings", None)
         with open(config_path, 'w') as f:
             yaml.dump(save, f, default_flow_style=False, allow_unicode=True)
         print(f"[config] saved to {config_path}")
     except Exception as e:
         print(f"[config] save failed: {e}")
 
+
+def load_animation_settings(path: str) -> dict:
+    try:
+        with open(path) as f:
+            data = yaml.safe_load(f) or {}
+        if not isinstance(data, dict):
+            print(f"[config] animation settings ignored: {path} is not a mapping")
+            return {}
+        added_names = []
+        for name, defaults_for_animation in DEFAULT_ANIMATION_SETTINGS.items():
+            if name in data:
+                continue
+            data[name] = defaults_for_animation
+            added_names.append(name)
+        if added_names:
+            parent = os.path.dirname(path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            with open(path, "a", encoding="utf-8") as f:
+                f.write("\n# Added automatically for new animation defaults.\n")
+                for name in added_names:
+                    defaults_for_animation = DEFAULT_ANIMATION_SETTINGS[name]
+                    f.write(f"\n{name}:\n")
+                    for key, value in defaults_for_animation.items():
+                        f.write(f"  {key}: {value}\n")
+            print(f"[config] added missing animation defaults to {path}")
+        print(f"[config] loaded {path}")
+        return data
+    except FileNotFoundError:
+        try:
+            parent = os.path.dirname(path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("# Per-animation speed multipliers.\n")
+                f.write("# Added automatically; edit these values to tune runtime speed.\n")
+                for name, defaults_for_animation in DEFAULT_ANIMATION_SETTINGS.items():
+                    f.write(f"\n{name}:\n")
+                    for key, value in defaults_for_animation.items():
+                        f.write(f"  {key}: {value}\n")
+            print(f"[config] created {path}")
+            return dict(DEFAULT_ANIMATION_SETTINGS)
+        except Exception as e:
+            print(f"[config] animation settings create failed: {e}")
+            return {}
+    except Exception as e:
+        print(f"[config] animation settings ignored: {e}")
+        return {}
 
 
 def get_available_fonts(fonts_dir: str) -> List[str]:
@@ -300,8 +369,9 @@ class AnimationLoader:
     """Drop-in animation loader. Watches a directory for .py files, imports each,
     and registers the Animation class found inside by its `name` attribute."""
 
-    def __init__(self, animations_dir: str):
+    def __init__(self, animations_dir: str, settings: dict = None):
         self._dir = animations_dir
+        self._settings = settings or {}
         self._registry: dict = {}
         self._observer = None
         os.makedirs(animations_dir, exist_ok=True)
@@ -332,10 +402,25 @@ class AnimationLoader:
             if not anim_name:
                 print(f"[animations] warning: Animation in {path} has no name — skipping")
                 return
+            self._apply_settings(anim_name, cls)
             self._registry[anim_name] = cls
             print(f"[animations] loaded: {anim_name}")
         except Exception as e:
             print(f"[animations] warning: failed to load {path}: {e}")
+
+    def _apply_settings(self, anim_name: str, cls):
+        settings = self._settings.get(anim_name, {})
+        if not isinstance(settings, dict):
+            return
+        applied = []
+        for key, value in settings.items():
+            if key.startswith("_") or not isinstance(value, (int, float)):
+                continue
+            if hasattr(cls, key):
+                setattr(cls, key, float(value))
+                applied.append(f"{key}={value}")
+        if applied:
+            print(f"[animations] settings {anim_name}: {', '.join(applied)}")
 
     def _reload(self):
         self._registry = {}
@@ -384,6 +469,11 @@ class CameoManager:
     def reset(self):
         self._active = None
 
+    def _cfg_for_cameo(self, cameo_cfg: dict):
+        cfg = dict(self._cfg)
+        cfg["_cameo"] = dict(cameo_cfg or {})
+        return cfg
+
     def setup_persistent(self, cameos: list, animator):
         self._persistent_cloud = None
         self._persistent_others = []
@@ -392,7 +482,7 @@ class CameoManager:
             if cls is None or not getattr(cls, "persistent", False):
                 continue
             try:
-                inst = cls(animator.width, animator.height, self._cfg, animator)
+                inst = cls(animator.width, animator.height, self._cfg_for_cameo(cameo_cfg), animator)
                 if getattr(cls, "name", "") == "clouds":
                     self._persistent_cloud = inst
                 else:
@@ -430,11 +520,11 @@ class CameoManager:
                     continue
                 prob = cameo_cfg.get("chance_per_minute", 0) / 60.0 / fps
                 if random.random() < prob:
-                    winners.append(cls)
+                    winners.append((cls, cameo_cfg))
             if winners:
-                cls = random.choice(winners)
+                cls, cameo_cfg = random.choice(winners)
                 try:
-                    self._active = cls(animator.width, animator.height, self._cfg, animator)
+                    self._active = cls(animator.width, animator.height, self._cfg_for_cameo(cameo_cfg), animator)
                 except Exception as e:
                     print(f"[animations] warning: failed to spawn {cls}: {e}")
 
@@ -480,6 +570,72 @@ class CameoManager:
             except Exception as e:
                 print(f"[animations] warning: draw error: {e}")
                 self._active = None
+
+
+class _TrackedCanvas:
+    """Small SetPixel proxy that lets animations blend against pixels already drawn."""
+
+    def __init__(self, canvas, width: int, height: int):
+        self._canvas = canvas
+        self._w = width
+        self._h = height
+        self._pix = [(0, 0, 0)] * (width * height)
+
+    def _idx(self, x: int, y: int):
+        if 0 <= x < self._w and 0 <= y < self._h:
+            return y * self._w + x
+        return None
+
+    def SetPixel(self, x: int, y: int, r: int, g: int, b: int):
+        idx = self._idx(x, y)
+        if idx is None:
+            return
+        color = (
+            max(0, min(255, int(r))),
+            max(0, min(255, int(g))),
+            max(0, min(255, int(b))),
+        )
+        self._pix[idx] = color
+        self._canvas.SetPixel(x, y, color[0], color[1], color[2])
+
+    def GetPixel(self, x: int, y: int):
+        idx = self._idx(x, y)
+        if idx is None:
+            return (0, 0, 0)
+        return self._pix[idx]
+
+    def BlendPixel(self, x: int, y: int, r: int, g: int, b: int, alpha: float):
+        idx = self._idx(x, y)
+        if idx is None:
+            return
+        a = max(0.0, min(1.0, float(alpha)))
+        if a <= 0.0:
+            return
+        if a >= 1.0:
+            self.SetPixel(x, y, r, g, b)
+            return
+        br, bg, bb = self._pix[idx]
+        self.SetPixel(
+            x, y,
+            int(br * (1.0 - a) + r * a),
+            int(bg * (1.0 - a) + g * a),
+            int(bb * (1.0 - a) + b * a),
+        )
+
+    def AddPixel(self, x: int, y: int, r: int, g: int, b: int, alpha: float = 1.0):
+        idx = self._idx(x, y)
+        if idx is None:
+            return
+        a = max(0.0, min(1.0, float(alpha)))
+        if a <= 0.0:
+            return
+        br, bg, bb = self._pix[idx]
+        self.SetPixel(
+            x, y,
+            min(255, int(br + r * a)),
+            min(255, int(bg + g * a)),
+            min(255, int(bb + b * a)),
+        )
 
 
 class WeatherAnimator:
@@ -694,6 +850,7 @@ class WeatherAnimator:
 
     def draw(self, canvas, alert_active: bool = False):
         """Draw background animation. Banner area never touched."""
+        canvas = _TrackedCanvas(canvas, self.width, self.height)
         if alert_active:
             self._draw_hazard_stripes(canvas)
             return
@@ -936,6 +1093,7 @@ class LD2410Sensor:
         self._stopping = False
         self._thread = None
         self._io_lock = threading.Lock()
+        self._cmd_responses = queue.Queue(maxsize=8)
         self._gate_thresholds = {i: {"move": 50, "still": 30} for i in range(9)}
         if HAS_LD2410:
             try:
@@ -978,6 +1136,26 @@ class LD2410Sensor:
             if not self._stopping:
                 print(f"[ld2410] cmd error: {e}")
 
+    def _drain_cmd_responses(self):
+        while True:
+            try:
+                self._cmd_responses.get_nowait()
+            except queue.Empty:
+                return
+
+    def _send_cmd_wait(self, cmd_word: bytes, data: bytes = b"", timeout: float = 1.0):
+        self._drain_cmd_responses()
+        self._send_cmd(cmd_word, data)
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                payload = self._cmd_responses.get(timeout=max(0.05, deadline - time.time()))
+            except queue.Empty:
+                break
+            if len(payload) >= 2 and payload[:2] == bytes([cmd_word[0], cmd_word[1] + 1]):
+                return payload
+        return None
+
     def _enable_engineering_mode(self):
         self._send_cmd(b"\xFF\x00")
         time.sleep(0.1)
@@ -1018,6 +1196,49 @@ class LD2410Sensor:
             if not self._stopping:
                 print(f"[ld2410] gate config error: {e}")
 
+    def read_parameters(self):
+        if self._stopping or not self.serial:
+            return None
+        try:
+            self._send_cmd(b"\xFF\x00")
+            time.sleep(0.1)
+            response = self._send_cmd_wait(b"\x61\x00", timeout=1.0)
+            time.sleep(0.1)
+            self._send_cmd(b"\xFE\x00")
+            if not response or len(response) < 28:
+                return None
+            if response[2] != 0x00 or response[3] != 0x00 or response[4] != 0xAA:
+                return None
+            max_gate = int(response[5])
+            max_move_gate = int(response[6])
+            max_still_gate = int(response[7])
+            gate_count = min(9, max_gate + 1)
+            move = [int(v) for v in response[8:8 + gate_count]]
+            still_start = 8 + gate_count
+            still = [int(v) for v in response[still_start:still_start + gate_count]]
+            while len(move) < 9:
+                move.append(0)
+            while len(still) < 9:
+                still.append(0)
+            timeout_idx = still_start + gate_count
+            timeout = 0
+            if len(response) >= timeout_idx + 2:
+                timeout = response[timeout_idx] | (response[timeout_idx + 1] << 8)
+            for gate in range(9):
+                self._gate_thresholds[gate] = {"move": move[gate], "still": still[gate]}
+            return {
+                "max_gate": max_gate,
+                "max_move_gate": max_move_gate,
+                "max_still_gate": max_still_gate,
+                "move_thresholds": move,
+                "still_thresholds": still,
+                "timeout_seconds": timeout,
+            }
+        except Exception as e:
+            if not self._stopping:
+                print(f"[ld2410] read parameters error: {e}")
+            return None
+
     def _run(self):
         buf = bytearray()
         while self.running:
@@ -1039,7 +1260,32 @@ class LD2410Sensor:
 
     def _process(self, buf: bytearray):
         while True:
-            i = buf.find(self.HEAD)
+            cmd_i = buf.find(self.CMD_HEAD)
+            data_i = buf.find(self.HEAD)
+            if cmd_i >= 0 and (data_i < 0 or cmd_i < data_i):
+                if cmd_i > 0:
+                    del buf[:cmd_i]
+                if len(buf) < 10:
+                    return
+                dl = buf[4] | (buf[5] << 8)
+                if dl > 512:
+                    del buf[:]
+                    return
+                total = 4 + 2 + dl + 4
+                if len(buf) < total:
+                    return
+                if bytes(buf[total-4:total]) != self.CMD_TAIL:
+                    del buf[:1]
+                    continue
+                payload = bytes(buf[6:6+dl])
+                try:
+                    self._cmd_responses.put_nowait(payload)
+                except queue.Full:
+                    pass
+                del buf[:total]
+                continue
+
+            i = data_i
             if i < 0:
                 if len(buf) > 1024: del buf[:-4]
                 return
@@ -1154,7 +1400,8 @@ class HUB75Clock:
         self.weather_outdoor   = None
 
         self.animation_loader = AnimationLoader(
-            cfg.get("animations", {}).get("animations_dir", "/etc/hub75-clock/animations")
+            cfg.get("animations", {}).get("animations_dir", "/etc/hub75-clock/animations"),
+            cfg.get("animation_settings", {}),
         )
         self.animator = WeatherAnimator(cfg, layout, self.animation_loader)
         self.alert    = AlertOverlay(cfg, self.font_alert,
@@ -1190,8 +1437,8 @@ class HUB75Clock:
         self._alert_show_message = False
         self._engineering_lock = threading.Lock()
         self._engineering_running = False
-        self._update_stop = threading.Event()
-        self._update_thread_started = False
+        self._ensure_theme_builder_startup_state()
+        self._ensure_ld2410_tuner_startup_state()
 
     # ------------------------------------------------------------------
     # MQTT
@@ -1232,6 +1479,19 @@ class HUB75Clock:
             args=(gate, move_thresh, still_thresh),
             daemon=True,
         ).start()
+
+    def _read_ld2410_params_async(self):
+        if self.ld2410 is None:
+            return
+
+        def _target():
+            params = self.ld2410.read_parameters()
+            if params:
+                client_id = self.cfg["mqtt"]["client_id"]
+                topic = self.cfg["mqtt"]["topics"].get("ld2410_params", f"{client_id}/ld2410/params")
+                self.mqtt_client.publish(topic, json.dumps(params), retain=True)
+
+        threading.Thread(target=_target, daemon=True).start()
 
     def _theme_builder_cfg(self):
         return self.cfg.get("theme_builder", {})
@@ -1284,127 +1544,86 @@ class HUB75Clock:
     def _set_theme_builder_async(self, enable: bool):
         threading.Thread(target=self._set_theme_builder, args=(enable,), daemon=True).start()
 
-    def _update_cfg(self):
-        return self.cfg.get("update", {})
-
-    def _update_enabled(self) -> bool:
-        return bool(self._update_cfg().get("enabled", False))
-
-    def _update_state_topic(self):
-        topics = self.cfg["mqtt"]["topics"]
-        client_id = self.cfg["mqtt"]["client_id"]
-        return topics.get("update_state", f"{client_id}/update/state")
-
-    def _update_latest_topic(self):
-        topics = self.cfg["mqtt"]["topics"]
-        client_id = self.cfg["mqtt"]["client_id"]
-        return topics.get("update_latest", f"{client_id}/update/latest")
-
-    def _run_git(self, args, repo_path: str) -> str:
-        cmd = ["git", "-c", f"safe.directory={repo_path}", "-C", repo_path, *args]
-        try:
-            return subprocess.check_output(
-                cmd,
-                stderr=subprocess.STDOUT,
-                text=True,
-                timeout=30,
-            ).strip()
-        except subprocess.CalledProcessError as e:
-            output = (e.output or "").strip()
-            if output:
-                raise RuntimeError(output) from e
-            raise RuntimeError(f"{' '.join(cmd)} returned {e.returncode}") from e
-
-    def _update_branch(self, repo_path: str) -> str:
-        branch = str(self._update_cfg().get("branch") or "").strip()
-        if branch:
-            return branch
-        return self._run_git(["branch", "--show-current"], repo_path)
-
-    def _publish_update_state(self, state: dict):
-        if not self._update_enabled():
+    def _ensure_theme_builder_startup_state(self):
+        tb = self._theme_builder_cfg()
+        if tb.get("mode", "off") != "ha":
             return
-        payload = json.dumps(state, separators=(",", ":"))
-        self.mqtt_client.publish(self._update_state_topic(), payload, retain=True)
-        if "remote" in state:
-            self.mqtt_client.publish(self._update_latest_topic(), state["remote"], retain=True)
-
-    def _check_for_update(self):
-        if not self._update_enabled():
-            return
-        repo_path = self._update_cfg().get("repo_path") or "/home/pi/hub75-clock"
+        service = tb.get("service_name", "hub75-theme-builder")
         try:
-            branch = self._update_branch(repo_path)
-            self._run_git(["fetch", "origin", branch], repo_path)
-            local = self._run_git(["rev-parse", "--short", "HEAD"], repo_path)
-            remote = self._run_git(["rev-parse", "--short", f"origin/{branch}"], repo_path)
-            state = {
-                "available": local != remote,
-                "branch": branch,
-                "local": local,
-                "remote": remote,
-                "checked_at": datetime.now(timezone.utc).isoformat(),
-            }
-            self._publish_update_state(state)
-            print(f"[update] checked {branch}: local={local} remote={remote}")
+            subprocess.run(
+                ["systemctl", "stop", service],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
         except Exception as e:
-            self._publish_update_state({
-                "available": False,
-                "error": str(e),
-                "checked_at": datetime.now(timezone.utc).isoformat(),
-            })
-            print(f"[update] check failed: {e}")
+            print(f"[theme_builder] startup stop failed: {e}")
 
-    def _check_for_update_async(self):
-        threading.Thread(target=self._check_for_update, daemon=True).start()
+    def _ld2410_tuner_cfg(self):
+        return self.cfg.get("ld2410_tuner", {})
 
-    def _install_update(self):
-        if not self._update_enabled():
-            return
-        command = self._update_cfg().get("command") or "/home/pi/update-clock.sh"
-        self._publish_update_state({
-            "available": False,
-            "installing": True,
-            "checked_at": datetime.now(timezone.utc).isoformat(),
-        })
+    def _ld2410_tuner_state_topic(self):
+        client_id = self.cfg["mqtt"]["client_id"]
+        return f"{client_id}/ld2410_tuner/state"
+
+    def _ld2410_tuner_url_topic(self):
+        client_id = self.cfg["mqtt"]["client_id"]
+        return f"{client_id}/ld2410_tuner/url"
+
+    def _ld2410_tuner_url(self):
+        lt = self._ld2410_tuner_cfg()
+        if lt.get("url"):
+            return lt["url"]
+        return f"http://{self.cfg['mqtt']['client_id']}.local:{int(lt.get('port', 8766))}/"
+
+    def _ld2410_tuner_is_active(self) -> bool:
+        service = self._ld2410_tuner_cfg().get("service_name", "hub75-ld2410-tuner")
         try:
-            subprocess.Popen(str(command), shell=True)
-            print(f"[update] install started: {command}")
-        except Exception as e:
-            self._publish_update_state({
-                "available": False,
-                "installing": False,
-                "error": str(e),
-                "checked_at": datetime.now(timezone.utc).isoformat(),
-            })
-            print(f"[update] install failed: {e}")
-
-    def _install_update_async(self):
-        threading.Thread(target=self._install_update, daemon=True).start()
-
-    def _seconds_until_update_check(self) -> float:
-        check_time = str(self._update_cfg().get("check_time", "03:30"))
-        try:
-            hour, minute = [int(part) for part in check_time.split(":", 1)]
-            hour = max(0, min(23, hour))
-            minute = max(0, min(59, minute))
+            return subprocess.run(
+                ["systemctl", "is-active", "--quiet", service],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode == 0
         except Exception:
-            hour, minute = 3, 30
-        now = datetime.now()
-        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if target <= now:
-            target += timedelta(days=1)
-        return max(60.0, (target - now).total_seconds())
+            return False
 
-    def _update_daily_loop(self):
-        while self.running and not self._update_stop.wait(self._seconds_until_update_check()):
-            self._check_for_update()
-
-    def _start_update_scheduler(self):
-        if not self._update_enabled() or self._update_thread_started:
+    def _publish_ld2410_tuner_state(self):
+        if self._ld2410_tuner_cfg().get("mode", "off") == "off":
             return
-        self._update_thread_started = True
-        threading.Thread(target=self._update_daily_loop, daemon=True).start()
+        active = self._ld2410_tuner_is_active()
+        self.mqtt_client.publish(self._ld2410_tuner_state_topic(), "on" if active else "off", retain=True)
+        self.mqtt_client.publish(self._ld2410_tuner_url_topic(), self._ld2410_tuner_url(), retain=True)
+
+    def _set_ld2410_tuner(self, enable: bool):
+        lt = self._ld2410_tuner_cfg()
+        if lt.get("mode", "off") == "off":
+            return
+        service = lt.get("service_name", "hub75-ld2410-tuner")
+        action = "start" if enable else "stop"
+        try:
+            subprocess.run(["systemctl", action, service], check=False)
+        except Exception as e:
+            print(f"[ld2410_tuner] {action} failed: {e}")
+        self._publish_ld2410_tuner_state()
+
+    def _set_ld2410_tuner_async(self, enable: bool):
+        threading.Thread(target=self._set_ld2410_tuner, args=(enable,), daemon=True).start()
+
+    def _ensure_ld2410_tuner_startup_state(self):
+        lt = self._ld2410_tuner_cfg()
+        if lt.get("mode", "off") != "ha":
+            return
+        service = lt.get("service_name", "hub75-ld2410-tuner")
+        try:
+            subprocess.run(
+                ["systemctl", "stop", service],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception as e:
+            print(f"[ld2410_tuner] startup stop failed: {e}")
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc != 0:
@@ -1418,8 +1637,7 @@ class HUB75Clock:
                   topics.get("gates", f"{client_id}/gates"),
                   topics.get("engineering_mode", f"{client_id}/engineering_mode"),
                   topics.get("bucket", f"{client_id}/bucket"),
-                  topics.get("update_check", f"{client_id}/update/check"),
-                  topics.get("update_install", topics.get("update", f"{client_id}/update/install")),
+                  topics.get("ld2410_read", f"{client_id}/ld2410/read"),
                   topics["theme"]):
             client.subscribe(t)
         client.publish(topics["themes_available"],
@@ -1439,9 +1657,7 @@ class HUB75Clock:
         if self.ld2410 is not None:
             client.publish(em_state_topic, "on" if self.ld2410.engineering_mode else "off", retain=True)
         self._publish_theme_builder_state()
-        self._start_update_scheduler()
-        if self._update_enabled() and self._update_cfg().get("check_on_startup", True):
-            self._check_for_update_async()
+        self._publish_ld2410_tuner_state()
         if self.cfg["ha_discovery"]["enabled"]:
             self._publish_discovery()
 
@@ -1509,7 +1725,18 @@ class HUB75Clock:
                 self._request_engineering_mode(em)
 
             if "theme_builder" in payload:
-                self._set_theme_builder_async(bool(payload["theme_builder"]))
+                if getattr(msg, "retain", False):
+                    print("[theme_builder] ignored retained command")
+                    self._publish_theme_builder_state()
+                else:
+                    self._set_theme_builder_async(bool(payload["theme_builder"]))
+
+            if "ld2410_tuner" in payload:
+                if getattr(msg, "retain", False):
+                    print("[ld2410_tuner] ignored retained command")
+                    self._publish_ld2410_tuner_state()
+                else:
+                    self._set_ld2410_tuner_async(bool(payload["ld2410_tuner"]))
 
             if "bucket" in payload:
                 self._apply_bucket(payload["bucket"])
@@ -1599,13 +1826,9 @@ class HUB75Clock:
             if "bucket" in payload:
                 self._apply_bucket(payload["bucket"])
 
-        elif msg.topic == topics.get("update_check", f"{client_id}/update/check"):
+        elif msg.topic == topics.get("ld2410_read", f"{client_id}/ld2410/read"):
             if not getattr(msg, "retain", False):
-                self._check_for_update_async()
-
-        elif msg.topic == topics.get("update_install", topics.get("update", f"{client_id}/update/install")):
-            if not getattr(msg, "retain", False):
-                self._install_update_async()
+                self._read_ld2410_params_async()
 
         elif msg.topic == topics.get("theme"):
             theme_name = payload if isinstance(payload, str) else payload.get("theme", "")
@@ -1670,7 +1893,6 @@ class HUB75Clock:
             device["suggested_area"] = self.cfg["ha_discovery"]["ha_discovery_area"]
 
         avail      = [{"topic": self.topic_avail}]
-        em_state_t = topics.get("engineering_mode", f"{client_id}/engineering_mode") + "/state"
 
         # --- Sensors ---
         sensor_configs = []
@@ -1681,12 +1903,6 @@ class HUB75Clock:
                  "unit_of_measurement": "lx", "device_class": "illuminance", "state_class": "measurement"})
         if self.ld2410 is not None:
             sensor_configs += [
-                {"name": "Move Energy", "unique_id": f"{client_id}_move_energy",
-                 "state_topic": topics["motion"], "value_template": "{{ value_json.move_energy }}",
-                 "state_class": "measurement"},
-                {"name": "Still Energy", "unique_id": f"{client_id}_still_energy",
-                 "state_topic": topics["motion"], "value_template": "{{ value_json.still_energy }}",
-                 "state_class": "measurement"},
                 {"name": "Move Distance", "unique_id": f"{client_id}_move_distance",
                  "state_topic": topics["presence"], "value_template": "{{ value_json.move_distance }}",
                  "unit_of_measurement": "cm", "device_class": "distance", "state_class": "measurement"},
@@ -1699,29 +1915,30 @@ class HUB75Clock:
                 f"{prefix}/sensor/{s['unique_id']}/config",
                 json.dumps({**s, "device": device, "availability": avail, "has_entity_name": True}), retain=True)
 
-        # --- Gate energy diagnostic sensors (only available when engineering mode is on) ---
-        if self.ld2410 is not None:
-            gate_avail = [
-                {"topic": self.topic_avail},
-                {"topic": em_state_t, "payload_available": "on", "payload_not_available": "off"},
-            ]
-            for gate in range(9):
-                for energy_type, label in (("move", "Move"), ("still", "Still")):
-                    uid = f"{client_id}_g{gate}_{energy_type}_energy"
-                    self.mqtt_client.publish(
-                        f"{prefix}/sensor/{uid}/config",
-                        json.dumps({
-                            "name":           f"Gate {gate} {label} Energy",
-                            "unique_id":      uid,
-                            "device":         device,
-                            "availability":   gate_avail,
-                            "availability_mode": "all",
-                            "state_topic":    topics["motion"],
-                            "value_template": f"{{{{ value_json.{energy_type}_gates[{gate}] }}}}",
-                            "state_class":    "measurement",
-                            "entity_category": "diagnostic",
-                            "has_entity_name": True,
-                        }), retain=True)
+        # Remove old LD2410 tuning/detail entities; the tuner owns that detail now.
+        for component, uid in (
+            ("sensor", f"{client_id}_move_energy"),
+            ("sensor", f"{client_id}_still_energy"),
+            ("switch", f"{client_id}_engineering_mode"),
+        ):
+            self.mqtt_client.publish(
+                f"{prefix}/{component}/{uid}/config",
+                "",
+                retain=True,
+            )
+        for gate in range(9):
+            for energy_type in ("move", "still"):
+                self.mqtt_client.publish(
+                    f"{prefix}/sensor/{client_id}_g{gate}_{energy_type}_energy/config",
+                    "",
+                    retain=True,
+                )
+            for thresh_type in ("move", "still"):
+                self.mqtt_client.publish(
+                    f"{prefix}/number/{client_id}_g{gate}_{thresh_type}_thresh/config",
+                    "",
+                    retain=True,
+                )
 
         # --- Binary sensors ---
         binary_configs = []
@@ -1756,45 +1973,6 @@ class HUB75Clock:
                 "has_entity_name":  True,
             }), retain=True)
 
-        # --- Number: gate thresholds (18 entities) ---
-        if self.ld2410 is not None:
-            for gate in range(9):
-                for thresh_type, label in (("move", "Move"), ("still", "Still")):
-                    uid       = f"{client_id}_g{gate}_{thresh_type}_thresh"
-                    cmd_topic = f"{client_id}/gate/{gate}/{thresh_type}_thresh"
-                    self.mqtt_client.publish(
-                        f"{prefix}/number/{uid}/config",
-                        json.dumps({
-                            "name":            f"Gate {gate} {label} Threshold",
-                            "unique_id":       uid,
-                            "device":          device,
-                            "availability":    avail,
-                            "command_topic":   cmd_topic,
-                            "state_topic":     cmd_topic,
-                            "min": 0, "max": 100, "step": 5,
-                            "entity_category": "config",
-                            "has_entity_name": True,
-                        }), retain=True)
-
-        # --- Switch: engineering mode ---
-        if self.ld2410 is not None:
-            self.mqtt_client.publish(
-                f"{prefix}/switch/{client_id}_engineering_mode/config",
-                json.dumps({
-                    "name":          "Engineering Mode",
-                    "unique_id":     f"{client_id}_engineering_mode",
-                    "device":        device,
-                    "availability":  avail,
-                    "command_topic": topics["config"],
-                    "payload_on":    '{"engineering_mode": true}',
-                    "payload_off":   '{"engineering_mode": false}',
-                    "state_topic":   em_state_t,
-                    "state_on":      "on",
-                    "state_off":     "off",
-                    "entity_category": "config",
-                    "has_entity_name": True,
-                }), retain=True)
-
         # --- Switch + URL sensor: theme builder webserver ---
         if self._theme_builder_cfg().get("mode", "off") == "ha":
             self.mqtt_client.publish(
@@ -1827,64 +2005,50 @@ class HUB75Clock:
                     "has_entity_name": True,
                 }), retain=True)
 
-        # --- Update status + actions ---
-        if self._update_enabled():
-            update_state_topic = self._update_state_topic()
+        # --- Switch + URL sensor: LD2410 tuner webserver ---
+        if self.ld2410 is not None and self._ld2410_tuner_cfg().get("mode", "off") == "ha":
             self.mqtt_client.publish(
-                f"{prefix}/binary_sensor/{client_id}_update_available/config",
+                f"{prefix}/switch/{client_id}_ld2410_tuner/config",
                 json.dumps({
-                    "name":          "Update Available",
-                    "unique_id":     f"{client_id}_update_available",
+                    "name":          "LD2410 Tuner",
+                    "unique_id":     f"{client_id}_ld2410_tuner",
                     "device":        device,
                     "availability":  avail,
-                    "state_topic":   update_state_topic,
-                    "value_template": "{{ 'ON' if value_json.available else 'OFF' }}",
-                    "payload_on":    "ON",
-                    "payload_off":   "OFF",
-                    "entity_category": "diagnostic",
-                    "icon":          "mdi:update",
-                    "has_entity_name": True,
-                }), retain=True)
-            self.mqtt_client.publish(
-                f"{prefix}/sensor/{client_id}_update_info/config",
-                json.dumps({
-                    "name":          "Update Info",
-                    "unique_id":     f"{client_id}_update_info",
-                    "device":        device,
-                    "availability":  avail,
-                    "state_topic":   update_state_topic,
-                    "value_template": "{{ value_json.local ~ ' -> ' ~ value_json.remote if value_json.remote is defined else value_json.error | default('unknown') }}",
-                    "json_attributes_topic": update_state_topic,
-                    "entity_category": "diagnostic",
-                    "icon":          "mdi:source-branch",
-                    "has_entity_name": True,
-                }), retain=True)
-            self.mqtt_client.publish(
-                f"{prefix}/button/{client_id}_update_check/config",
-                json.dumps({
-                    "name":          "Check Update",
-                    "unique_id":     f"{client_id}_update_check",
-                    "device":        device,
-                    "availability":  avail,
-                    "command_topic": topics.get("update_check", f"{client_id}/update/check"),
-                    "payload_press": "check",
-                    "entity_category": "diagnostic",
-                    "icon":          "mdi:cloud-search",
-                    "has_entity_name": True,
-                }), retain=True)
-            self.mqtt_client.publish(
-                f"{prefix}/button/{client_id}_update_install/config",
-                json.dumps({
-                    "name":          "Install Update",
-                    "unique_id":     f"{client_id}_update_install",
-                    "device":        device,
-                    "availability":  avail,
-                    "command_topic": topics.get("update_install", topics.get("update", f"{client_id}/update/install")),
-                    "payload_press": "install",
+                    "command_topic": topics["config"],
+                    "payload_on":    '{"ld2410_tuner": true}',
+                    "payload_off":   '{"ld2410_tuner": false}',
+                    "state_topic":   self._ld2410_tuner_state_topic(),
+                    "state_on":      "on",
+                    "state_off":     "off",
                     "entity_category": "config",
-                    "icon":          "mdi:download",
+                    "icon":          "mdi:radar",
                     "has_entity_name": True,
                 }), retain=True)
+            self.mqtt_client.publish(
+                f"{prefix}/sensor/{client_id}_ld2410_tuner_url/config",
+                json.dumps({
+                    "name":          "LD2410 Tuner URL",
+                    "unique_id":     f"{client_id}_ld2410_tuner_url",
+                    "device":        device,
+                    "availability":  avail,
+                    "state_topic":   self._ld2410_tuner_url_topic(),
+                    "entity_category": "diagnostic",
+                    "icon":          "mdi:web",
+                    "has_entity_name": True,
+                }), retain=True)
+
+        # Remove old update entities if they were previously discovered.
+        for component, uid in (
+            ("binary_sensor", f"{client_id}_update_available"),
+            ("sensor", f"{client_id}_update_info"),
+            ("button", f"{client_id}_update_check"),
+            ("button", f"{client_id}_update_install"),
+        ):
+            self.mqtt_client.publish(
+                f"{prefix}/{component}/{uid}/config",
+                "",
+                retain=True,
+            )
 
         # --- Select: theme ---
         self.mqtt_client.publish(
@@ -1924,7 +2088,6 @@ class HUB75Clock:
     def stop(self):
         print("[clock] stopping")
         self.running = False
-        self._update_stop.set()
         if self.veml   is not None: self.veml.stop()
         if self.pir    is not None: self.pir.stop()
         if self.ld2410 is not None: self.ld2410.stop()
@@ -2120,6 +2283,8 @@ def main():
     config_path = os.environ.get("CLOCK_CONFIG", "/etc/hub75-clock/config.yaml")
 
     cfg   = load_config(config_path)
+    settings_path = cfg.get("animations", {}).get("settings_path", "/etc/hub75-clock/animations.yaml")
+    cfg["animation_settings"] = load_animation_settings(settings_path)
     clock = HUB75Clock(cfg, DEFAULT_LAYOUT, config_path)
 
     def handle_sig(signum, frame):

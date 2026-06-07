@@ -17,6 +17,10 @@ if [ ! -d "$REPO_DIR/.git" ]; then
     fi
 fi
 
+if [ ! -d "$REPO_DIR/.git" ] && [ -d "$HOME/hub75-clock/.git" ]; then
+    REPO_DIR="$HOME/hub75-clock"
+fi
+
 if [ ! -d "$REPO_DIR/.git" ]; then
     echo "[update] repo not found: $REPO_DIR" >&2
     exit 1
@@ -26,19 +30,84 @@ BRANCH="${BRANCH:-$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null |
 
 echo "[update] mode=python branch=$BRANCH repo=$REPO_DIR"
 
+fix_repo_ownership() {
+    for path in \
+        "$REPO_DIR/.git" \
+        "$REPO_DIR/themes" \
+        "$REPO_DIR/sprites" \
+        "$REPO_DIR/sprite-animations"
+    do
+        if [ -e "$path" ]; then
+            sudo chown -R "$(id -u):$(id -g)" "$path"
+        fi
+    done
+}
+
+fix_repo_ownership
 git -C "$REPO_DIR" fetch origin
 git -C "$REPO_DIR" checkout "$BRANCH"
-git -C "$REPO_DIR" pull --ff-only origin "$BRANCH"
+
+sudo mkdir -p "$CLOCK_DIR" "$CLOCK_DIR/tools" "$CONFIG_DIR/themes" "$CONFIG_DIR/animations" "$CONFIG_DIR/sprites" "$CONFIG_DIR/sprite-animations"
+mkdir -p "$REPO_DIR/themes" "$REPO_DIR/sprites" "$REPO_DIR/sprite-animations"
+
+if [ "${PRESERVE_LOCAL_THEMES:-true}" = "true" ] && compgen -G "$CONFIG_DIR/themes/*.json" > /dev/null; then
+    echo "[update] preserving locally installed themes into repo..."
+    sudo rsync -av --exclude='__pycache__' \
+        "$CONFIG_DIR/themes/" \
+        "$REPO_DIR/themes/"
+    sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/themes"
+
+fi
+
+if [ "${PRESERVE_LOCAL_SPRITES:-true}" = "true" ] && compgen -G "$CONFIG_DIR/sprites/*.json" > /dev/null; then
+    echo "[update] preserving locally installed sprites into repo..."
+    sudo rsync -av --exclude='__pycache__' \
+        "$CONFIG_DIR/sprites/" \
+        "$REPO_DIR/sprites/"
+    sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/sprites"
+fi
+
+if [ "${PRESERVE_LOCAL_SPRITE_ANIMATIONS:-true}" = "true" ] && compgen -G "$CONFIG_DIR/sprite-animations/*.json" > /dev/null; then
+    echo "[update] preserving locally installed sprite animations into repo..."
+    sudo rsync -av --exclude='__pycache__' \
+        "$CONFIG_DIR/sprite-animations/" \
+        "$REPO_DIR/sprite-animations/"
+    sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/sprite-animations"
+fi
+
+if [ "${COMMIT_LOCAL_THEMES:-true}" = "true" ] && [ -n "$(git -C "$REPO_DIR" status --porcelain -- themes sprites sprite-animations)" ]; then
+    echo "[update] committing locally installed theme/sprite changes..."
+    fix_repo_ownership
+    git -C "$REPO_DIR" add themes sprites sprite-animations
+    if git -C "$REPO_DIR" diff --cached --quiet -- themes sprites sprite-animations; then
+        echo "[update] no committed theme/sprite changes needed"
+    elif git -C "$REPO_DIR" commit -m "Add user made themes sprites and animations"; then
+        echo "[update] local theme/sprite changes committed"
+    else
+        echo "[update] warning: theme/sprite commit failed; files are preserved locally but repo is dirty"
+    fi
+fi
+
+git -C "$REPO_DIR" pull --rebase origin "$BRANCH"
+
+if [ "${PUSH_LOCAL_THEMES:-true}" = "true" ]; then
+    git -C "$REPO_DIR" push origin "$BRANCH" || echo "[update] warning: theme/sprite commit push failed"
+fi
 
 echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
-
-sudo mkdir -p "$CLOCK_DIR" "$CLOCK_DIR/tools" "$CONFIG_DIR/themes" "$CONFIG_DIR/animations"
 
 echo "[update] installing Python clock files..."
 sudo cp "$REPO_DIR/clock/hub75_clock.py" "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/clock/theme_loader.py" "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
 sudo cp "$REPO_DIR/tools/theme-server.py" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/sprite-builder.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/ld2410-tuner.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/ld2410-tuner.py" "$CLOCK_DIR/tools/"
+if [ ! -f "$CONFIG_DIR/animations.yaml" ] && [ -f "$REPO_DIR/clock-cpp/animations.example.yaml" ]; then
+    echo "[update] installing default animation settings..."
+    sudo cp "$REPO_DIR/clock-cpp/animations.example.yaml" "$CONFIG_DIR/animations.yaml"
+fi
 
 sudo tee /etc/systemd/system/hub75-theme-builder.service > /dev/null << EOF
 [Unit]
@@ -50,7 +119,27 @@ Wants=network-online.target
 Type=simple
 User=root
 WorkingDirectory=$CLOCK_DIR
-ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --host 0.0.0.0 --port 8765
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --sprites-dir $CONFIG_DIR/sprites --animations-dir $CONFIG_DIR/sprite-animations --host 0.0.0.0 --port 8765
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo tee /etc/systemd/system/hub75-ld2410-tuner.service > /dev/null << EOF
+[Unit]
+Description=HUB75 LD2410 Tuner
+After=network-online.target hub75-clock.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$CLOCK_DIR
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/ld2410-tuner.py --config $CONFIG_DIR/config.yaml --host 0.0.0.0 --port 8766
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
@@ -61,6 +150,64 @@ WantedBy=multi-user.target
 EOF
 sudo systemctl daemon-reload
 
+THEME_BUILDER_MODE="$(python3 - "$CONFIG_DIR/config.yaml" <<'PY'
+import sys
+try:
+    import yaml
+    with open(sys.argv[1], encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    print((cfg.get("theme_builder") or {}).get("mode", "off"))
+except Exception:
+    print("off")
+PY
+)"
+case "$THEME_BUILDER_MODE" in
+    always)
+        echo "[update] theme builder mode=always; enabling service..."
+        sudo systemctl enable hub75-theme-builder.service >/dev/null
+        sudo systemctl restart hub75-theme-builder.service
+        ;;
+    ha)
+        echo "[update] theme builder mode=ha; leaving service stopped for HA control..."
+        sudo systemctl disable hub75-theme-builder.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-theme-builder.service >/dev/null 2>&1 || true
+        ;;
+    *)
+        echo "[update] theme builder mode=off; disabling service..."
+        sudo systemctl disable hub75-theme-builder.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-theme-builder.service >/dev/null 2>&1 || true
+        ;;
+esac
+
+LD2410_TUNER_MODE="$(python3 - "$CONFIG_DIR/config.yaml" <<'PY'
+import sys
+try:
+    import yaml
+    with open(sys.argv[1], encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    print((cfg.get("ld2410_tuner") or {}).get("mode", "off"))
+except Exception:
+    print("off")
+PY
+)"
+case "$LD2410_TUNER_MODE" in
+    always)
+        echo "[update] ld2410 tuner mode=always; enabling service..."
+        sudo systemctl enable hub75-ld2410-tuner.service >/dev/null
+        sudo systemctl restart hub75-ld2410-tuner.service
+        ;;
+    ha)
+        echo "[update] ld2410 tuner mode=ha; leaving service stopped for HA control..."
+        sudo systemctl disable hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+        ;;
+    *)
+        echo "[update] ld2410 tuner mode=off; disabling service..."
+        sudo systemctl disable hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+        ;;
+esac
+
 echo "[update] syncing themes..."
 sudo rsync -av --delete --exclude='__pycache__' \
     "$REPO_DIR/themes/" \
@@ -70,6 +217,16 @@ echo "[update] syncing Python animations..."
 sudo rsync -av --delete --exclude='__pycache__' \
     "$REPO_DIR/animations/" \
     "$CONFIG_DIR/animations/"
+
+echo "[update] syncing sprites..."
+sudo rsync -av --delete --exclude='__pycache__' \
+    "$REPO_DIR/sprites/" \
+    "$CONFIG_DIR/sprites/"
+
+echo "[update] syncing sprite animations..."
+sudo rsync -av --delete --exclude='__pycache__' \
+    "$REPO_DIR/sprite-animations/" \
+    "$CONFIG_DIR/sprite-animations/"
 
 echo "[update] restarting $SERVICE_NAME..."
 sudo systemctl restart "$SERVICE_NAME"

@@ -43,13 +43,58 @@ if ! grep -q "bookworm" /etc/os-release 2>/dev/null; then
     fi
 fi
 
+PI_MODEL=$(cat /proc/cpuinfo | grep "Model" | cut -d: -f2 | xargs)
+IS_ZERO_W=false
+if echo "$PI_MODEL" | grep -qi "Zero W"; then
+    IS_ZERO_W=true
+    echo "      Detected: Raspberry Pi Zero W — using legacy build method"
+fi
+
+DEFAULT_RUNTIME="python"
+if [ "$IS_ZERO_W" = true ]; then
+    DEFAULT_RUNTIME="cpp"
+fi
+echo ""
+echo "Clock runtime:"
+echo "  python  - Python Clock"
+echo "            Fast updates, no compilation required."
+echo "            Uses more system resources; slower hardware may need reduced visual fidelity."
+echo "  cpp     - C++ Clock [EXPERIMENTAL]"
+echo "            Lower system overhead and smoother rendering on constrained hardware."
+echo "            Requires compilation during install/update."
+read -p "Install runtime [python/cpp] [$DEFAULT_RUNTIME]: " CLOCK_RUNTIME
+CLOCK_RUNTIME="${CLOCK_RUNTIME:-$DEFAULT_RUNTIME}"
+case "$CLOCK_RUNTIME" in
+    python|py) CLOCK_RUNTIME="python" ;;
+    cpp|c++|C++|CPP) CLOCK_RUNTIME="cpp" ;;
+    *)
+        echo "[error] Unknown runtime: $CLOCK_RUNTIME"
+        exit 1
+        ;;
+esac
+if [ "$CLOCK_RUNTIME" = "cpp" ]; then
+    echo "      Selected runtime: C++ Clock [EXPERIMENTAL]"
+else
+    echo "      Selected runtime: Python Clock"
+fi
+
 echo "[1/11] Updating package lists..."
 sudo apt update -q
 
 echo "[2/11] Installing system packages..."
-sudo apt-get install -y git build-essential python3-dev python3-pip \
-    python3-pillow cython3 libgraphicsmagick++-dev libwebp-dev \
-    i2c-tools wget python3-yaml rsync
+COMMON_APT_DEPS=(
+    git build-essential python3-dev python3-pip
+    python3-pillow cython3 libgraphicsmagick++-dev libwebp-dev
+    i2c-tools wget python3-yaml rsync gpiod
+)
+CPP_APT_DEPS=(
+    cmake pkg-config libyaml-cpp-dev nlohmann-json3-dev
+    libmosquitto-dev libgpiod-dev
+)
+sudo apt-get install -y "${COMMON_APT_DEPS[@]}"
+if [ "$CLOCK_RUNTIME" = "cpp" ]; then
+    sudo apt-get install -y "${CPP_APT_DEPS[@]}"
+fi
 
 echo "[3/11] Installing Python packages..."
 sudo pip3 install paho-mqtt --break-system-packages
@@ -59,17 +104,10 @@ sudo pip3 install pyserial --break-system-packages
 sudo pip3 install adafruit-circuitpython-veml7700 adafruit-blinka --break-system-packages
 sudo pip3 install watchdog --break-system-packages
 
-PI_MODEL=$(cat /proc/cpuinfo | grep "Model" | cut -d: -f2 | xargs)
-IS_ZERO_W=false
-if echo "$PI_MODEL" | grep -qi "Zero W"; then
-    IS_ZERO_W=true
-    echo "      Detected: Raspberry Pi Zero W — using legacy build method"
-fi
-
 echo ""
 echo "Theme builder webserver:"
 echo "  off     - do not install/start the web editor"
-echo "  ha      - install it, but let Home Assistant switch it on/off"
+echo "  ha      - install it stopped; let Home Assistant switch it on/off"
 echo "  always  - run it all the time"
 read -p "Theme builder mode [off/ha/always] [ha]: " THEME_BUILDER_MODE
 THEME_BUILDER_MODE="${THEME_BUILDER_MODE:-ha}"
@@ -84,6 +122,25 @@ case "$THEME_BUILDER_MODE" in
 esac
 echo "      Theme builder mode: $THEME_BUILDER_MODE"
 export THEME_BUILDER_MODE
+
+echo ""
+echo "LD2410 tuner webserver:"
+echo "  off     - do not install/start the tuner"
+echo "  ha      - install it stopped; let Home Assistant switch it on/off"
+echo "  always  - run it all the time"
+read -p "LD2410 tuner mode [off/ha/always] [ha]: " LD2410_TUNER_MODE
+LD2410_TUNER_MODE="${LD2410_TUNER_MODE:-ha}"
+case "$LD2410_TUNER_MODE" in
+    off|none|no|disabled) LD2410_TUNER_MODE="off" ;;
+    ha|toggle|switch) LD2410_TUNER_MODE="ha" ;;
+    always|on|yes) LD2410_TUNER_MODE="always" ;;
+    *)
+        echo "[error] Unknown LD2410 tuner mode: $LD2410_TUNER_MODE"
+        exit 1
+        ;;
+esac
+echo "      LD2410 tuner mode: $LD2410_TUNER_MODE"
+export LD2410_TUNER_MODE
 
 echo "[4/11] Building rpi-rgb-led-matrix..."
 if [ ! -d "$HOME/rpi-rgb-led-matrix" ]; then
@@ -116,6 +173,14 @@ else
     sudo pip3 install --break-system-packages \
         "git+https://github.com/hzeller/rpi-rgb-led-matrix@86df760" \
         || { echo "[error] rpi-rgb-led-matrix install failed"; exit 1; }
+fi
+if [ "$CLOCK_RUNTIME" = "cpp" ]; then
+    cd "$HOME/rpi-rgb-led-matrix"
+    if [ "$IS_ZERO_W" != true ]; then
+        git checkout 86df760
+    fi
+    echo "      Building rpi-rgb-led-matrix C++ library for experimental runtime..."
+    make -j"$(nproc)" || { echo "[error] rpi-rgb-led-matrix C++ build failed"; exit 1; }
 fi
 cd "$REPO_DIR"
 python3 -c "from rgbmatrix import RGBMatrix, RGBMatrixOptions; print('      rgbmatrix OK')" \
@@ -175,15 +240,20 @@ sudo usermod -a -G dialout,gpio,i2c "$USERNAME"
 echo "      Added to dialout, gpio, i2c."
 
 echo "[8/11] Installing clock files..."
-sudo mkdir -p "$CLOCK_DIR" "$CONFIG_DIR" "$CONFIG_DIR/themes" "$CONFIG_DIR/animations"
+sudo mkdir -p "$CLOCK_DIR" "$CONFIG_DIR" "$CONFIG_DIR/themes" "$CONFIG_DIR/animations" "$CONFIG_DIR/sprites" "$CONFIG_DIR/sprite-animations"
 sudo mkdir -p "$CLOCK_DIR/tools"
 sudo chmod 755 /home/$USERNAME
 sudo chmod 755 "$CONFIG_DIR"
 sudo chmod 755 "$CONFIG_DIR/themes"
 sudo chmod 755 "$CONFIG_DIR/animations"
+sudo chmod 755 "$CONFIG_DIR/sprites"
+sudo chmod 755 "$CONFIG_DIR/sprite-animations"
 sudo cp "$REPO_DIR/scripts/test_display.py"  "$CLOCK_DIR/"
 sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
 sudo cp "$REPO_DIR/tools/theme-server.py" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/sprite-builder.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/ld2410-tuner.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/ld2410-tuner.py" "$CLOCK_DIR/tools/"
 # Copy built-in themes only if the themes dir is empty (preserve user edits)
 if [ -z "$(ls -A "$CONFIG_DIR/themes" 2>/dev/null)" ]; then
     sudo cp "$REPO_DIR/themes/"*.json "$CONFIG_DIR/themes/"
@@ -191,17 +261,42 @@ if [ -z "$(ls -A "$CONFIG_DIR/themes" 2>/dev/null)" ]; then
 else
     echo "      Themes dir already has files — skipping built-in theme copy."
 fi
-sudo cp "$REPO_DIR/clock/hub75_clock.py" "$CLOCK_DIR/"
-sudo cp "$REPO_DIR/clock/test_sensors.py" "$CLOCK_DIR/"
-sudo cp "$REPO_DIR/clock/theme_loader.py" "$CLOCK_DIR/"
-# Copy animation files (always overwrite — user-custom animations go in the same dir)
-sudo cp "$REPO_DIR/animations/"*.py "$CONFIG_DIR/animations/"
-sudo chmod 644 "$CONFIG_DIR/animations/"*.py
-echo "      Python clock and animations installed."
+if [ -z "$(ls -A "$CONFIG_DIR/sprites" 2>/dev/null)" ]; then
+    sudo cp "$REPO_DIR/sprites/"*.json "$CONFIG_DIR/sprites/" 2>/dev/null || true
+    echo "      Built-in sprites installed to $CONFIG_DIR/sprites/"
+else
+    echo "      Sprites dir already has files - skipping built-in sprite copy."
+fi
+if [ -z "$(ls -A "$CONFIG_DIR/sprite-animations" 2>/dev/null)" ]; then
+    sudo cp "$REPO_DIR/sprite-animations/"*.json "$CONFIG_DIR/sprite-animations/" 2>/dev/null || true
+    echo "      Built-in sprite animations installed to $CONFIG_DIR/sprite-animations/"
+else
+    echo "      Sprite animations dir already has files - skipping built-in animation copy."
+fi
+if [ "$CLOCK_RUNTIME" = "python" ]; then
+    sudo cp "$REPO_DIR/clock/hub75_clock.py" "$CLOCK_DIR/"
+    sudo cp "$REPO_DIR/clock/test_sensors.py" "$CLOCK_DIR/"
+    sudo cp "$REPO_DIR/clock/theme_loader.py" "$CLOCK_DIR/"
+    # Copy animation files (always overwrite — user-custom animations go in the same dir)
+    sudo cp "$REPO_DIR/animations/"*.py "$CONFIG_DIR/animations/"
+    sudo chmod 644 "$CONFIG_DIR/animations/"*.py
+    echo "      Python clock and animations installed."
+else
+    echo "      Building experimental C++ runtime..."
+    cmake -S "$REPO_DIR/clock-cpp" -B "$REPO_DIR/clock-cpp/build"
+    cmake --build "$REPO_DIR/clock-cpp/build"
+    sudo install -m 0755 "$REPO_DIR/clock-cpp/build/hub75_clock" "$CLOCK_DIR/hub75_clock"
+    echo "      C++ clock binary installed."
+fi
 sudo chown -R root:root "$CLOCK_DIR"
 echo "      Installed to $CLOCK_DIR"
 
 echo "[9/11] Installing systemd service..."
+if [ "$CLOCK_RUNTIME" = "python" ]; then
+    EXEC_START="/usr/bin/python3 $CLOCK_DIR/hub75_clock.py"
+else
+    EXEC_START="$CLOCK_DIR/hub75_clock $CONFIG_DIR/config.yaml"
+fi
 sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null << EOF
 [Unit]
 Description=HUB75 Smart Clock
@@ -213,7 +308,7 @@ Type=simple
 User=root
 WorkingDirectory=$CLOCK_DIR
 Environment="CLOCK_CONFIG=$CONFIG_DIR/config.yaml"
-ExecStart=/usr/bin/python3 $CLOCK_DIR/hub75_clock.py
+ExecStart=$EXEC_START
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
@@ -238,7 +333,7 @@ Wants=network-online.target
 Type=simple
 User=root
 WorkingDirectory=$CLOCK_DIR
-ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --host 0.0.0.0 --port 8765
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --sprites-dir $CONFIG_DIR/sprites --animations-dir $CONFIG_DIR/sprite-animations --host 0.0.0.0 --port 8765
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
@@ -251,14 +346,52 @@ EOF
 sudo systemctl daemon-reload
 if [ "$THEME_BUILDER_MODE" = "always" ]; then
     sudo systemctl enable hub75-theme-builder.service
+    sudo systemctl restart hub75-theme-builder.service
     echo "      Theme builder service enabled."
 else
     sudo systemctl disable hub75-theme-builder.service >/dev/null 2>&1 || true
-    echo "      Theme builder service installed but disabled."
+    sudo systemctl stop hub75-theme-builder.service >/dev/null 2>&1 || true
+    echo "      Theme builder service installed but stopped."
+fi
+
+echo "      Installing LD2410 tuner service..."
+sudo tee /etc/systemd/system/hub75-ld2410-tuner.service > /dev/null << EOF
+[Unit]
+Description=HUB75 LD2410 Tuner
+After=network-online.target hub75-clock.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$CLOCK_DIR
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/ld2410-tuner.py --config $CONFIG_DIR/config.yaml --host 0.0.0.0 --port 8766
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+if [ "$LD2410_TUNER_MODE" = "always" ]; then
+    sudo systemctl enable hub75-ld2410-tuner.service
+    sudo systemctl restart hub75-ld2410-tuner.service
+    echo "      LD2410 tuner service enabled."
+else
+    sudo systemctl disable hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+    sudo systemctl stop hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+    echo "      LD2410 tuner service installed but stopped."
 fi
 
 echo "[10/11] Installing update script..."
-cp "$REPO_DIR/scripts/update-clock-python.sh" "$HOME/update-clock.sh"
+if [ "$CLOCK_RUNTIME" = "python" ]; then
+    cp "$REPO_DIR/scripts/update-clock-python.sh" "$HOME/update-clock.sh"
+else
+    cp "$REPO_DIR/scripts/update-clock-cpp.sh" "$HOME/update-clock.sh"
+fi
 chmod +x "$HOME/update-clock.sh"
 
 echo "[11/11] Writing initial configuration..."

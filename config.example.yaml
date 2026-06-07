@@ -6,7 +6,7 @@
 # your live settings.
 #
 # The live config at /etc/hub75-clock/config.yaml is gitignored.
-# Update workflow: make update
+# Update workflow: git pull && make restart
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -38,10 +38,6 @@ mqtt:
     theme:            hub75_clock/theme/set
     theme_state:      hub75_clock/theme/state
     themes_available: hub75_clock/themes/available
-    update_check:     hub75_clock/update/check
-    update_install:   hub75_clock/update/install
-    update_state:     hub75_clock/update/state
-    update_latest:    hub75_clock/update/latest
 
 # -----------------------------------------------------------------------------
 # Home Assistant MQTT Discovery
@@ -52,17 +48,6 @@ ha_discovery:
   prefix: homeassistant            # must match HA's discovery prefix (default: homeassistant)
   ha_discovery_name: "HUB75 Clock" # friendly name shown in Home Assistant
   ha_discovery_area: ""            # optional, sets the HA device area (e.g. "Bedroom")
-
-# -----------------------------------------------------------------------------
-# Theme builder web UI
-# mode: off, ha, or always. In ha mode, MQTT discovery exposes a switch and URL.
-# -----------------------------------------------------------------------------
-theme_builder:
-  mode: ha
-  service_name: hub75-theme-builder
-  host: 0.0.0.0
-  port: 8765
-  url: http://hub75-clock.local:8765/
 
 # -----------------------------------------------------------------------------
 # Panel hardware - adjust to match your specific panel and Pi model
@@ -80,7 +65,6 @@ panel:
   pwm_bits: 11
   pwm_lsb_nanoseconds: 130
   brightness: 60      # 1-100, live-overridable via MQTT
-  led_rgb_sequence: RBG
 
 # -----------------------------------------------------------------------------
 # Fonts - path to BDF fonts bundled with rpi-rgb-led-matrix
@@ -88,19 +72,17 @@ panel:
 # IMPORTANT: update *_w and *_h to match the font file you choose.
 # -----------------------------------------------------------------------------
 fonts:
-  fonts_dir: /home/YOUR_USERNAME/hub75-fonts
+  banner_path: /home/YOUR_USERNAME/hub75-fonts/5x7.bdf
+  banner_w: 5
+  banner_h: 7
 
-  banner_name: 4x6.bdf
-  banner_w: 4
-  banner_h: 6
+  time_path: /home/YOUR_USERNAME/hub75-fonts/10x20.bdf
+  time_w: 10
+  time_h: 20
 
-  time_name: spleen-12x24.bdf
-  time_w: 12
-  time_h: 24
-
-  alert_name: 4x6.bdf
-  alert_w: 4
-  alert_h: 6
+  alert_path: /home/YOUR_USERNAME/hub75-fonts/5x7.bdf
+  alert_w: 5
+  alert_h: 7
 
 # -----------------------------------------------------------------------------
 # Colors are runtime fallbacks only. Theme JSON colors override these.
@@ -165,21 +147,21 @@ time_format:
   blink_colon: false
 
 # -----------------------------------------------------------------------------
-# OTA Updates - pull latest code from GitHub and restart
-# Trigger via MQTT or HA button entity created by ha_discovery.
-# -----------------------------------------------------------------------------
-update:
-  enabled: true
-  repo_path: /home/YOUR_USERNAME/hub75-clock  # path where you cloned the repo
-  branch: ""                                  # empty = current checked-out branch
-  command: /home/YOUR_USERNAME/update-clock.sh
-  check_on_startup: true
-  check_time: "03:30"                         # daily branch check
-
-# -----------------------------------------------------------------------------
 # Themes - background, color, and animation presets loaded from JSON files
-# Built-in themes live in themes_dir. The clock watches this directory live.
+# Built-in themes live in themes_dir. Drop your own .json files there and
+# the clock picks them up live (no restart needed).
 # -----------------------------------------------------------------------------
 themes:
   themes_dir: /etc/hub75-clock/themes
   default_theme: Day
+
+# -----------------------------------------------------------------------------
+# Animations and sprites
+# Python animations are loaded from animations_dir. The generic "sprite" cameo
+# loads JSON sprites from sprites_dir. Speed settings live outside config.yaml
+# so local tuning survives updates.
+# -----------------------------------------------------------------------------
+animations:
+  animations_dir: /etc/hub75-clock/animations
+  sprites_dir: /etc/hub75-clock/sprites
+  settings_path: /etc/hub75-clock/animations.yaml

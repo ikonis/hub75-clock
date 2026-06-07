@@ -1,12 +1,14 @@
 # Animations
 
-The clock supports a drop-in animation system. Any `.py` file placed in `/etc/hub75-clock/animations/` is automatically loaded at runtime. The watchdog detects new and changed files within seconds — no restart required.
+The C++ runtime uses the same cameo names as the Python runtime, but animation code is compiled from `clock-cpp/src/animations/*.cpp`. Adding or changing C++ animation code requires `make update` on the clock so the binary is rebuilt and reinstalled. Plain theme JSON, sprite JSON, and sprite-animation JSON edits do not require a C++ rebuild.
+
+The Python runtime supports a drop-in animation system. Any `.py` file placed in `/etc/hub75-clock/animations/` is automatically loaded at runtime. The watchdog detects new and changed files within seconds — no restart required.
 
 Animations are triggered as **cameos** inside theme JSON files. See `docs/themes.md` for how to add them to a theme.
 
 ---
 
-## Python drop-in system
+## How the drop-in system works
 
 1. `AnimationLoader` scans `/etc/hub75-clock/animations/` at startup and imports every `.py` file that contains a class named `Animation`.
 2. Each `Animation` class is registered under its `name` attribute.
@@ -16,7 +18,7 @@ Animations are triggered as **cameos** inside theme JSON files. See `docs/themes
 
 ---
 
-## Writing a Python custom animation
+## Writing a custom animation
 
 Create a file in `/etc/hub75-clock/animations/` with exactly this structure:
 
@@ -56,7 +58,7 @@ class Animation:
         return False
 ```
 
-Drop the file into `/etc/hub75-clock/animations/`. The clock picks it up within a few seconds. Add its `name` to a theme's `cameos` list:
+For Python, drop the file into `/etc/hub75-clock/animations/`. The clock picks it up within a few seconds. Add its `name` to a theme's `cameos` list:
 
 ```json
 "cameos": [
@@ -127,6 +129,8 @@ Default `False`. When `True`, the animation is instantiated once when the theme 
 
 Default `1.0`. Built-in animations use this as a simple multiplier for movement, twinkle, or drift speed so timing can be tuned without rewriting update logic.
 
+Python and C++ load runtime speed settings from `/etc/hub75-clock/animations.yaml` when present. The update scripts install the example file only if it is missing, so local speed tuning survives `make update`.
+
 ---
 
 ## `__init__` parameters
@@ -196,7 +200,7 @@ class Animation:
 
 ## Built-in animations reference
 
-These are installed as `.py` files in `/etc/hub75-clock/animations/`.
+Python installs these to `/etc/hub75-clock/animations/`. C++ compiles the matching sources from `clock-cpp/src/animations/` during `make update`.
 
 ### Space / Night
 
@@ -217,6 +221,7 @@ Celestial animations are drawn before sun/moon and clouds so meteors appear to f
 |---|---|---|---|---|
 | `clouds.py` | `clouds` | _(any)_ | Day, Sunrise, Sunset, Late Evening | **Persistent.** Drifting clouds plus optional precipitation particles. Count, size, and speed driven by `cloud_density`/`cloud_speed`. Precipitation type set by `precipitation` field (`"none"`, `"rain"`, `"heavy_rain"`, `"tstorm"`, `"snow"`, `"sleet"`). Tstorm mode adds random lightning bolts and background flash. All particles are owned by their parent cloud and wrap with it. |
 | `airplane.py` | `airplane` | _(any)_ | Day, Sunrise, Sunset | 8px fuselage + wings + windows, random left/right direction, mirrors sprite to face direction of travel. |
+| `sprite.py` / `sprite.cpp` | `sprite` | _(any)_ | _(any)_ | Generic JSON sprite cameo. Loads art from `/etc/hub75-clock/sprites/`; use theme JSON such as `{ "name": "sprite", "sprite": "rocket", "chance_per_minute": 4 }`. |
 | `bird_flock.py` | `bird_flock` | _(any)_ | Day | V-formation of 5–7 birds with alternating flap frames. |
 | `butterfly.py` | `butterfly` | CLEAR | Day | Open/closed wing frames every 5 ticks, sine wave vertical drift, orange. |
 | `flutterflies.py` | `flutterflies` | CLEAR | Day | **Persistent.** Small pastel butterfly group with gentle wandering motion. Add without `chance_per_minute`. |
@@ -289,4 +294,5 @@ Only one cameo runs at a time. While one is active, rolls for all cameos are ski
 - **Do not import heavy libraries.** `math` and `random` are always available. Avoid anything that requires install-time dependencies.
 - **Name collisions:** if your file's `Animation.name` matches an existing built-in, your file wins because `_scan()` processes files alphabetically and yours will likely run after the built-in. Prefix custom names to avoid accidental overrides (`"my_ufo"` instead of `"ufo"`).
 - **Errors are logged, not crashed.** If your file has a syntax error or the `Animation` class is missing required attributes, the loader prints a warning and skips the file. The rest of the animations continue working.
-- **Test interactively:** run the clock manually (`sudo python3 /opt/hub75-clock/hub75_clock.py`) and watch the logs with `make logs` while you drop files in. The watchdog reloads within 2 seconds of a file write.
+- **Test Python interactively:** run the clock manually (`sudo python3 /opt/hub75-clock/hub75_clock.py`) and watch the logs with `make logs` while you drop files in. The watchdog reloads within 2 seconds of a file write.
+- **Test C++ changes:** run `make update` on the C++ clock. The C++ updater syncs themes/sprites first, then rebuilds `clock-cpp` and swaps the installed binary. Plain theme JSON, sprite JSON, and sprite-animation JSON edits do not require a C++ rebuild.

@@ -17,8 +17,8 @@ The Pi Zero W uses an ARMv6 processor. Recent versions of the `rpi-rgb-led-matri
 | Architecture | ARMv6 32-bit | ARMv8 64-bit |
 | gpio_slowdown | 2 | 4 |
 | UART port | /dev/serial0 | /dev/ttyAMA0 |
-| Performance | Limited by single-core CPU | Very responsive |
-| Build process | Installer pins an older matrix library commit | Standard build |
+| Performance | Slower, some lag on config changes | Fast, very responsive |
+| Build process | Requires RP1 stub hack | Standard build |
 
 ---
 
@@ -28,19 +28,13 @@ Use **Raspberry Pi OS Lite (32-bit, Bookworm)**. Do NOT use 64-bit on Pi Zero W.
 
 ---
 
-## Runtime
-
-`install.sh` installs the Python runtime on main.
-
----
-
 ## Building rpi-rgb-led-matrix on Pi Zero W
 
 `install.sh` handles this automatically. It detects Pi Zero W at runtime, then:
 
 1. Clones `rpi-rgb-led-matrix` to `~/rpi-rgb-led-matrix`
 2. Checks out commit `076c54b` (last version before Pi 5 RP1 support was added; later commits fail to compile on ARMv6)
-3. Builds the Python bindings with the repo's own build targets:
+3. Builds the C++ library and Python bindings with the repo's own build targets:
 
 ```bash
 make build-python PYTHON="$(which python3)"
@@ -48,6 +42,23 @@ sudo make install-python PYTHON="$(which python3)"
 ```
 
 Just run `bash install.sh` as normal. No manual source edits are needed.
+
+If a clock is migrated to the C++ runtime after an older Python-only install, make sure the C++ build dependencies are present:
+
+```bash
+sudo apt install -y cmake build-essential pkg-config libmosquitto-dev libyaml-cpp-dev libgpiod-dev
+```
+
+The C++ updater also expects the RGB matrix source tree and static library at `~/rpi-rgb-led-matrix`. If they are missing:
+
+```bash
+cd ~
+git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
+cd rpi-rgb-led-matrix
+make
+```
+
+Normal theme JSON edits do not require a C++ recompile. New C++ animation code or edits under `clock-cpp/src/animations/` do require `make update`.
 
 ### Verify after install
 
@@ -73,16 +84,16 @@ sensors:
 
 ## Performance Notes
 
-The Pi Zero W is a single-core ARMv6 at 1GHz. Main uses the Python runtime.
+The Pi Zero W is a single-core ARMv6 at 1GHz. The installer defaults to the C++ runtime on Pi Zero because it has the lowest CPU overhead, but the Python runtime remains available if you want it. Both runtimes now default to 90fps.
 
 Things that can still add load:
 
 - Receiving lots of MQTT messages (gate data, engineering mode)
-- Changing conditions or buckets rapidly
+- Changing weather condition or theme inputs rapidly
 
 For best performance on Zero W:
 - Keep `engineering_mode` off unless actively tuning
-- Lower FPS if the Python runtime feels sluggish
+- Use the C++ runtime if the Python runtime feels sluggish
 - Set `sensors.lux_interval: 60` (already default)
 
 ---

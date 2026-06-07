@@ -42,6 +42,14 @@ esac
 THEME_BUILDER_PORT="${THEME_BUILDER_PORT:-8765}"
 THEME_BUILDER_HOST="${THEME_BUILDER_HOST:-0.0.0.0}"
 THEME_BUILDER_URL="${THEME_BUILDER_URL:-http://$(hostname).local:${THEME_BUILDER_PORT}/}"
+LD2410_TUNER_MODE="${LD2410_TUNER_MODE:-off}"
+case "$LD2410_TUNER_MODE" in
+    off|ha|always) ;;
+    *) LD2410_TUNER_MODE="off" ;;
+esac
+LD2410_TUNER_PORT="${LD2410_TUNER_PORT:-8766}"
+LD2410_TUNER_HOST="${LD2410_TUNER_HOST:-0.0.0.0}"
+LD2410_TUNER_URL="${LD2410_TUNER_URL:-http://$(hostname).local:${LD2410_TUNER_PORT}/}"
 
 # ── MQTT ─────────────────────────────────────────────────────────────────────
 echo ""
@@ -185,11 +193,11 @@ mqtt:
     gates:            ${CLIENT_ID}/gates
     engineering_mode: ${CLIENT_ID}/engineering_mode
     bucket:           ${CLIENT_ID}/bucket
-    update:           ${CLIENT_ID}/update/install
-    update_check:     ${CLIENT_ID}/update/check
-    update_install:   ${CLIENT_ID}/update/install
-    update_state:     ${CLIENT_ID}/update/state
-    update_latest:    ${CLIENT_ID}/update/latest
+    theme:            ${CLIENT_ID}/theme/set
+    theme_state:      ${CLIENT_ID}/theme/state
+    themes_available: ${CLIENT_ID}/themes/available
+    ld2410_params:    ${CLIENT_ID}/ld2410/params
+    ld2410_read:      ${CLIENT_ID}/ld2410/read
 
 ha_discovery:
   enabled: true
@@ -203,6 +211,13 @@ theme_builder:
   host: "$THEME_BUILDER_HOST"
   port: $THEME_BUILDER_PORT
   url: "$THEME_BUILDER_URL"
+
+ld2410_tuner:
+  mode: "$LD2410_TUNER_MODE"
+  service_name: hub75-ld2410-tuner
+  host: "$LD2410_TUNER_HOST"
+  port: $LD2410_TUNER_PORT
+  url: "$LD2410_TUNER_URL"
 
 panel:
   hardware_mapping: $HW_MAP
@@ -268,13 +283,6 @@ time_format:
   blink_colon: false
   use_24h: false
 
-update:
-  enabled: true
-  repo_path: "$REPO_DIR"
-  branch: ""
-  command: "/home/$USER/update-clock.sh"
-  check_on_startup: true
-  check_time: "03:30"
 EOF
 sudo chmod 666 "$CONFIG_FILE"
 

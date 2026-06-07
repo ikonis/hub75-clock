@@ -44,9 +44,10 @@ class Animation:
     def draw(self, canvas):
         for i, (hx, hy) in enumerate(reversed(self._history)):
             c = self.TAIL_COLORS[min(i, len(self.TAIL_COLORS) - 1)]
+            alpha = max(0.08, 1.0 - (i + 1) / (len(self.TAIL_COLORS) + 1))
             px, py = int(round(hx)), int(round(hy))
             if 0 <= px < self._w and self._at <= py <= self._ab:
-                canvas.SetPixel(px, py, *c)
+                canvas.BlendPixel(px, py, *c, alpha)
 
         hx, hy = int(round(self.x)), int(round(self.y))
         if 0 <= hx < self._w and self._at <= hy <= self._ab:
@@ -54,7 +55,7 @@ class Animation:
             for ddx, ddy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                 gx, gy = hx + ddx, hy + ddy
                 if 0 <= gx < self._w and self._at <= gy <= self._ab:
-                    canvas.SetPixel(gx, gy, *self.COLOR_HEAD_GLOW)
+                    canvas.BlendPixel(gx, gy, *self.COLOR_HEAD_GLOW, 0.55)
 
     def is_done(self) -> bool:
         return (self.x < -12 or self.x >= self._w + 12 or self.y > self._ab + 2)

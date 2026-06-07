@@ -2,7 +2,7 @@
 # Run from the repo root on the Pi
 # Usage: make <target>
 
-.PHONY: update logs restart status stop start test config install rgb theme-builder
+.PHONY: update logs restart status stop start test config install rgb theme-builder sprite-builder ld2410-tuner
 
 update:
 	~/update-clock.sh
@@ -35,4 +35,10 @@ install:
 	bash install.sh
 
 theme-builder:
-	python3 tools/theme-server.py --themes-dir themes
+	python3 tools/theme-server.py --themes-dir themes --sprites-dir sprites --animations-dir sprite-animations
+
+sprite-builder:
+	python3 tools/theme-server.py --themes-dir themes --sprites-dir sprites --animations-dir sprite-animations
+
+ld2410-tuner:
+	python3 tools/ld2410-tuner.py --config config.yaml --host 0.0.0.0 --port 8766

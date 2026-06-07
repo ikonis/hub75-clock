@@ -148,7 +148,7 @@ Use `hardware_mapping: regular` for direct GPIO wiring. Only use `adafruit-hat` 
 
 ```bash
 cd ~
-git clone https://github.com/ikonis/hub75-clock.git
+git clone https://github.com/YOUR_GITHUB_USER/hub75-clock.git
 cd hub75-clock
 ```
 
@@ -158,7 +158,7 @@ cd hub75-clock
 bash install.sh
 ```
 
-`install.sh` handles everything in one step, then launches the interactive configuration wizard (`scripts/configure.sh`) and prompts to reboot. See [Scripts](#scripts) for the full list of what it does.
+`install.sh` handles everything in one step, asks which runtime to install, then launches the interactive configuration wizard (`scripts/configure.sh`) and prompts to reboot. The Python runtime is the stable/public path. The C++ runtime is available as **experimental** for lower overhead, but fresh installs still need more testing.
 
 ### 3. Reboot
 
@@ -183,11 +183,19 @@ ls -l /dev/serial0         # must point to ttyAMA0
 
 ### 5. Test the clock
 
+Python runtime:
+
 ```bash
 sudo python3 /opt/hub75-clock/hub75_clock.py
 ```
 
-Root required for matrix DMA/PWM. Panel should light up with time. Banner shows `--/-- CLEAR` until HA pushes weather.
+C++ runtime:
+
+```bash
+sudo /opt/hub75-clock/hub75_clock /etc/hub75-clock/config.yaml
+```
+
+Root required for matrix DMA/PWM. Panel should light up with time. Banner shows `--/-- CLEAR` until HA pushes weather. The C++ runtime is **experimental** and may require dependency/build troubleshooting on fresh installs.
 
 ### 6. Start the service
 
@@ -207,15 +215,18 @@ make status
 Run once on a fresh Pi. Does everything in sequence:
 
 1. Updates apt package lists
-2. Installs system packages for the Python runtime (git, build-essential, Python headers/tools, and others)
+2. Installs common system packages, then installs C++ build dependencies only when the C++ runtime is selected
 3. Installs Python packages (paho-mqtt, PyYAML, pyserial, RPi.GPIO, adafruit-circuitpython-veml7700, adafruit-blinka, watchdog)
-4. Lets you choose the theme builder mode: off, Home Assistant controlled, or always running
-5. Builds and installs `rpi-rgb-led-matrix` with Python bindings. Pi 4: installs a pinned commit via pip. Pi Zero W: clones, checks out commit `076c54b`, and builds with `make build-python` / `make install-python`. See `docs/pi-zero-w.md`.
+4. Lets you choose the clock runtime:
+   - Python Clock: stable path, fast updates, no clock compile required
+   - C++ Clock **[EXPERIMENTAL]**: lower overhead, smoother on constrained hardware, compiles during install/update
+5. Lets you choose the theme builder mode: off, Home Assistant controlled, or always running
+6. Builds and installs `rpi-rgb-led-matrix` with Python bindings. Pi 4: installs a pinned commit via pip. Pi Zero W: clones, checks out commit `076c54b`, and builds with `make build-python` / `make install-python`. The C++ runtime also builds the matrix C++ library. See `docs/pi-zero-w.md`.
 7. Downloads fonts (rpi-rgb-led-matrix bundled BDF fonts + Spleen 12x24/16x32) to `~/hub75-fonts`
 8. Enables I2C and UART hardware; disables serial console; disables Bluetooth; blacklists `snd_bcm2835`
 9. Adds user to `dialout`, `gpio`, `i2c` groups
-10. Installs the Python runtime to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only; copies Python animation `.py` files; installs the theme builder helper files
-11. Installs and enables the `hub75-clock` systemd service
+10. Installs the selected runtime to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only; update scripts preserve locally edited themes before syncing; copies Python animation `.py` files when using the Python runtime; installs the theme builder helper files
+11. Installs and enables the `hub75-clock` systemd service for the selected runtime
 12. Installs the `hub75-theme-builder` systemd service, enabled only when theme builder mode is `always`
 13. Installs the matching update script to `~/update-clock.sh`
 14. Launches `scripts/configure.sh` to write your `config.yaml`
@@ -227,14 +238,72 @@ bash install.sh
 
 ### update scripts
 
-Pulls the latest code from GitHub, copies updated files to `/opt/hub75-clock/`, and restarts the service. `install.sh` installs `scripts/update-clock-python.sh` as `~/update-clock.sh`. The updater pulls the branch currently checked out in the repo.
+Pulls the latest code from GitHub, copies updated files to `/opt/hub75-clock/`, and restarts the service. `install.sh` installs either `scripts/update-clock-python.sh` or `scripts/update-clock-cpp.sh` as `~/update-clock.sh`, matching the runtime you selected.
 
 ```bash
 make update
 # or: ~/update-clock.sh
 ```
 
-When `update.enabled` is true, the clock can also check the currently checked-out branch at startup, once daily at `update.check_time`, or from the Home Assistant **Check Update** button. It publishes retained update status to MQTT and only runs `update.command` when the Home Assistant **Install Update** button is pressed.
+For C++ clocks, `make update` rebuilds the C++ binary after syncing themes, sprites, and sprite-animation JSON. Normal theme/sprite JSON edits do not require a rebuild by themselves; the C++ clock reloads theme JSON changes while running. New C++ animation code or changes under `clock-cpp/src/animations/` require `make update`. Treat this runtime as **experimental** until the install path has been tested on more fresh Pi images.
+
+The C++ updater checks for build dependencies before compiling. If a migrated clock is missing them, install:
+
+```bash
+sudo apt install -y cmake build-essential pkg-config libmosquitto-dev libyaml-cpp-dev libgpiod-dev
+```
+
+It also expects the RGB matrix source and C++ library at `~/rpi-rgb-led-matrix`:
+
+```bash
+cd ~
+git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
+cd rpi-rgb-led-matrix
+make
+```
+
+### switching runtimes
+
+The installed runtime is controlled by the `hub75-clock` systemd service and the updater copied to `~/update-clock.sh`.
+
+To switch from Python to C++ **[EXPERIMENTAL]**:
+
+```bash
+cp ~/hub75-clock/scripts/update-clock-cpp.sh ~/update-clock.sh
+chmod +x ~/update-clock.sh
+make update
+sudo systemctl edit --full hub75-clock
+```
+
+Set `ExecStart` to:
+
+```ini
+ExecStart=/opt/hub75-clock/hub75_clock /etc/hub75-clock/config.yaml
+```
+
+Then:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart hub75-clock
+```
+
+To roll back to Python:
+
+```bash
+cp ~/hub75-clock/scripts/update-clock-python.sh ~/update-clock.sh
+chmod +x ~/update-clock.sh
+make update
+sudo systemctl edit --full hub75-clock
+```
+
+Set `ExecStart` to:
+
+```ini
+ExecStart=/usr/bin/python3 /opt/hub75-clock/hub75_clock.py
+```
+
+Then reload and restart systemd again.
 
 ### scripts/configure.sh
 
@@ -268,6 +337,8 @@ make test       # run test_sensors.py
 make config     # open config wizard (reconfigure)
 make rgb        # run test_display.py (panel pixel test)
 make theme-builder # edit repo themes in the browser
+make sprite-builder # edit sprite JSON files in the browser
+make ld2410-tuner # tune LD2410 gate thresholds from a phone-friendly page
 ```
 
 After editing `/etc/hub75-clock/config.yaml` directly:
@@ -298,6 +369,42 @@ During install, the theme builder can be disabled, left always running, or contr
 
 ---
 
+## LD2410 Tuner
+
+The LD2410 tuner is a tiny mobile-friendly web UI for live gate tuning:
+
+```bash
+make ld2410-tuner
+# open http://<clock-ip>:8766/
+```
+
+It uses MQTT instead of opening the UART directly, so the clock can keep running while the tuner turns engineering mode on, reads the sensor's saved thresholds, graphs live move/still gate energy, and publishes gate threshold changes through the same commands the clock already understands. Set `ld2410_tuner.mode` to `ha` to expose an HA switch and URL sensor, or `always` to keep the tuner service running.
+
+Distances in the tuner are shown in feet. The LD2410 stores normal gate sensitivity after successful configuration commands. The next tuning layer can expose max-distance, timeout, and distance-resolution controls; distance resolution requires a module restart before it truly takes effect.
+
+---
+
+## Sprite Builder
+
+The sprite builder edits small JSON sprites used by the generic `sprite` cameo in both runtimes:
+
+```bash
+make sprite-builder
+# open http://127.0.0.1:8765/sprite-builder.html
+```
+
+Sprites live in `sprites/` in the repo and `/etc/hub75-clock/sprites/` on clocks. The same page also includes early animation scaffolding for frame-based sprite animation JSON in `sprite-animations/` and `/etc/hub75-clock/sprite-animations/`.
+
+Use sprites from a theme cameo like:
+
+```json
+{ "name": "sprite", "sprite": "rocket", "chance_per_minute": 4 }
+```
+
+Sprite pixels use `null` for transparent cells, `#RRGGBB` for solid color, or `#RRGGBBAA` for alpha-blended pixels. Sprite JSON can also carry early `movement` metadata for future cameo behavior work. The sprite animation and cameo designer UI is scaffold/experimental design tooling; generated movement JSON is not yet a complete public runtime system.
+
+---
+
 ## Updating
 
 Pull the latest code from GitHub and restart the service:
@@ -307,7 +414,7 @@ make update
 # or: ~/update-clock.sh
 ```
 
-This pulls from the branch currently checked out in your repo, copies the updated files to `/opt/hub75-clock/`, and restarts the service.
+This pulls from the current branch, copies the updated files to `/opt/hub75-clock/`, and restarts the service. On the C++ runtime it also rebuilds the binary; on Python it copies the `.py` files directly.
 
 ---
 
@@ -355,24 +462,27 @@ sudo ./text-example -f ~/rpi-rgb-led-matrix/fonts/spleen-12x24.bdf
 
 ## Home Assistant Setup
 
-### Automations
+### Optional Home Assistant Automation Examples
 
-Copy the files from `automations/` into an HA package directory and add the script separately:
+The clock does not require my Home Assistant helpers, room names, weather entities, or automation structure. It only needs MQTT. You can publish to the topics in `config.yaml` from HA, Node-RED, a shell script, or nothing at all. Without weather MQTT, the clock still runs and shows placeholder banner values until something publishes weather.
 
-```
+The files in `automations/` are optional examples. Copy them only if you want a starting point, then replace the placeholder entity IDs (`YOUR_CLOCK_CLIENT_ID`, `weather.YOUR_WEATHER_ENTITY`, etc.) with your own.
+
+```text
 config/
-├── packages/
-│   └── hub75_clock/
-│       ├── 01_set_theme.yaml          automation: brightness + calls theme script
-│       ├── 01b_select_theme_script.yaml  SCRIPT (see note below)
-│       ├── 02_push_weather.yaml       automation: weather push every 15 min
-│       ├── 03_alerts.yaml             automation: NWS weather alert banner
-│       └── 04_online_offline.yaml     automation: offline notification
-└── scripts/
-    └── clocks_select_theme.yaml       copy of 01b content under script: key
+|-- packages/
+|   `-- hub75_clock/
+|       |-- 01_set_theme.yaml            optional: brightness + calls theme script
+|       |-- 01b_select_theme_script.yaml SCRIPT (see note below)
+|       |-- 02_push_weather.yaml         optional: weather push every 15 min
+|       |-- 03_alerts.yaml               optional: NWS weather alert banner
+|       `-- 04_online_offline.yaml       optional: offline notification
+`-- scripts/
+    `-- clocks_select_theme.yaml         copy of 01b content under script: key
 ```
 
 In `configuration.yaml`:
+
 ```yaml
 homeassistant:
   packages: !include_dir_named packages
@@ -380,25 +490,25 @@ homeassistant:
 script: !include_dir_merge_named scripts
 ```
 
-**Important — the script file:** `01b_select_theme_script.yaml` defines `script.clocks_select_theme`, which `01_set_theme.yaml` calls. Scripts and automations use different HA keys and cannot live in the same file. Copy the contents of `01b_select_theme_script.yaml` into your `config/scripts/` directory (or inline it under a `script:` key in a package). See the comment header in that file for both import options.
+**Important:** `01b_select_theme_script.yaml` is a script, not an automation. It defines `script.clocks_select_theme`, which the optional `01_set_theme.yaml` automation calls. Scripts and automations use different HA keys and cannot live in the same file. Copy the contents of `01b_select_theme_script.yaml` into your `config/scripts/` directory, or inline it under a `script:` key in a package.
 
-Restart HA fully after adding any new package or script file.
+Optional helpers used by the examples:
 
-### Required HA helpers
-
-Create these helpers before enabling the automations (Settings → Devices & Services → Helpers):
-
-| Helper | Type | Notes |
+| Helper | Type | Used for |
 |---|---|---|
-| `input_select.house_bucket` | Select | Options: Day, Sunrise, Sunset, after_sunset, Late Evening, Night, Away |
-| `input_text.clock_condition` | Text | Max length 20. Written by `02_push_weather`, read by the theme script. |
+| `input_select.clock_daypart` | Select | Optional day/night/Away theme selection. Suggested values: Day, Early Morning, Evening, Late Evening, Night, Away. |
+| `input_text.clock_condition` | Text | Optional weather condition cache. Written by `02_push_weather`, read by `01b_select_theme_script`. |
 
-### Required HA entities
+Optional entities used by the examples:
 
 | Entity | Source |
 |---|---|
-| A `weather.*` entity | NWS, OpenWeatherMap, or similar integration |
-| `sensor.outdoor_temperature` | Your outdoor sensor |
+| `weather.YOUR_WEATHER_ENTITY` | Any HA weather integration |
+| `sensor.YOUR_OUTDOOR_TEMP` | Optional outdoor/current temperature sensor |
+| `number.YOUR_CLOCK_CLIENT_ID_brightness` | Auto-discovered brightness control |
+| `binary_sensor.YOUR_CLOCK_CLIENT_ID_online` | Auto-discovered availability sensor |
+
+These names are examples, not requirements. If you already have different helpers or entities, map them in the automation YAML or publish directly to MQTT.
 
 ### Auto-registered entities (MQTT Discovery)
 
@@ -409,21 +519,13 @@ With defaults (`client_id: hub75_clock`, `ha_discovery_name: "HUB75 Clock"`):
 | Entity | Description |
 |---|---|
 | `sensor.hub75_clock_illuminance` | VEML7700 lux |
-| `sensor.hub75_clock_move_energy` | LD2410C move energy |
-| `sensor.hub75_clock_still_energy` | LD2410C still energy |
 | `sensor.hub75_clock_move_distance` | LD2410C move distance (cm) |
 | `sensor.hub75_clock_still_distance` | LD2410C still distance (cm) |
 | `binary_sensor.hub75_clock_pir` | PIR motion (shown as "Motion" in HA) |
 | `binary_sensor.hub75_clock_presence` | LD2410C occupancy |
 | `number.hub75_clock_brightness` | Brightness control (1–100) |
-| `select.hub75_clock_theme` | Active theme selector, populated from loaded theme JSON files |
-| `button.hub75_clock_update` | Runs the configured update command |
-| `switch.hub75_clock_engineering_mode` | Enables LD2410 engineering mode while tuning gates |
-| `switch.hub75_clock_theme_builder` | Starts/stops the theme builder service when `theme_builder.mode: ha` |
-| `sensor.hub75_clock_theme_builder_url` | Browser URL for the theme builder when HA-controlled |
-| `sensor.hub75_clock_version` | Installed version/commit information when published |
 
-Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registered.
+Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registered. LD2410 gate energy, gate thresholds, and engineering mode are intentionally kept out of Home Assistant; use the LD2410 tuner web UI or RadarTools for tuning.
 
 ### MQTT Topics
 
@@ -434,12 +536,48 @@ Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registere
 | `clock/weather` | `{"low_temp": 68, "high_temp": 88, "condition": "TSTORM", "outdoor_temp": 64}` |
 | `clock/config` | `{"brightness": 40}` — brightness; additional config keys documented in `config.example.yaml` |
 | `{client_id}/theme/set` | Theme name string, e.g. `"Rainy Night"` — per-clock, uses `mqtt.client_id` from config |
-| `{client_id}/gates` | LD2410 gate threshold updates |
-| `{client_id}/engineering_mode` | `{"engineering_mode": true}` / `false` |
-| `{client_id}/bucket` | Current HA time bucket string or `{"bucket":"Night"}` |
-| `{client_id}/update/install` | Trigger update/install action |
 | `clock/alert` | `{"message": "Tornado Warning - County - until 4:45 PM", "expires": "2026-04-25T16:45:00-05:00"}` |
 | `clock/alert` | `{"clear": true}` to dismiss |
+
+Minimal generic HA service calls:
+
+```yaml
+# Set one clock's theme manually.
+action: mqtt.publish
+data:
+  topic: hub75_clock/theme/set
+  payload: "Night - Clear"
+```
+
+```yaml
+# Publish weather/banner data.
+action: mqtt.publish
+data:
+  topic: clock/weather
+  retain: true
+  payload: '{"low_temp": 68, "high_temp": 88, "condition": "CLEAR", "outdoor_temp": 72}'
+```
+
+```yaml
+# Publish brightness. If several clocks share clock/config, they all change.
+action: mqtt.publish
+data:
+  topic: clock/config
+  payload: '{"brightness": 40}'
+```
+
+```yaml
+# Optional day/night theme selection idea.
+action: mqtt.publish
+data:
+  topic: hub75_clock/theme/set
+  payload: >
+    {% if is_state('sun.sun', 'below_horizon') %}
+      Night - Clear
+    {% else %}
+      Day - Clear
+    {% endif %}
+```
 
 **Clock → HA:**
 
@@ -450,15 +588,10 @@ Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registere
 | `hub75_clock/presence` | `{"presence": true, "target_state": 3, "move_distance": 85, "still_distance": 120}` |
 | `hub75_clock/motion` | `{"move_energy": 45, "still_energy": 30}` |
 | `hub75_clock/status` | `online` or `offline` |
-| `hub75_clock/theme/state` | Active theme name, retained |
-| `hub75_clock/themes/available` | JSON array of available theme names, retained |
-| `hub75_clock/fonts_available` | JSON array of installed font names, retained |
-| `hub75_clock/engineering_mode/state` | `on` or `off`, retained |
-| `hub75_clock/update/latest` | Latest update/version payload when available |
 
-### Weather conditions
+### Weather Conditions
 
-The clock receives a condition string from the weather automation. The script `clocks_select_theme` maps condition + time-of-day bucket to the best precipitation theme:
+If you publish weather data, the clock expects a condition string. The optional example script `clocks_select_theme` maps condition + daypart to a matching theme name, but you can use any mapping you like or select themes manually.
 
 | Condition | Day-side theme | Night-side theme |
 |---|---|---|
@@ -471,13 +604,13 @@ The clock receives a condition string from the weather automation. The script `c
 
 All precipitation (rain drops, snow flakes, sleet, lightning) is rendered by the `clouds.py` animation via the `precipitation` field in the theme JSON. See `docs/themes.md` for the full field reference.
 
-Condition is the **most severe expected in the next 12 hours**, not just the current moment.
+In the included `02_push_weather.yaml` example, condition is the most severe expected in the next 12 hours, not just the current moment.
 
 The condition and temperature windows are configurable at the top of `automations/02_push_weather.yaml`. Change `condition_hours` (default 12) and `temp_hours` (default 24) to suit your preference.
 
 ### Brightness
 
-Brightness is controlled by your HA automation; see `automations/01_set_theme.yaml` for the included example.
+Brightness can be controlled from the auto-discovered HA number entity or by publishing `{"brightness": 40}` to the configured config topic. The included `automations/01_set_theme.yaml` file is only one optional example.
 
 ---
 
@@ -542,27 +675,30 @@ hub75-clock/
 ├── README.md
 ├── config.example.yaml         Reference config; configure.sh writes the real config
 ├── install.sh                  One-shot installer, run once on a fresh Pi
+├── update.sh                   Installed to ~/update-clock.sh; called by make update
 ├── scripts/
 │   ├── configure.sh            Interactive config wizard; run by install.sh
-│   ├── update-clock-python.sh  Installed to ~/update-clock.sh
 │   └── test_display.py         Panel pixel test (make rgb)
 ├── clock/
 │   ├── hub75_clock.py          Main application
 │   ├── theme_loader.py         Theme dataclass, JSON loader, file watcher
 │   └── test_sensors.py         Per-sensor test utility (make test)
 ├── themes/
-│   └── *.json                  Built-in themes; copied to /etc/hub75-clock/themes/ on first install
+│   └── *.json                  Built-in themes; locally edited installed themes are preserved by update scripts
 ├── animations/
-│   └── *.py                    Built-in Python drop-in animations
+│   └── *.py                    Built-in drop-in animations; copied to /etc/hub75-clock/animations/
+│                               Drop your own .py files there to add custom animations at runtime
+├── sprites/
+│   └── *.json                  Sprite cameo art for the generic sprite animation
 └── automations/
-    ├── 01_set_theme.yaml            Set brightness + call theme script on bucket/condition change
-    ├── 01b_select_theme_script.yaml Script: maps bucket + condition → theme, publishes to both clocks
-    ├── 02_push_weather.yaml         Push forecast weather to clocks every 15 min
+    ├── 01_set_theme.yaml            Optional brightness + theme selection example
+    ├── 01b_select_theme_script.yaml Optional script: maps daypart + condition to a theme
+    ├── 02_push_weather.yaml         Optional forecast weather MQTT example
     ├── 03_alerts.yaml               NWS alert banner (shared clock/alert topic, all clocks receive)
-    └── 04_online_offline.yaml       Offline notification for both clocks
+    └── 04_online_offline.yaml       Optional offline notification example
 ```
 
-Custom animations can be added at runtime by dropping a `.py` file into `/etc/hub75-clock/animations/`. The clock detects the new file within seconds and makes it available for use in theme `cameos` lists without a restart. See `docs/animations.md`.
+Python custom animations can be added at runtime by dropping a `.py` file into `/etc/hub75-clock/animations/`. C++ animation code lives under `clock-cpp/src/animations/` and is compiled during `make update`. Theme JSON, sprite JSON, and sprite-animation JSON edits do not require a C++ recompile. See `docs/animations.md` for the full interface.
 
 ---
 
@@ -591,7 +727,6 @@ The Pi 4 is the primary tested platform. Other hardware may work with adjustment
 
 ## Support
 
-[![Buy Me A Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=ikonis&button_colour=5F7FFF&font_colour=ffffff&font_family=Bree&outline_colour=000000&coffee_colour=FFDD00)](https://buymeacoffee.com/ikonis)
 
 ---
 

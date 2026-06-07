@@ -1,0 +1,280 @@
+#!/bin/bash
+# HUB75 Smart Clock updater - C++ service variant.
+# Copy this to the C++ clock as ~/update-clock.sh, then chmod +x it.
+
+set -euo pipefail
+
+CLOCK_DIR="${CLOCK_DIR:-/opt/hub75-clock}"
+CONFIG_DIR="${CONFIG_DIR:-/etc/hub75-clock}"
+SERVICE_NAME="${SERVICE_NAME:-hub75-clock}"
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="${REPO_DIR:-$SCRIPT_DIR}"
+
+if [ ! -d "$REPO_DIR/.git" ]; then
+    if [ -f "$CONFIG_DIR/config.yaml" ]; then
+        REPO_DIR="$(grep "repo_path" "$CONFIG_DIR/config.yaml" | awk '{print $2}' | tr -d '"')"
+    fi
+fi
+
+if [ ! -d "$REPO_DIR/.git" ] && [ -d "$HOME/hub75-clock/.git" ]; then
+    REPO_DIR="$HOME/hub75-clock"
+fi
+
+if [ ! -d "$REPO_DIR/.git" ]; then
+    echo "[update] repo not found: $REPO_DIR" >&2
+    exit 1
+fi
+
+BRANCH="${BRANCH:-$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)}"
+
+echo "[update] mode=cpp branch=$BRANCH repo=$REPO_DIR"
+
+APT_DEPS="cmake build-essential pkg-config libmosquitto-dev libyaml-cpp-dev libgpiod-dev"
+
+missing=()
+for tool in cmake pkg-config; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        missing+=("$tool")
+    fi
+done
+
+if ! command -v c++ >/dev/null 2>&1 && ! command -v g++ >/dev/null 2>&1; then
+    missing+=("build-essential")
+fi
+
+for pkg in libmosquitto-dev libyaml-cpp-dev libgpiod-dev; do
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
+        missing+=("$pkg")
+    fi
+done
+
+if [ "${#missing[@]}" -gt 0 ]; then
+    echo "[update] missing C++ build dependencies: ${missing[*]}" >&2
+    echo "[update] install them with:" >&2
+    echo "  sudo apt install -y $APT_DEPS" >&2
+    exit 1
+fi
+
+RGB_MATRIX_DIR="${RGB_MATRIX_DIR:-$HOME/rpi-rgb-led-matrix}"
+RGB_MATRIX_LIB="$RGB_MATRIX_DIR/lib/librgbmatrix.a"
+if [ ! -d "$RGB_MATRIX_DIR/include" ] || [ ! -f "$RGB_MATRIX_LIB" ]; then
+    echo "[update] missing rpi-rgb-led-matrix C++ library at $RGB_MATRIX_DIR" >&2
+    echo "[update] expected:" >&2
+    echo "  $RGB_MATRIX_DIR/include" >&2
+    echo "  $RGB_MATRIX_LIB" >&2
+    echo "[update] build it with:" >&2
+    echo "  cd ~" >&2
+    echo "  git clone https://github.com/hzeller/rpi-rgb-led-matrix.git" >&2
+    echo "  cd rpi-rgb-led-matrix" >&2
+    echo "  make" >&2
+    exit 1
+fi
+
+fix_repo_ownership() {
+    for path in \
+        "$REPO_DIR/.git" \
+        "$REPO_DIR/themes" \
+        "$REPO_DIR/sprites" \
+        "$REPO_DIR/sprite-animations"
+    do
+        if [ -e "$path" ]; then
+            sudo chown -R "$(id -u):$(id -g)" "$path"
+        fi
+    done
+}
+
+fix_repo_ownership
+git -C "$REPO_DIR" fetch origin
+git -C "$REPO_DIR" checkout "$BRANCH"
+
+sudo mkdir -p "$CLOCK_DIR" "$CLOCK_DIR/tools" "$CONFIG_DIR/themes" "$CONFIG_DIR/sprites" "$CONFIG_DIR/sprite-animations"
+mkdir -p "$REPO_DIR/themes" "$REPO_DIR/sprites" "$REPO_DIR/sprite-animations"
+
+if [ "${PRESERVE_LOCAL_THEMES:-true}" = "true" ] && compgen -G "$CONFIG_DIR/themes/*.json" > /dev/null; then
+    echo "[update] preserving locally installed themes into repo..."
+    sudo rsync -av --exclude='__pycache__' \
+        "$CONFIG_DIR/themes/" \
+        "$REPO_DIR/themes/"
+    sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/themes"
+
+fi
+
+if [ "${PRESERVE_LOCAL_SPRITES:-true}" = "true" ] && compgen -G "$CONFIG_DIR/sprites/*.json" > /dev/null; then
+    echo "[update] preserving locally installed sprites into repo..."
+    sudo rsync -av --exclude='__pycache__' \
+        "$CONFIG_DIR/sprites/" \
+        "$REPO_DIR/sprites/"
+    sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/sprites"
+fi
+
+if [ "${PRESERVE_LOCAL_SPRITE_ANIMATIONS:-true}" = "true" ] && compgen -G "$CONFIG_DIR/sprite-animations/*.json" > /dev/null; then
+    echo "[update] preserving locally installed sprite animations into repo..."
+    sudo rsync -av --exclude='__pycache__' \
+        "$CONFIG_DIR/sprite-animations/" \
+        "$REPO_DIR/sprite-animations/"
+    sudo chown -R "$(id -u):$(id -g)" "$REPO_DIR/sprite-animations"
+fi
+
+if [ "${COMMIT_LOCAL_THEMES:-true}" = "true" ] && [ -n "$(git -C "$REPO_DIR" status --porcelain -- themes sprites sprite-animations)" ]; then
+    echo "[update] committing locally installed theme/sprite changes..."
+    fix_repo_ownership
+    git -C "$REPO_DIR" add themes sprites sprite-animations
+    if git -C "$REPO_DIR" diff --cached --quiet -- themes sprites sprite-animations; then
+        echo "[update] no committed theme/sprite changes needed"
+    elif git -C "$REPO_DIR" commit -m "Add user made themes sprites and animations"; then
+        echo "[update] local theme/sprite changes committed"
+    else
+        echo "[update] warning: theme/sprite commit failed; files are preserved locally but repo is dirty"
+    fi
+fi
+
+git -C "$REPO_DIR" pull --rebase origin "$BRANCH"
+
+if [ "${PUSH_LOCAL_THEMES:-true}" = "true" ]; then
+    git -C "$REPO_DIR" push origin "$BRANCH" || echo "[update] warning: theme/sprite commit push failed"
+fi
+
+echo "[update] updated to $(git -C "$REPO_DIR" rev-parse --short HEAD)"
+
+echo "[update] installing theme builder files..."
+sudo cp "$REPO_DIR/tools/theme-builder.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/theme-server.py" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/sprite-builder.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/ld2410-tuner.html" "$CLOCK_DIR/tools/"
+sudo cp "$REPO_DIR/tools/ld2410-tuner.py" "$CLOCK_DIR/tools/"
+if [ ! -f "$CONFIG_DIR/animations.yaml" ] && [ -f "$REPO_DIR/clock-cpp/animations.example.yaml" ]; then
+    echo "[update] installing default animation settings..."
+    sudo cp "$REPO_DIR/clock-cpp/animations.example.yaml" "$CONFIG_DIR/animations.yaml"
+fi
+
+sudo tee /etc/systemd/system/hub75-theme-builder.service > /dev/null << EOF
+[Unit]
+Description=HUB75 Theme Builder
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$CLOCK_DIR
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/theme-server.py --themes-dir $CONFIG_DIR/themes --sprites-dir $CONFIG_DIR/sprites --animations-dir $CONFIG_DIR/sprite-animations --host 0.0.0.0 --port 8765
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo tee /etc/systemd/system/hub75-ld2410-tuner.service > /dev/null << EOF
+[Unit]
+Description=HUB75 LD2410 Tuner
+After=network-online.target hub75-clock.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$CLOCK_DIR
+ExecStart=/usr/bin/python3 $CLOCK_DIR/tools/ld2410-tuner.py --config $CONFIG_DIR/config.yaml --host 0.0.0.0 --port 8766
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+
+THEME_BUILDER_MODE="$(python3 - "$CONFIG_DIR/config.yaml" <<'PY'
+import sys
+try:
+    import yaml
+    with open(sys.argv[1], encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    print((cfg.get("theme_builder") or {}).get("mode", "off"))
+except Exception:
+    print("off")
+PY
+)"
+case "$THEME_BUILDER_MODE" in
+    always)
+        echo "[update] theme builder mode=always; enabling service..."
+        sudo systemctl enable hub75-theme-builder.service >/dev/null
+        sudo systemctl restart hub75-theme-builder.service
+        ;;
+    ha)
+        echo "[update] theme builder mode=ha; leaving service stopped for HA control..."
+        sudo systemctl disable hub75-theme-builder.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-theme-builder.service >/dev/null 2>&1 || true
+        ;;
+    *)
+        echo "[update] theme builder mode=off; disabling service..."
+        sudo systemctl disable hub75-theme-builder.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-theme-builder.service >/dev/null 2>&1 || true
+        ;;
+esac
+
+LD2410_TUNER_MODE="$(python3 - "$CONFIG_DIR/config.yaml" <<'PY'
+import sys
+try:
+    import yaml
+    with open(sys.argv[1], encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    print((cfg.get("ld2410_tuner") or {}).get("mode", "off"))
+except Exception:
+    print("off")
+PY
+)"
+case "$LD2410_TUNER_MODE" in
+    always)
+        echo "[update] ld2410 tuner mode=always; enabling service..."
+        sudo systemctl enable hub75-ld2410-tuner.service >/dev/null
+        sudo systemctl restart hub75-ld2410-tuner.service
+        ;;
+    ha)
+        echo "[update] ld2410 tuner mode=ha; leaving service stopped for HA control..."
+        sudo systemctl disable hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+        ;;
+    *)
+        echo "[update] ld2410 tuner mode=off; disabling service..."
+        sudo systemctl disable hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+        sudo systemctl stop hub75-ld2410-tuner.service >/dev/null 2>&1 || true
+        ;;
+esac
+
+echo "[update] syncing themes..."
+sudo rsync -av --delete --exclude='__pycache__' \
+    "$REPO_DIR/themes/" \
+    "$CONFIG_DIR/themes/"
+
+echo "[update] syncing sprites..."
+sudo rsync -av --delete --exclude='__pycache__' \
+    "$REPO_DIR/sprites/" \
+    "$CONFIG_DIR/sprites/"
+
+echo "[update] syncing sprite animations..."
+sudo rsync -av --delete --exclude='__pycache__' \
+    "$REPO_DIR/sprite-animations/" \
+    "$CONFIG_DIR/sprite-animations/"
+
+echo "[update] building C++ clock..."
+cmake -S "$REPO_DIR/clock-cpp" -B "$REPO_DIR/clock-cpp/build"
+cmake --build "$REPO_DIR/clock-cpp/build"
+
+echo "[update] stopping $SERVICE_NAME..."
+sudo systemctl stop "$SERVICE_NAME"
+
+echo "[update] installing C++ clock binary..."
+sudo install -m 0755 "$REPO_DIR/clock-cpp/build/hub75_clock" "$CLOCK_DIR/hub75_clock.new"
+sudo mv "$CLOCK_DIR/hub75_clock.new" "$CLOCK_DIR/hub75_clock"
+
+echo "[update] restarting $SERVICE_NAME..."
+sudo systemctl restart "$SERVICE_NAME"
+
+echo "[update] done."
+sudo journalctl -u "$SERVICE_NAME" -n 20 --no-pager

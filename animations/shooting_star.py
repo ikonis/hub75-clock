@@ -64,7 +64,7 @@ class Animation:
 
     def _px(self, canvas, x, y, b):
         if 0 <= x < self._w and self._at <= y <= self._ab:
-            canvas.SetPixel(x, y, b, b, b)
+            canvas.BlendPixel(x, y, 230, 230, 230, b / 230.0)
 
     def is_done(self) -> bool:
         return self._star is None or self._star.life <= 0
