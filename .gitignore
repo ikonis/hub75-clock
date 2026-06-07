@@ -2,8 +2,13 @@ config.yaml
 .venv/
 __pycache__/
 clock-cpp/build/
+.theme-cache/
+build/
+dist/
+*.spec
 *.pyc
 *.pyo
 .DS_Store
 *.swp
 .git-credentials
+ROADMAP-personal.md

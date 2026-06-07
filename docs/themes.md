@@ -1,6 +1,6 @@
 # Themes
 
-Themes control the background, text colors, and animation behavior of the clock face. Each theme is a JSON file. The clock loads all `.json` files from its themes directory at startup. The Python runtime watches for file changes and reloads themes within seconds; the C++ runtime currently reloads themes on service restart.
+Themes control the background, text colors, and animation behavior of the clock face. Each theme is a JSON file. The clock loads all `.json` files from its themes directory at startup and watches for file changes.
 
 ---
 
@@ -92,7 +92,7 @@ Animations are configured through the `cameos` array. One-shot cameos fire at a 
 
 | Field | Type | Description |
 |---|---|---|
-| `name` | string | Which animation to spawn. For Python, this must match the `name` attribute of an animation file in `/etc/hub75-clock/animations/`. For C++, it must match a compiled animation registered in `clock-cpp/src/CameoManager.cpp`. |
+| `name` | string | Which animation to spawn. This must match the `name` attribute of an animation file in `/etc/hub75-clock/animations/`. |
 | `chance_per_minute` | float | Expected spawns per minute on average for one-shot cameos. Omit for persistent animations. |
 
 Example:
@@ -170,7 +170,7 @@ All particles are owned by the cloud that spawned them. They fall downward and w
 
 ### Legacy condition overrides
 
-`condition_overrides` is still accepted by both runtimes for older themes, but the built-in themes and theme builder no longer use it. The recommended approach is to let Home Assistant choose a specific theme for each bucket/condition combination. That keeps a theme from unexpectedly changing its background just because the weather condition changes.
+`condition_overrides` is still accepted for older themes, but the built-in themes and theme builder no longer use it. The recommended approach is to let Home Assistant choose a specific theme for each bucket/condition combination. That keeps a theme from unexpectedly changing its background just because the weather condition changes.
 
 Legacy field:
 
@@ -243,10 +243,8 @@ sunrise:                    sunset:
    ```bash
    sudo cp stormy_night.json /etc/hub75-clock/themes/
    ```
-3. Python runtime: the clock detects the new file within a few seconds and adds it to the available themes list. C++ runtime: restart `hub75-clock` to reload the theme list.
+3. The clock detects the new file within a few seconds and adds it to the available themes list.
 4. Select it from the HA device page or via MQTT.
-
-When using the theme builder on a C++ clock, restart the clock service after saving if you need the new file loaded immediately.
 
 ---
 
@@ -302,4 +300,4 @@ When using the theme builder on a C++ clock, restart the clock service after sav
 
 - **You can have as many themes as you want.** The HA select entity updates its options list automatically. There is no limit.
 
-- **Drop a theme file in place to update it.** The Python runtime detects the write and reloads. If the active theme was modified, it stays active with the new settings applied immediately. The C++ runtime needs a service restart to pick up file changes.
+- **Drop a theme file in place to update it.** The clock detects the write and reloads. If the active theme was modified, it stays active with the new settings applied immediately.

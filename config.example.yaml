@@ -178,8 +178,7 @@ update:
 
 # -----------------------------------------------------------------------------
 # Themes - background, color, and animation presets loaded from JSON files
-# Built-in themes live in themes_dir. Python watches this directory live.
-# C++ reloads theme files when the service restarts.
+# Built-in themes live in themes_dir. The clock watches this directory live.
 # -----------------------------------------------------------------------------
 themes:
   themes_dir: /etc/hub75-clock/themes

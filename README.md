@@ -183,16 +183,8 @@ ls -l /dev/serial0         # must point to ttyAMA0
 
 ### 5. Test the clock
 
-Python runtime:
-
 ```bash
 sudo python3 /opt/hub75-clock/hub75_clock.py
-```
-
-C++ runtime:
-
-```bash
-sudo /opt/hub75-clock/hub75_clock /etc/hub75-clock/config.yaml
 ```
 
 Root required for matrix DMA/PWM. Panel should light up with time. Banner shows `--/-- CLEAR` until HA pushes weather.
@@ -215,16 +207,15 @@ make status
 Run once on a fresh Pi. Does everything in sequence:
 
 1. Updates apt package lists
-2. Installs system packages for both runtimes (git, build-essential, Python headers/tools, CMake, Mosquitto, yaml-cpp, gpiod, and others)
+2. Installs system packages for the Python runtime (git, build-essential, Python headers/tools, and others)
 3. Installs Python packages (paho-mqtt, PyYAML, pyserial, RPi.GPIO, adafruit-circuitpython-veml7700, adafruit-blinka, watchdog)
-4. Lets you choose the clock runtime: Python is the suggested default for multicore Pis; C++ is suggested for Pi Zero / lowest CPU overhead
-5. Lets you choose the theme builder mode: off, Home Assistant controlled, or always running
-6. Builds and installs `rpi-rgb-led-matrix` with Python bindings. Pi 4: installs a pinned commit via pip. Pi Zero W: clones, checks out commit `076c54b`, and builds with `make build-python` / `make install-python`. The C++ runtime also builds the matrix C++ library. See `docs/pi-zero-w.md`.
+4. Lets you choose the theme builder mode: off, Home Assistant controlled, or always running
+5. Builds and installs `rpi-rgb-led-matrix` with Python bindings. Pi 4: installs a pinned commit via pip. Pi Zero W: clones, checks out commit `076c54b`, and builds with `make build-python` / `make install-python`. See `docs/pi-zero-w.md`.
 7. Downloads fonts (rpi-rgb-led-matrix bundled BDF fonts + Spleen 12x24/16x32) to `~/hub75-fonts`
 8. Enables I2C and UART hardware; disables serial console; disables Bluetooth; blacklists `snd_bcm2835`
 9. Adds user to `dialout`, `gpio`, `i2c` groups
-10. Installs the selected runtime to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only; copies Python animation `.py` files when using the Python runtime; installs the theme builder helper files
-11. Installs and enables the `hub75-clock` systemd service for the selected runtime
+10. Installs the Python runtime to `/opt/hub75-clock/`; copies built-in themes to `/etc/hub75-clock/themes/` on first install only; copies Python animation `.py` files; installs the theme builder helper files
+11. Installs and enables the `hub75-clock` systemd service
 12. Installs the `hub75-theme-builder` systemd service, enabled only when theme builder mode is `always`
 13. Installs the matching update script to `~/update-clock.sh`
 14. Launches `scripts/configure.sh` to write your `config.yaml`
@@ -236,7 +227,7 @@ bash install.sh
 
 ### update scripts
 
-Pulls the latest code from GitHub, copies updated files to `/opt/hub75-clock/`, and restarts the service. `install.sh` installs either `scripts/update-clock-python.sh` or `scripts/update-clock-cpp.sh` as `~/update-clock.sh`, matching the runtime you selected. The updater pulls the branch currently checked out in the repo.
+Pulls the latest code from GitHub, copies updated files to `/opt/hub75-clock/`, and restarts the service. `install.sh` installs `scripts/update-clock-python.sh` as `~/update-clock.sh`. The updater pulls the branch currently checked out in the repo.
 
 ```bash
 make update
@@ -316,7 +307,7 @@ make update
 # or: ~/update-clock.sh
 ```
 
-This pulls from the branch currently checked out in your repo, copies the updated files to `/opt/hub75-clock/`, and restarts the service. For the C++ runtime it also rebuilds the binary before reinstalling it.
+This pulls from the branch currently checked out in your repo, copies the updated files to `/opt/hub75-clock/`, and restarts the service.
 
 ---
 
@@ -553,8 +544,7 @@ hub75-clock/
 ├── install.sh                  One-shot installer, run once on a fresh Pi
 ├── scripts/
 │   ├── configure.sh            Interactive config wizard; run by install.sh
-│   ├── update-clock-python.sh  Python runtime updater, installed to ~/update-clock.sh
-│   ├── update-clock-cpp.sh     C++ runtime updater, installed to ~/update-clock.sh
+│   ├── update-clock-python.sh  Installed to ~/update-clock.sh
 │   └── test_display.py         Panel pixel test (make rgb)
 ├── clock/
 │   ├── hub75_clock.py          Main application
@@ -564,8 +554,6 @@ hub75-clock/
 │   └── *.json                  Built-in themes; copied to /etc/hub75-clock/themes/ on first install
 ├── animations/
 │   └── *.py                    Built-in Python drop-in animations
-├── clock-cpp/
-│   └── src/animations/*.cpp    Built-in C++ animations compiled into the C++ runtime
 └── automations/
     ├── 01_set_theme.yaml            Set brightness + call theme script on bucket/condition change
     ├── 01b_select_theme_script.yaml Script: maps bucket + condition → theme, publishes to both clocks
@@ -574,7 +562,7 @@ hub75-clock/
     └── 04_online_offline.yaml       Offline notification for both clocks
 ```
 
-With the Python runtime, custom animations can be added at runtime by dropping a `.py` file into `/etc/hub75-clock/animations/`. The Python clock detects the new file within seconds and makes it available for use in theme `cameos` lists without a restart. With the C++ runtime, animations live in `clock-cpp/src/animations/` and require a rebuild. See `docs/animations.md` for both paths.
+Custom animations can be added at runtime by dropping a `.py` file into `/etc/hub75-clock/animations/`. The clock detects the new file within seconds and makes it available for use in theme `cameos` lists without a restart. See `docs/animations.md`.
 
 ---
 
