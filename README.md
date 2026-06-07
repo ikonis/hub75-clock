@@ -462,24 +462,27 @@ sudo ./text-example -f ~/rpi-rgb-led-matrix/fonts/spleen-12x24.bdf
 
 ## Home Assistant Setup
 
-### Automations
+### Optional Home Assistant Automation Examples
 
-Copy the files from `automations/` into an HA package directory and add the script separately:
+The clock does not require my Home Assistant helpers, room names, weather entities, or automation structure. It only needs MQTT. You can publish to the topics in `config.yaml` from HA, Node-RED, a shell script, or nothing at all. Without weather MQTT, the clock still runs and shows placeholder banner values until something publishes weather.
 
-```
+The files in `automations/` are optional examples. Copy them only if you want a starting point, then replace the placeholder entity IDs (`YOUR_CLOCK_CLIENT_ID`, `weather.YOUR_WEATHER_ENTITY`, etc.) with your own.
+
+```text
 config/
-├── packages/
-│   └── hub75_clock/
-│       ├── 01_set_theme.yaml          automation: brightness + calls theme script
-│       ├── 01b_select_theme_script.yaml  SCRIPT (see note below)
-│       ├── 02_push_weather.yaml       automation: weather push every 15 min
-│       ├── 03_alerts.yaml             automation: NWS weather alert banner
-│       └── 04_online_offline.yaml     automation: offline notification
-└── scripts/
-    └── clocks_select_theme.yaml       copy of 01b content under script: key
+|-- packages/
+|   `-- hub75_clock/
+|       |-- 01_set_theme.yaml            optional: brightness + calls theme script
+|       |-- 01b_select_theme_script.yaml SCRIPT (see note below)
+|       |-- 02_push_weather.yaml         optional: weather push every 15 min
+|       |-- 03_alerts.yaml               optional: NWS weather alert banner
+|       `-- 04_online_offline.yaml       optional: offline notification
+`-- scripts/
+    `-- clocks_select_theme.yaml         copy of 01b content under script: key
 ```
 
 In `configuration.yaml`:
+
 ```yaml
 homeassistant:
   packages: !include_dir_named packages
@@ -487,25 +490,25 @@ homeassistant:
 script: !include_dir_merge_named scripts
 ```
 
-**Important — the script file:** `01b_select_theme_script.yaml` defines `script.clocks_select_theme`, which `01_set_theme.yaml` calls. Scripts and automations use different HA keys and cannot live in the same file. Copy the contents of `01b_select_theme_script.yaml` into your `config/scripts/` directory (or inline it under a `script:` key in a package). See the comment header in that file for both import options.
+**Important:** `01b_select_theme_script.yaml` is a script, not an automation. It defines `script.clocks_select_theme`, which the optional `01_set_theme.yaml` automation calls. Scripts and automations use different HA keys and cannot live in the same file. Copy the contents of `01b_select_theme_script.yaml` into your `config/scripts/` directory, or inline it under a `script:` key in a package.
 
-Restart HA fully after adding any new package or script file.
+Optional helpers used by the examples:
 
-### Required HA helpers
-
-Create these helpers before enabling the automations (Settings → Devices & Services → Helpers):
-
-| Helper | Type | Notes |
+| Helper | Type | Used for |
 |---|---|---|
-| `input_select.house_bucket` | Select | Options: Day, Sunrise, Sunset, after_sunset, Late Evening, Night, Away |
-| `input_text.clock_condition` | Text | Max length 20. Written by `02_push_weather`, read by the theme script. |
+| `input_select.clock_daypart` | Select | Optional day/night/Away theme selection. Suggested values: Day, Early Morning, Evening, Late Evening, Night, Away. |
+| `input_text.clock_condition` | Text | Optional weather condition cache. Written by `02_push_weather`, read by `01b_select_theme_script`. |
 
-### Required HA entities
+Optional entities used by the examples:
 
 | Entity | Source |
 |---|---|
-| A `weather.*` entity | NWS, OpenWeatherMap, or similar integration |
-| `sensor.outdoor_temperature` | Your outdoor sensor |
+| `weather.YOUR_WEATHER_ENTITY` | Any HA weather integration |
+| `sensor.YOUR_OUTDOOR_TEMP` | Optional outdoor/current temperature sensor |
+| `number.YOUR_CLOCK_CLIENT_ID_brightness` | Auto-discovered brightness control |
+| `binary_sensor.YOUR_CLOCK_CLIENT_ID_online` | Auto-discovered availability sensor |
+
+These names are examples, not requirements. If you already have different helpers or entities, map them in the automation YAML or publish directly to MQTT.
 
 ### Auto-registered entities (MQTT Discovery)
 
@@ -536,6 +539,46 @@ Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registere
 | `clock/alert` | `{"message": "Tornado Warning - County - until 4:45 PM", "expires": "2026-04-25T16:45:00-05:00"}` |
 | `clock/alert` | `{"clear": true}` to dismiss |
 
+Minimal generic HA service calls:
+
+```yaml
+# Set one clock's theme manually.
+action: mqtt.publish
+data:
+  topic: hub75_clock/theme/set
+  payload: "Night - Clear"
+```
+
+```yaml
+# Publish weather/banner data.
+action: mqtt.publish
+data:
+  topic: clock/weather
+  retain: true
+  payload: '{"low_temp": 68, "high_temp": 88, "condition": "CLEAR", "outdoor_temp": 72}'
+```
+
+```yaml
+# Publish brightness. If several clocks share clock/config, they all change.
+action: mqtt.publish
+data:
+  topic: clock/config
+  payload: '{"brightness": 40}'
+```
+
+```yaml
+# Optional day/night theme selection idea.
+action: mqtt.publish
+data:
+  topic: hub75_clock/theme/set
+  payload: >
+    {% if is_state('sun.sun', 'below_horizon') %}
+      Night - Clear
+    {% else %}
+      Day - Clear
+    {% endif %}
+```
+
 **Clock → HA:**
 
 | Topic | Payload |
@@ -546,9 +589,9 @@ Sensors for disabled hardware (e.g. `veml7700_enabled: false`) are not registere
 | `hub75_clock/motion` | `{"move_energy": 45, "still_energy": 30}` |
 | `hub75_clock/status` | `online` or `offline` |
 
-### Weather conditions
+### Weather Conditions
 
-The clock receives a condition string from the weather automation. The script `clocks_select_theme` maps condition + time-of-day bucket to the best precipitation theme:
+If you publish weather data, the clock expects a condition string. The optional example script `clocks_select_theme` maps condition + daypart to a matching theme name, but you can use any mapping you like or select themes manually.
 
 | Condition | Day-side theme | Night-side theme |
 |---|---|---|
@@ -561,13 +604,13 @@ The clock receives a condition string from the weather automation. The script `c
 
 All precipitation (rain drops, snow flakes, sleet, lightning) is rendered by the `clouds.py` animation via the `precipitation` field in the theme JSON. See `docs/themes.md` for the full field reference.
 
-Condition is the **most severe expected in the next 12 hours**, not just the current moment.
+In the included `02_push_weather.yaml` example, condition is the most severe expected in the next 12 hours, not just the current moment.
 
 The condition and temperature windows are configurable at the top of `automations/02_push_weather.yaml`. Change `condition_hours` (default 12) and `temp_hours` (default 24) to suit your preference.
 
 ### Brightness
 
-Brightness is controlled by your HA automation; see `automations/01_set_theme.yaml` for the included example.
+Brightness can be controlled from the auto-discovered HA number entity or by publishing `{"brightness": 40}` to the configured config topic. The included `automations/01_set_theme.yaml` file is only one optional example.
 
 ---
 
@@ -648,11 +691,11 @@ hub75-clock/
 ├── sprites/
 │   └── *.json                  Sprite cameo art for the generic sprite animation
 └── automations/
-    ├── 01_set_theme.yaml            Set brightness + call theme script on bucket/condition change
-    ├── 01b_select_theme_script.yaml Script: maps bucket + condition → theme, publishes to both clocks
-    ├── 02_push_weather.yaml         Push forecast weather to clocks every 15 min
+    ├── 01_set_theme.yaml            Optional brightness + theme selection example
+    ├── 01b_select_theme_script.yaml Optional script: maps daypart + condition to a theme
+    ├── 02_push_weather.yaml         Optional forecast weather MQTT example
     ├── 03_alerts.yaml               NWS alert banner (shared clock/alert topic, all clocks receive)
-    └── 04_online_offline.yaml       Offline notification for both clocks
+    └── 04_online_offline.yaml       Optional offline notification example
 ```
 
 Python custom animations can be added at runtime by dropping a `.py` file into `/etc/hub75-clock/animations/`. C++ animation code lives under `clock-cpp/src/animations/` and is compiled during `make update`. Theme JSON, sprite JSON, and sprite-animation JSON edits do not require a C++ recompile. See `docs/animations.md` for the full interface.

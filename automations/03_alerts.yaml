@@ -7,8 +7,8 @@
 #
 # ── Shared topic ──────────────────────────────────────────────────────────────
 # Alerts publish to clock/alert — a shared MQTT topic that ALL clocks
-# subscribe to. Both bedroom_clock and living_room_clock (and any future
-# clocks) receive alerts automatically with no per-device changes needed here.
+# subscribe to. Any clock whose config.yaml maps mqtt.topics.alert to
+# clock/alert receives alerts automatically with no per-device changes here.
 # Each clock's config.yaml maps its alert topic to clock/alert.
 # ──────────────────────────────────────────────────────────────────────────────
 #

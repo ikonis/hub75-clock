@@ -89,7 +89,7 @@ The Pi Zero W is a single-core ARMv6 at 1GHz. The installer defaults to the C++ 
 Things that can still add load:
 
 - Receiving lots of MQTT messages (gate data, engineering mode)
-- Changing conditions or buckets rapidly
+- Changing weather condition or theme inputs rapidly
 
 For best performance on Zero W:
 - Keep `engineering_mode` off unless actively tuning

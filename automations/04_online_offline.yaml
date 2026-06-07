@@ -1,44 +1,32 @@
 # ============================================================================
-# HUB75 Clocks - Online / Offline Notification
+# HUB75 Clock - Optional Online / Offline Notification Example
 # ============================================================================
-# Sends a mobile notification if either clock goes offline for more than
-# 5 minutes. One automation covers both clocks; the trigger entity_id tells
-# the action which clock went down.
+# Sends a mobile notification if a clock goes offline for more than 5 minutes.
+# Duplicate the trigger if you have more than one clock.
 #
-# The binary_sensor entities are created automatically by each clock via MQTT
-# Discovery on first connect. The entity ID is derived from the clock's
-# mqtt.client_id in config.yaml:
+# The binary_sensor entity is created automatically by MQTT Discovery. The
+# entity ID is derived from the clock's mqtt.client_id in config.yaml:
 #   binary_sensor.{client_id}_online
-# e.g. binary_sensor.bedroom_clock_online
 #
-# ── Customize ─────────────────────────────────────────────────────────────────
-#   binary_sensor.bedroom_clock_online     — bedroom clock online sensor
-#   binary_sensor.living_room_clock_online — living room clock online sensor
-#   notify.YOUR_PHONE                      — your mobile app notify service
+# Customize:
+#   binary_sensor.YOUR_CLOCK_CLIENT_ID_online  clock online sensor
+#   notify.YOUR_PHONE                          your mobile app notify service
 # ============================================================================
 
-alias: "HUB75 Clocks - Offline Alert"
-description: Notifies if either clock goes offline for more than 5 minutes.
+alias: "HUB75 Clock - Offline Alert"
+description: Notifies if the clock goes offline for more than 5 minutes.
 mode: parallel
 max: 2
 triggers:
   - trigger: state
-    entity_id: binary_sensor.bedroom_clock_online
+    entity_id: binary_sensor.YOUR_CLOCK_CLIENT_ID_online
     to: "off"
     for:
       minutes: 5
-    id: bedroom_offline
-  - trigger: state
-    entity_id: binary_sensor.living_room_clock_online
-    to: "off"
-    for:
-      minutes: 5
-    id: living_room_offline
+    id: clock_offline
 actions:
   - variables:
-      clock_name: >
-        {% if trigger.id == 'bedroom_offline' %}Bedroom Clock
-        {% else %}Living Room Clock{% endif %}
+      clock_name: "HUB75 Clock"
   - action: notify.YOUR_PHONE
     data:
       title: "HUB75 Clock Offline"

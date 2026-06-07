@@ -1,62 +1,49 @@
 # ============================================================================
-# HUB75 Clocks - Select Theme Script
+# HUB75 Clock - Optional Select Theme Script
 # ============================================================================
 # THIS IS A SCRIPT, NOT AN AUTOMATION.
 #
 # Import it into Home Assistant under the script: key, NOT the automation: key.
 #
-# Option A — dedicated script directory (recommended):
+# Option A - dedicated script directory:
 #   In configuration.yaml:
 #     script: !include_dir_merge_named scripts/
 #   Save this file as config/scripts/clocks_select_theme.yaml
 #
-# Option B — inline in a package:
+# Option B - inline in a package:
 #   Copy the content below directly under a "script:" key in any package YAML.
 #
-# After import, restart HA. The script appears under Settings → Scripts.
+# After import, restart HA. The script appears under Settings -> Scripts.
 # automation 01_set_theme.yaml calls it via: action: script.clocks_select_theme
 #
-# ── How it works ──────────────────────────────────────────────────────────────
-#   Reads input_select.house_bucket and input_text.clock_condition, maps them
-#   to a "Bucket - Condition" theme name, and publishes to both clock topics.
+# How it works:
+#   Reads optional helpers input_select.clock_daypart and
+#   input_text.clock_condition, maps them to a theme name, and publishes to one
+#   clock topic. Duplicate the mqtt.publish action for additional clocks.
 #
-# ── Bucket options (input_select.house_bucket) ────────────────────────────────
+# Optional daypart values:
 #   Day, Early Morning, Evening, Late Evening, Night, Away
 #
-# ── Condition values (input_text.clock_condition, set by 02_push_weather) ─────
+# Optional condition values:
 #   SUNNY, CLEAR, PARTLYCLOUDY, CLOUDY, RAIN, TSTORM, SNOW, SLEET
 #
-# ── Theme coverage per bucket ─────────────────────────────────────────────────
-#   Day          → Clear / Partly Cloudy / Cloudy / Rain / Storm / Snow / Sleet
-#   Early Morning → Clear / Partly Cloudy / Rain / Snow
-#                  (Cloudy→Partly Cloudy, Storm→Rain, Sleet→Rain)
-#   Evening      → Clear / Partly Cloudy / Rain / Storm
-#                  (Cloudy→Partly Cloudy, Snow→Rain, Sleet→Rain)
-#   Late Evening  → Clear / Partly Cloudy / Rain
-#                  (Cloudy→Partly Cloudy, Storm/Snow/Sleet→Rain)
-#   Night        → Clear / Partly Cloudy / Cloudy / Rain / Storm / Snow / Sleet
-#   Away         → Away (always, regardless of condition)
-#
-# ── Customize ─────────────────────────────────────────────────────────────────
-#   bedroom_clock/theme/set     — bedroom clock MQTT theme topic
-#   living_room_clock/theme/set — living room clock MQTT theme topic
-#   (must match mqtt.client_id in each clock's config.yaml)
+# Customize:
+#   YOUR_CLOCK_CLIENT_ID/theme/set must match mqtt.client_id in config.yaml.
 # ============================================================================
 
 clocks_select_theme:
-  alias: "HUB75 Clocks - Select Theme"
+  alias: "HUB75 Clock - Select Theme"
   description: >
-    Maps input_select.house_bucket + input_text.clock_condition to a
-    "Bucket - Condition" theme name and publishes it to both clocks.
+    Maps optional daypart + weather condition helpers to a theme name and
+    publishes it to the clock.
   sequence:
     - variables:
         theme: >
-          {% set bucket = states('input_select.house_bucket') | trim %}
-          {% set raw    = states('input_text.clock_condition') | upper | trim %}
+          {% set daypart = states('input_select.clock_daypart') | trim %}
+          {% set raw = states('input_text.clock_condition') | upper | trim %}
 
-          {# Map raw MQTT condition codes to theme condition label #}
           {% set ns = namespace(cl='Clear') %}
-          {% if   raw in ['CLEAR', 'SUNNY'] %}
+          {% if raw in ['CLEAR', 'SUNNY'] %}
             {% set ns.cl = 'Clear' %}
           {% elif raw == 'PARTLYCLOUDY' %}
             {% set ns.cl = 'Partly Cloudy' %}
@@ -73,20 +60,12 @@ clocks_select_theme:
           {% endif %}
           {% set cl = ns.cl %}
 
-          {#
-            Map bucket + condition label to a theme name.
-            Day and Night have full coverage (all 7 conditions).
-            Other buckets have partial coverage — unmapped conditions fall back
-            to the nearest available theme for that bucket.
-          #}
-          {% if bucket == 'Away' %}
+          {% if daypart == 'Away' %}
             Away
-
-          {% elif bucket == 'Day' %}
+          {% elif daypart == 'Day' %}
             Day - {{ cl }}
-
-          {% elif bucket == 'Early Morning' %}
-            {% if   cl in ['Clear', 'Partly Cloudy', 'Rain', 'Snow'] %}
+          {% elif daypart == 'Early Morning' %}
+            {% if cl in ['Clear', 'Partly Cloudy', 'Rain', 'Snow'] %}
               Early Morning - {{ cl }}
             {% elif cl == 'Cloudy' %}
               Early Morning - Partly Cloudy
@@ -95,9 +74,8 @@ clocks_select_theme:
             {% else %}
               Early Morning - Clear
             {% endif %}
-
-          {% elif bucket == 'Evening' %}
-            {% if   cl in ['Clear', 'Partly Cloudy', 'Rain', 'Storm'] %}
+          {% elif daypart == 'Evening' %}
+            {% if cl in ['Clear', 'Partly Cloudy', 'Rain', 'Storm'] %}
               Evening - {{ cl }}
             {% elif cl == 'Cloudy' %}
               Evening - Partly Cloudy
@@ -106,9 +84,8 @@ clocks_select_theme:
             {% else %}
               Evening - Clear
             {% endif %}
-
-          {% elif bucket == 'Late Evening' %}
-            {% if   cl in ['Clear', 'Partly Cloudy', 'Rain'] %}
+          {% elif daypart == 'Late Evening' %}
+            {% if cl in ['Clear', 'Partly Cloudy', 'Rain'] %}
               Late Evening - {{ cl }}
             {% elif cl == 'Cloudy' %}
               Late Evening - Partly Cloudy
@@ -117,21 +94,13 @@ clocks_select_theme:
             {% else %}
               Late Evening - Clear
             {% endif %}
-
-          {% elif bucket == 'Night' %}
+          {% elif daypart == 'Night' %}
             Night - {{ cl }}
-
           {% else %}
             Day - Clear
           {% endif %}
 
-    # Publish resolved theme name to both clocks
     - action: mqtt.publish
       data:
-        topic: bedroom_clock/theme/set
-        payload: "{{ theme | trim }}"
-
-    - action: mqtt.publish
-      data:
-        topic: living_room_clock/theme/set
+        topic: YOUR_CLOCK_CLIENT_ID/theme/set
         payload: "{{ theme | trim }}"
