@@ -222,6 +222,7 @@ DEFAULTS = {
     "animations": {
         "animations_dir": "/etc/hub75-clock/animations",
         "sprites_dir": "/etc/hub75-clock/sprites",
+        "sprite_animations_dir": "/etc/hub75-clock/sprite-animations",
         "settings_path": "/etc/hub75-clock/animations.yaml",
     },
 }

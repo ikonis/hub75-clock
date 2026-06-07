@@ -1,0 +1,49 @@
+{
+  "name": "snowman_n",
+  "width": 7,
+  "height": 9,
+  "motion": "left",
+  "speed": 0.35,
+  "frame_duration_ms": 180,
+  "frames": [
+    {
+      "duration_ms": 180,
+      "pixels": [
+        [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, null],
+        [null, "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", null],
+        [null, "#FFFFFF", "#FFFFFF", "#FF8020", "#FFFFFF", "#FFFFFF", null],
+        [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, null],
+        [null, "#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#FFFFFF", null],
+        ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"],
+        ["#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", "#FFFFFF"],
+        [null, "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", null],
+        [null, "#A0A0A0", null, null, null, "#A0A0A0", null]
+      ]
+    },
+    {
+      "duration_ms": 180,
+      "pixels": [
+        [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, null],
+        [null, "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", null],
+        [null, "#FFFFFF", "#FFFFFF", "#FF8020", "#FFFFFF", "#FFFFFF", null],
+        [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, "#A06020"],
+        [null, "#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#A06020", null],
+        ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"],
+        ["#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", "#FFFFFF"],
+        [null, "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", null],
+        [null, "#A0A0A0", null, null, null, "#A0A0A0", null]
+      ]
+    }
+  ],
+  "pixels": [
+    [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, null],
+    [null, "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", null],
+    [null, "#FFFFFF", "#FFFFFF", "#FF8020", "#FFFFFF", "#FFFFFF", null],
+    [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, null],
+    [null, "#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#FFFFFF", null],
+    ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"],
+    ["#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", "#FFFFFF"],
+    [null, "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", null],
+    [null, "#A0A0A0", null, null, null, "#A0A0A0", null]
+  ]
+}

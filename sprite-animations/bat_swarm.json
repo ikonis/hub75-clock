@@ -3,7 +3,7 @@
   "width": 64,
   "height": 32,
   "speed": 1,
-  "loop": true,
+  "loop": false,
   "persistent": false,
   "movement": {
     "mode": "random_sweep",

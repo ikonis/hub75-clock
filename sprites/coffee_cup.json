@@ -1,0 +1,46 @@
+{
+  "name": "coffee_cup",
+  "width": 8,
+  "height": 8,
+  "motion": "left",
+  "speed": 0.2,
+  "frame_duration_ms": 160,
+  "frames": [
+    {
+      "duration_ms": 160,
+      "pixels": [
+        [null, null, "#CFCFCF80", null, "#CFCFCF55", null, null, null],
+        [null, "#CFCFCF55", null, "#CFCFCF80", null, null, null, null],
+        [null, null, null, null, null, null, null, null],
+        [null, "#D8D8E8", "#D8D8E8", "#D8D8E8", "#D8D8E8", "#D8D8E8", null, null],
+        [null, "#B0B0C0", "#7A4A24", "#7A4A24", "#7A4A24", "#B0B0C0", "#D8D8E8", null],
+        [null, "#B0B0C0", "#B0B0C0", "#B0B0C0", "#B0B0C0", "#B0B0C0", null, null],
+        [null, "#9090A0", "#9090A0", "#9090A0", "#9090A0", "#9090A0", null, null],
+        [null, null, "#606070", "#606070", "#606070", null, null, null]
+      ]
+    },
+    {
+      "duration_ms": 160,
+      "pixels": [
+        [null, "#CFCFCF55", null, "#CFCFCF80", null, null, null, null],
+        [null, null, "#CFCFCF80", null, "#CFCFCF55", null, null, null],
+        [null, null, null, null, null, null, null, null],
+        [null, "#D8D8E8", "#D8D8E8", "#D8D8E8", "#D8D8E8", "#D8D8E8", null, null],
+        [null, "#B0B0C0", "#7A4A24", "#7A4A24", "#7A4A24", "#B0B0C0", "#D8D8E8", null],
+        [null, "#B0B0C0", "#B0B0C0", "#B0B0C0", "#B0B0C0", "#B0B0C0", null, null],
+        [null, "#9090A0", "#9090A0", "#9090A0", "#9090A0", "#9090A0", null, null],
+        [null, null, "#606070", "#606070", "#606070", null, null, null]
+      ]
+    }
+  ],
+  "pixels": [
+    [null, null, "#CFCFCF80", null, "#CFCFCF55", null, null, null],
+    [null, "#CFCFCF55", null, "#CFCFCF80", null, null, null, null],
+    [null, null, null, null, null, null, null, null],
+    [null, "#D8D8E8", "#D8D8E8", "#D8D8E8", "#D8D8E8", "#D8D8E8", null, null],
+    [null, "#B0B0C0", "#7A4A24", "#7A4A24", "#7A4A24", "#B0B0C0", "#D8D8E8", null],
+    [null, "#B0B0C0", "#B0B0C0", "#B0B0C0", "#B0B0C0", "#B0B0C0", null, null],
+    [null, "#9090A0", "#9090A0", "#9090A0", "#9090A0", "#9090A0", null, null],
+    [null, null, "#606070", "#606070", "#606070", null, null, null]
+  ]
+}

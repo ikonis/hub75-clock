@@ -1,0 +1,27 @@
+{
+  "name": "Test - sprite bat swarm",
+  "description": "Builder-editable bat swarm using the generic sprite cameo.",
+  "background_type": "solid",
+  "background_color": "#020005",
+  "background_top": "#020005",
+  "background_bottom": "#020005",
+  "background_split": 0.5,
+  "background_gradient_direction": "sunset",
+  "colors": {
+    "time": "#F0F0F0",
+    "low_temp": "#00CCFF",
+    "high_temp": "#FF8C00",
+    "condition": "#909090"
+  },
+  "sun_enabled": false,
+  "moon_enabled": false,
+  "cloud_density": "medium",
+  "cloud_speed": "medium",
+  "cameos": [
+    {
+      "name": "sprite",
+      "animation": "bat_swarm",
+      "chance_per_minute": 30
+    }
+  ]
+}

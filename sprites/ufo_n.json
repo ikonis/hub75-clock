@@ -1,0 +1,37 @@
+{
+  "name": "ufo_n",
+  "width": 11,
+  "height": 5,
+  "motion": "left",
+  "speed": 0.45,
+  "frame_duration_ms": 120,
+  "frames": [
+    {
+      "duration_ms": 120,
+      "pixels": [
+        [null, null, null, "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", null, null, null],
+        [null, null, "#C0C0C8", "#E0E0E8", "#E0E0E8", "#FFFFFF", "#E0E0E8", "#E0E0E8", "#C0C0C8", null, null],
+        [null, "#808088", "#A0A0A8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#A0A0A8", "#808088", null],
+        ["#606068", "#606068", "#808088", "#808088", "#FFFF60", "#808088", "#60FF90", "#808088", "#808088", "#606068", "#606068"],
+        [null, null, null, "#60A0FF44", null, "#60A0FF66", null, "#60A0FF44", null, null, null]
+      ]
+    },
+    {
+      "duration_ms": 120,
+      "pixels": [
+        [null, null, null, "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", null, null, null],
+        [null, null, "#C0C0C8", "#E0E0E8", "#E0E0E8", "#FFFFFF", "#E0E0E8", "#E0E0E8", "#C0C0C8", null, null],
+        [null, "#808088", "#A0A0A8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#A0A0A8", "#808088", null],
+        ["#606068", "#606068", "#808088", "#808088", "#60FF90", "#808088", "#FFFF60", "#808088", "#808088", "#606068", "#606068"],
+        [null, null, null, "#60A0FF66", null, "#60A0FF44", null, "#60A0FF66", null, null, null]
+      ]
+    }
+  ],
+  "pixels": [
+    [null, null, null, "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", null, null, null],
+    [null, null, "#C0C0C8", "#E0E0E8", "#E0E0E8", "#FFFFFF", "#E0E0E8", "#E0E0E8", "#C0C0C8", null, null],
+    [null, "#808088", "#A0A0A8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#A0A0A8", "#808088", null],
+    ["#606068", "#606068", "#808088", "#808088", "#FFFF60", "#808088", "#60FF90", "#808088", "#808088", "#606068", "#606068"],
+    [null, null, null, "#60A0FF44", null, "#60A0FF66", null, "#60A0FF44", null, null, null]
+  ]
+}

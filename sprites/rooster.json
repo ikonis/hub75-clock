@@ -1,0 +1,17 @@
+{
+  "name": "rooster",
+  "width": 8,
+  "height": 8,
+  "motion": "right",
+  "speed": 0.35,
+  "pixels": [
+    [null, null, null, "#D82020", "#D82020", null, null, null],
+    [null, null, "#D82020", "#F0D090", "#F0D090", "#F0B020", null, null],
+    [null, "#7A4018", "#C07020", "#C07020", "#F0D090", "#111111", null, null],
+    ["#7A4018", "#C07020", "#C07020", "#C07020", "#C07020", null, null, null],
+    [null, "#7A4018", "#C07020", "#C07020", "#7A4018", null, null, null],
+    [null, null, "#7A4018", null, "#7A4018", null, null, null],
+    [null, "#E0B030", null, null, "#E0B030", null, null, null],
+    [null, "#E0B030", null, null, "#E0B030", null, null, null]
+  ]
+}

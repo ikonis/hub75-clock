@@ -1,0 +1,15 @@
+{
+  "name": "witch",
+  "width": 11,
+  "height": 6,
+  "motion": "right",
+  "speed": 0.7,
+  "pixels": [
+    [null, null, null, "#111111", null, null, null, null, null, null, null],
+    [null, null, "#111111", "#111111", "#111111", null, null, null, null, null, null],
+    [null, null, null, "#223020", "#111111", null, null, null, null, null, null],
+    [null, null, "#111111", "#111111", "#111111", "#111111", "#111111", "#111111", "#111111", "#111111", "#111111"],
+    ["#111111", "#111111", "#111111", "#111111", "#111111", null, null, null, null, null, null],
+    [null, null, null, "#111111", null, null, null, null, null, null, null]
+  ]
+}

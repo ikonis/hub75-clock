@@ -1,0 +1,20 @@
+{
+  "name": "witch_crossing",
+  "width": 64,
+  "height": 32,
+  "speed": 1,
+  "loop": false,
+  "persistent": false,
+  "movement": {"mode": "fly_fixed", "direction": "left_to_right", "random_start": false, "fixed_x": -14, "fixed_y": 4, "count": 1, "stray": 0},
+  "frames": [
+    {"duration_ms": 95, "sprites": [{"sprite": "witch", "x": -14, "y": 5}]},
+    {"duration_ms": 95, "sprites": [{"sprite": "witch", "x": -4, "y": 6}]},
+    {"duration_ms": 95, "sprites": [{"sprite": "witch", "x": 6, "y": 5}]},
+    {"duration_ms": 95, "sprites": [{"sprite": "witch", "x": 16, "y": 4}]},
+    {"duration_ms": 95, "sprites": [{"sprite": "witch", "x": 26, "y": 5}]},
+    {"duration_ms": 95, "sprites": [{"sprite": "witch", "x": 36, "y": 6}]},
+    {"duration_ms": 95, "sprites": [{"sprite": "witch", "x": 46, "y": 5}]},
+    {"duration_ms": 95, "sprites": [{"sprite": "witch", "x": 58, "y": 4}]},
+    {"duration_ms": 95, "sprites": [{"sprite": "witch", "x": 70, "y": 5}]}
+  ]
+}

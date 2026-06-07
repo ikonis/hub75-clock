@@ -1,0 +1,43 @@
+{
+  "name": "ghost_small",
+  "width": 7,
+  "height": 7,
+  "motion": "left",
+  "speed": 0.4,
+  "frame_duration_ms": 160,
+  "frames": [
+    {
+      "duration_ms": 160,
+      "pixels": [
+        [null, "#E8E8FFAA", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FFAA", null],
+        ["#E8E8FFAA", "#E8E8FF", "#202040", "#E8E8FF", "#202040", "#E8E8FF", "#E8E8FFAA"],
+        ["#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF"],
+        ["#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF"],
+        ["#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF"],
+        ["#E8E8FF", null, "#E8E8FF", null, "#E8E8FF", null, "#E8E8FF"],
+        [null, null, null, null, null, null, null]
+      ]
+    },
+    {
+      "duration_ms": 160,
+      "pixels": [
+        [null, "#E8E8FFAA", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FFAA", null],
+        ["#E8E8FFAA", "#E8E8FF", "#202040", "#E8E8FF", "#202040", "#E8E8FF", "#E8E8FFAA"],
+        ["#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF"],
+        ["#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF"],
+        ["#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF"],
+        [null, "#E8E8FF", null, "#E8E8FF", null, "#E8E8FF", null],
+        [null, null, null, null, null, null, null]
+      ]
+    }
+  ],
+  "pixels": [
+    [null, "#E8E8FFAA", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FFAA", null],
+    ["#E8E8FFAA", "#E8E8FF", "#202040", "#E8E8FF", "#202040", "#E8E8FF", "#E8E8FFAA"],
+    ["#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF"],
+    ["#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF"],
+    ["#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF", "#E8E8FF"],
+    ["#E8E8FF", null, "#E8E8FF", null, "#E8E8FF", null, "#E8E8FF"],
+    [null, null, null, null, null, null, null]
+  ]
+}

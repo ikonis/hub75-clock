@@ -1,0 +1,43 @@
+{
+  "name": "owl",
+  "width": 7,
+  "height": 7,
+  "motion": "left",
+  "speed": 0.4,
+  "frame_duration_ms": 180,
+  "frames": [
+    {
+      "duration_ms": 220,
+      "pixels": [
+        [null, null, "#4A2B15", "#5C351B", "#4A2B15", null, null],
+        [null, "#6A3D1D", "#E8D070", "#6A3D1D", "#E8D070", "#6A3D1D", null],
+        ["#4A2B15", "#6A3D1D", "#111111", "#8A5428", "#111111", "#6A3D1D", "#4A2B15"],
+        [null, "#5C351B", "#8A5428", "#B87830", "#8A5428", "#5C351B", null],
+        [null, "#4A2B15", "#6A3D1D", "#8A5428", "#6A3D1D", "#4A2B15", null],
+        [null, null, "#3A2212", "#5C351B", "#3A2212", null, null],
+        [null, "#2A180C", null, null, null, "#2A180C", null]
+      ]
+    },
+    {
+      "duration_ms": 120,
+      "pixels": [
+        [null, null, "#4A2B15", "#5C351B", "#4A2B15", null, null],
+        [null, "#6A3D1D", "#E8D070", "#6A3D1D", "#E8D070", "#6A3D1D", null],
+        ["#4A2B15", "#6A3D1D", "#2A180C", "#8A5428", "#2A180C", "#6A3D1D", "#4A2B15"],
+        [null, "#5C351B", "#8A5428", "#B87830", "#8A5428", "#5C351B", null],
+        [null, "#4A2B15", "#6A3D1D", "#8A5428", "#6A3D1D", "#4A2B15", null],
+        [null, null, "#3A2212", "#5C351B", "#3A2212", null, null],
+        [null, "#2A180C", null, null, null, "#2A180C", null]
+      ]
+    }
+  ],
+  "pixels": [
+    [null, null, "#4A2B15", "#5C351B", "#4A2B15", null, null],
+    [null, "#6A3D1D", "#E8D070", "#6A3D1D", "#E8D070", "#6A3D1D", null],
+    ["#4A2B15", "#6A3D1D", "#111111", "#8A5428", "#111111", "#6A3D1D", "#4A2B15"],
+    [null, "#5C351B", "#8A5428", "#B87830", "#8A5428", "#5C351B", null],
+    [null, "#4A2B15", "#6A3D1D", "#8A5428", "#6A3D1D", "#4A2B15", null],
+    [null, null, "#3A2212", "#5C351B", "#3A2212", null, null],
+    [null, "#2A180C", null, null, null, "#2A180C", null]
+  ]
+}

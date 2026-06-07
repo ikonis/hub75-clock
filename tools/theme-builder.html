@@ -920,7 +920,13 @@ function buildThemeObject() {
   for (const c of theme.cameos) {
     if (c.name === 'stars' || c.name === 'clouds') continue;
     if (c.name === 'snake') cameoOut.push({ name: c.name });
-    else cameoOut.push({ name: c.name, chance_per_minute: c.chance_per_minute });
+    else if (c.name === 'sprite') {
+      const out = { name: c.name, chance_per_minute: c.chance_per_minute };
+      if (c.sprite) out.sprite = c.sprite;
+      if (c.animation) out.animation = c.animation;
+      if (c.loop) out.loop = true;
+      cameoOut.push(out);
+    } else cameoOut.push({ name: c.name, chance_per_minute: c.chance_per_minute });
   }
   if (theme.clouds_enabled) cameoOut.push({ name: 'clouds' });
 
@@ -974,6 +980,7 @@ let selectedThemeFile = '';
 let syncingJSON = false;
 let jsonDirty = false;
 let themeDirty = false;
+let lastSavedJSON = '';
 
 function setJSONStatus(msg, cls = '') {
   const el = document.getElementById('json-status');
@@ -983,20 +990,23 @@ function setJSONStatus(msg, cls = '') {
 }
 
 function setThemeDirty(dirty) {
-  themeDirty = !!dirty;
+  const currentJSON = document.getElementById('json-out')?.value || '';
+  themeDirty = !!dirty && currentJSON !== lastSavedJSON;
   document.body.classList.toggle('dirty', themeDirty || jsonDirty);
 }
 
 function markThemeSaved() {
   themeDirty = false;
   updateJSON(false);
+  lastSavedJSON = document.getElementById('json-out').value;
   jsonDirty = false;
   document.body.classList.remove('dirty');
   setJSONStatus('Saved', 'ok');
 }
 
 function hasUnsavedChanges() {
-  return themeDirty || jsonDirty;
+  const currentJSON = document.getElementById('json-out')?.value || '';
+  return jsonDirty || themeDirty || (!!lastSavedJSON && currentJSON !== lastSavedJSON);
 }
 
 function parseJSONEditor() {
@@ -1166,11 +1176,11 @@ function newServerTheme() {
 }
 
 function updateJSON(markDirty = true) {
-  if (markDirty) themeDirty = true;
   syncingJSON = true;
   document.getElementById('json-out').value = buildJSON();
   syncingJSON = false;
   jsonDirty = false;
+  if (markDirty) themeDirty = document.getElementById('json-out').value !== lastSavedJSON;
   setThemeDirty(themeDirty);
   setJSONStatus('Generated');
 }
@@ -1257,6 +1267,7 @@ function applyThemeData(data, markDirty = false) {
   syncFormToTheme();
   initStars(); initClouds();
   render(); updateJSON(markDirty);
+  if (!markDirty) lastSavedJSON = document.getElementById('json-out').value;
   setThemeDirty(markDirty);
 }
 
@@ -1346,7 +1357,13 @@ function buildCameoList() {
       <label>Rate/min</label>
       <input type="number" data-ci="${idx}" data-f="cpm" value="${c.chance_per_minute||8}" min="0.1" max="60" step="0.1" style="width:58px">
       <button class="btn btn-d" data-ci="${idx}" data-f="del">x</button>
-    </div>`;
+    </div>${c.name === 'sprite' ? `<div class="li-row">
+      <label>Sprite</label>
+      <input type="text" data-ci="${idx}" data-f="sprite" value="${c.sprite||''}" placeholder="rocket" title="Single sprite JSON name, without .json">
+      <label>Animation</label>
+      <input type="text" data-ci="${idx}" data-f="animation" value="${c.animation||''}" placeholder="bat_swarm" title="Sprite-animation JSON name, without .json">
+      <label class="hint"><input type="checkbox" data-ci="${idx}" data-f="loop"${c.loop?' checked':''}> Loop</label>
+    </div>` : ''}`;
     list.appendChild(li);
   });
 
@@ -1400,6 +1417,9 @@ function cameoFieldChange(e) {
     buildCameoList();
   }
   else if (field === 'cpm') { theme.cameos[idx].chance_per_minute = parseFloat(e.target.value) || 8; }
+  else if (field === 'sprite') { theme.cameos[idx].sprite = e.target.value.trim(); }
+  else if (field === 'animation') { theme.cameos[idx].animation = e.target.value.trim(); }
+  else if (field === 'loop') { theme.cameos[idx].loop = e.target.checked; }
   render(); updateJSON();
 }
 

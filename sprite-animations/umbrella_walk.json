@@ -1,0 +1,21 @@
+{
+  "name": "umbrella_walk",
+  "width": 64,
+  "height": 32,
+  "speed": 1,
+  "loop": false,
+  "persistent": false,
+  "movement": {"mode": "fly_fixed", "direction": "left_to_right", "random_start": false, "fixed_x": -10, "fixed_y": 15, "count": 1, "stray": 0},
+  "frames": [
+    {"duration_ms": 120, "sprites": [{"sprite": "umbrella_person", "x": -10, "y": 14, "frame": 0}]},
+    {"duration_ms": 120, "sprites": [{"sprite": "umbrella_person", "x": -2, "y": 14, "frame": 1}]},
+    {"duration_ms": 120, "sprites": [{"sprite": "umbrella_person", "x": 6, "y": 14, "frame": 0}]},
+    {"duration_ms": 120, "sprites": [{"sprite": "umbrella_person", "x": 14, "y": 14, "frame": 1}]},
+    {"duration_ms": 120, "sprites": [{"sprite": "umbrella_person", "x": 22, "y": 14, "frame": 0}]},
+    {"duration_ms": 120, "sprites": [{"sprite": "umbrella_person", "x": 30, "y": 14, "frame": 1}]},
+    {"duration_ms": 120, "sprites": [{"sprite": "umbrella_person", "x": 38, "y": 14, "frame": 0}]},
+    {"duration_ms": 120, "sprites": [{"sprite": "umbrella_person", "x": 46, "y": 14, "frame": 1}]},
+    {"duration_ms": 120, "sprites": [{"sprite": "umbrella_person", "x": 54, "y": 14, "frame": 0}]},
+    {"duration_ms": 120, "sprites": [{"sprite": "umbrella_person", "x": 66, "y": 14, "frame": 1}]}
+  ]
+}

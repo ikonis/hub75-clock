@@ -1,0 +1,21 @@
+{
+  "name": "leaf_blow",
+  "width": 64,
+  "height": 32,
+  "speed": 1,
+  "loop": false,
+  "persistent": false,
+  "movement": {"mode": "random_sweep", "direction": "right_to_left", "random_start": true, "fixed_x": 72, "fixed_y": 17, "count": 1, "stray": 5},
+  "frames": [
+    {"duration_ms": 80, "sprites": [{"sprite": "leaf", "x": 70, "y": 18}]},
+    {"duration_ms": 80, "sprites": [{"sprite": "leaf", "x": 62, "y": 15}]},
+    {"duration_ms": 80, "sprites": [{"sprite": "leaf", "x": 54, "y": 17}]},
+    {"duration_ms": 80, "sprites": [{"sprite": "leaf", "x": 46, "y": 20}]},
+    {"duration_ms": 80, "sprites": [{"sprite": "leaf", "x": 38, "y": 16}]},
+    {"duration_ms": 80, "sprites": [{"sprite": "leaf", "x": 30, "y": 14}]},
+    {"duration_ms": 80, "sprites": [{"sprite": "leaf", "x": 22, "y": 18}]},
+    {"duration_ms": 80, "sprites": [{"sprite": "leaf", "x": 14, "y": 21}]},
+    {"duration_ms": 80, "sprites": [{"sprite": "leaf", "x": 6, "y": 17}]},
+    {"duration_ms": 80, "sprites": [{"sprite": "leaf", "x": -4, "y": 15}]}
+  ]
+}

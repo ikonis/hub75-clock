@@ -158,10 +158,12 @@ themes:
 # -----------------------------------------------------------------------------
 # Animations and sprites
 # Python animations are loaded from animations_dir. The generic "sprite" cameo
-# loads JSON sprites from sprites_dir. Speed settings live outside config.yaml
-# so local tuning survives updates.
+# loads JSON sprites from sprites_dir and timeline/movement JSON from
+# sprite_animations_dir. Speed settings live outside config.yaml so local tuning
+# survives updates.
 # -----------------------------------------------------------------------------
 animations:
   animations_dir: /etc/hub75-clock/animations
   sprites_dir: /etc/hub75-clock/sprites
+  sprite_animations_dir: /etc/hub75-clock/sprite-animations
   settings_path: /etc/hub75-clock/animations.yaml

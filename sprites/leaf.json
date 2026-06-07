@@ -1,0 +1,13 @@
+{
+  "name": "leaf",
+  "width": 5,
+  "height": 4,
+  "motion": "left",
+  "speed": 0.65,
+  "pixels": [
+    [null, "#B87018", "#D88A20", null, null],
+    ["#8A4A12", "#C07018", "#E89824", "#B86018", null],
+    [null, "#8A4A12", "#B86018", "#D88A20", "#70400F"],
+    [null, null, "#70400F", null, null]
+  ]
+}

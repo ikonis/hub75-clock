@@ -8,6 +8,28 @@ Animations are triggered as **cameos** inside theme JSON files. See `docs/themes
 
 ---
 
+## Editable sprite cameos
+
+The generic `sprite` cameo can run editable JSON assets made by the sprite/cameo builder.
+
+Single sprite:
+
+```json
+{"name": "sprite", "sprite": "rocket", "chance_per_minute": 4}
+```
+
+Sprite-animation timeline:
+
+```json
+{"name": "sprite", "animation": "bat_swarm", "chance_per_minute": 4}
+```
+
+Sprite art lives in `/etc/hub75-clock/sprites/*.json`. Timeline/movement files live in `/etc/hub75-clock/sprite-animations/*.json`. These JSON files can be edited and uploaded without recompiling the C++ clock. Runtime code changes still require `make update`.
+
+The editable path is best for small sprite motion such as flybys, simple swarms, blinking characters, and tiny foreground vignettes. Particle-heavy effects such as weather, fireworks, lightning, and complex procedural movement should remain code-driven animations.
+
+---
+
 ## How the drop-in system works
 
 1. `AnimationLoader` scans `/etc/hub75-clock/animations/` at startup and imports every `.py` file that contains a class named `Animation`.

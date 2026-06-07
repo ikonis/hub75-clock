@@ -1,0 +1,13 @@
+{
+  "name": "meteor_small",
+  "width": 10,
+  "height": 4,
+  "motion": "left",
+  "speed": 1.0,
+  "pixels": [
+    ["#FFFFFF33", null, null, null, null, null, null, "#FFD080", "#FFFFFF", null],
+    [null, "#FFFFFF44", null, "#FFD08055", "#FFD08077", "#FFD080AA", "#FF8030", "#FF8030", "#FFD080", "#FFFFFF"],
+    [null, null, "#FFFFFF33", null, "#FFD08055", "#FF803088", "#FF8030", "#FFD080", "#FFFFFF", null],
+    [null, null, null, null, null, null, null, "#FF803055", null, null]
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "mouse",
+  "width": 5,
+  "height": 3,
+  "motion": "right",
+  "speed": 0.7,
+  "pixels": [
+    [null, "#A0A0A8", "#A0A0A8", null, null],
+    ["#808088", "#A0A0A8", "#A0A0A8", "#D0D0D8", "#606068"],
+    [null, "#606068", null, "#606068", null]
+  ]
+}

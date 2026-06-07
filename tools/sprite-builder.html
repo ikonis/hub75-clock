@@ -148,10 +148,12 @@ body:not(.cameo-custom) .custom-only{display:none!important}
 'use strict';
 let sprite={name:'new_sprite',width:8,height:8,motion:'left',speed:0.5,pixels:[]};
 let currentFile='', selectedFile='', color='#dcdce6', alpha=255, tool='paint', dirty=false, syncing=false;
+let lastSavedSpriteJSON='';
 let zoom=parseInt(localStorage.getItem('hub75-sprite-zoom')||'25',10)||25;
 let spriteFrameIndex=0;
 let animation={name:'new_cameo',width:64,height:32,speed:1,loop:true,persistent:false,movement:{mode:'random_sweep',direction:'left_to_right',random_start:true,random_facing:false,fixed_x:28,fixed_y:12,count:1,stray:3,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]};
 let currentAnimFile='', selectedAnimFile='', animDirty=false, frameIndex=0, playing=false, playTimer=null;
+let lastSavedAnimJSON='';
 let animDrag=null;
 const requestedMode=new URLSearchParams(location.search).get('mode');
 let builderMode=(requestedMode==='animation'||requestedMode==='cameo')?'animation':(requestedMode==='sprite'?'sprite':(localStorage.getItem('hub75-builder-mode')||'sprite'));
@@ -169,8 +171,9 @@ const blankAnimation=(name='new_cameo')=>({name,width:64,height:32,speed:1,loop:
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const isCustomMovement=()=>((animation.movement||{}).mode||'random_sweep')==='custom';
 
-function markDirty(v=true){dirty=v; el('status').textContent=v?'Unsaved':'Ready';}
-function markAnimDirty(v=true){animDirty=v}
+function currentEditorJSON(){return el('json-out')?.value||''}
+function markDirty(v=true){dirty=!!v&&currentEditorJSON()!==lastSavedSpriteJSON; el('status').textContent=dirty?'Unsaved':'Ready';}
+function markAnimDirty(v=true){animDirty=!!v&&currentEditorJSON()!==lastSavedAnimJSON}
 function setMode(mode){
   builderMode=mode==='animation'?'animation':'sprite';
   try{localStorage.setItem('hub75-builder-mode',builderMode)}catch(e){}
@@ -444,8 +447,8 @@ function normalizeMovement(){
 }
 function applyAnimation(data,dirtyState=false){animation={...blankAnimation(),...data};normalizeMovement();if(!Array.isArray(animation.frames)||!animation.frames.length)animation.frames=blankAnimation(animation.name).frames;frameIndex=0;syncAnimationFields();renderAnimationPreview();markAnimDirty(dirtyState)}
 async function refreshAnimations(select=currentAnimFile){const r=await fetch('/api/animations',{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation list failed');const s=el('anim-select');s.innerHTML='';for(const f of d.animations){const o=document.createElement('option');o.value=f;o.textContent=f;s.appendChild(o)}if(select&&d.animations.includes(select))s.value=select;else if(d.animations.length)s.value=d.animations[0];selectedAnimFile=s.value||''}
-async function loadAnimation(file){const f=file||el('anim-select').value;if(!f)return;const r=await fetch('/api/animation?file='+encodeURIComponent(f),{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation load failed');currentAnimFile=selectedAnimFile=d.file;el('anim-select').value=d.file;applyAnimation(d.animation,false)}
-async function saveAnimation(file=''){fromAnimationFields();ensurePresetFrames();const f=file||currentAnimFile||animFileName();const r=await fetch('/api/animation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:f,animation})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation save failed');currentAnimFile=selectedAnimFile=d.file;await refreshAnimations(currentAnimFile);markAnimDirty(false);el('status').textContent=`Saved ${d.file}`}
+async function loadAnimation(file){const f=file||el('anim-select').value;if(!f)return;const r=await fetch('/api/animation?file='+encodeURIComponent(f),{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation load failed');currentAnimFile=selectedAnimFile=d.file;el('anim-select').value=d.file;applyAnimation(d.animation,false);lastSavedAnimJSON=currentEditorJSON();markAnimDirty(false)}
+async function saveAnimation(file=''){fromAnimationFields();ensurePresetFrames();const f=file||currentAnimFile||animFileName();const r=await fetch('/api/animation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:f,animation})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation save failed');currentAnimFile=selectedAnimFile=d.file;await refreshAnimations(currentAnimFile);updateJSON();lastSavedAnimJSON=currentEditorJSON();markAnimDirty(false);el('status').textContent=`Saved ${d.file}`}
 function stepFrame(delta){fromAnimationFields();frameIndex=clamp(frameIndex+delta,0,animation.frames.length-1);syncAnimationFields();renderAnimationPreview()}
 function setPlaying(v){playing=v;el('btn-anim-play').textContent=v?'Stop':'Play';if(playTimer){clearTimeout(playTimer);playTimer=null}if(v){fromAnimationFields();playNextFrame()}}
 function playNextFrame(){
@@ -464,7 +467,7 @@ function playNextFrame(){
   },f.duration_ms||100);
 }
 function buildJSON(){fromFields();normalizePixels();return JSON.stringify(sprite,null,2)}
-function updateJSON(){syncing=true;el('json-out').value=builderMode==='animation'?buildAnimationJSON():buildJSON();syncing=false;el('json-status').textContent='Generated';el('json-status').className='hint'}
+function updateJSON(){syncing=true;el('json-out').value=builderMode==='animation'?buildAnimationJSON():buildJSON();syncing=false;if(builderMode==='animation'&&lastSavedAnimJSON)animDirty=currentEditorJSON()!==lastSavedAnimJSON;if(builderMode!=='animation'&&lastSavedSpriteJSON)dirty=currentEditorJSON()!==lastSavedSpriteJSON;el('json-status').textContent='Generated';el('json-status').className='hint'}
 function updateAll(){renderPreview();buildSwatches();updateJSON();markDirty(true)}
 function applySprite(data,dirtyState=false){
   sprite={...blank(),...data};
@@ -472,7 +475,7 @@ function applySprite(data,dirtyState=false){
   if(!Array.isArray(data.frames)||!data.frames.length){
     sprite.frames=[{duration_ms:sprite.frame_duration_ms||100,pixels:data.pixels||blankPixels(sprite.width,sprite.height)}];
   }
-  spriteFrameIndex=0;normalizePixels();syncFields();buildGrid();renderPreview();buildSwatches();updateJSON();markDirty(dirtyState)
+  spriteFrameIndex=0;normalizePixels();syncFields();buildGrid();renderPreview();buildSwatches();updateJSON();if(!dirtyState)lastSavedSpriteJSON=currentEditorJSON();markDirty(dirtyState)
 }
 function stepSpriteFrame(delta){fromFields();spriteFrameIndex=clamp(spriteFrameIndex+delta,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();buildSwatches();updateJSON()}
 function addSpriteFrame(copy=false){fromFields();const base=JSON.parse(JSON.stringify(sprite.frames[spriteFrameIndex]));if(!copy)base.duration_ms=parseInt(el('i-frame-duration').value)||100;sprite.frames.splice(spriteFrameIndex+1,0,base);spriteFrameIndex++;normalizePixels();syncFields();buildGrid();renderPreview();buildSwatches();updateJSON();markDirty(true)}
@@ -497,8 +500,8 @@ async function refresh(select=currentFile){
   if(select&&d.sprites.includes(select))s.value=select;else if(d.sprites.length)s.value=d.sprites[0];
   selectedFile=s.value||'';el('status').textContent=d.sprites.length?`${d.sprites.length} sprites`:'No sprites';syncAnimationFields();
 }
-async function loadSprite(file){const f=file||el('sprite-select').value;if(!f)return;const r=await fetch('/api/sprite?file='+encodeURIComponent(f),{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'load failed');currentFile=selectedFile=d.file;el('sprite-select').value=d.file;applySprite(d.sprite,false);el('status').textContent=`Loaded ${d.file}`}
-async function saveSprite(file=''){fromFields();const f=file||currentFile||fileName();const r=await fetch('/api/sprite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:f,sprite})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'save failed');currentFile=selectedFile=d.file;await refresh(currentFile);markDirty(false);el('status').textContent=`Saved ${d.file}`}
+async function loadSprite(file){const f=file||el('sprite-select').value;if(!f)return;const r=await fetch('/api/sprite?file='+encodeURIComponent(f),{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'load failed');currentFile=selectedFile=d.file;el('sprite-select').value=d.file;applySprite(d.sprite,false);lastSavedSpriteJSON=currentEditorJSON();markDirty(false);el('status').textContent=`Loaded ${d.file}`}
+async function saveSprite(file=''){fromFields();const f=file||currentFile||fileName();const r=await fetch('/api/sprite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:f,sprite})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'save failed');currentFile=selectedFile=d.file;await refresh(currentFile);updateJSON();lastSavedSpriteJSON=currentEditorJSON();markDirty(false);el('status').textContent=`Saved ${d.file}`}
 
 function wire(){
   setMode(builderMode);

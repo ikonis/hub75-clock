@@ -1,0 +1,49 @@
+{
+  "name": "umbrella_person",
+  "width": 9,
+  "height": 9,
+  "motion": "right",
+  "speed": 0.45,
+  "frame_duration_ms": 120,
+  "frames": [
+    {
+      "duration_ms": 120,
+      "pixels": [
+        [null, null, "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", null, null],
+        [null, "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", null],
+        ["#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840"],
+        [null, null, null, null, "#C0C0C0", null, null, null, null],
+        [null, null, null, "#F0C090", "#303050", "#F0C090", null, null, null],
+        [null, null, null, null, "#304070", null, null, null, null],
+        [null, null, null, "#304070", "#304070", "#304070", null, null, null],
+        [null, null, "#202030", null, "#202030", null, null, null, null],
+        [null, null, null, "#202030", null, "#202030", null, null, null]
+      ]
+    },
+    {
+      "duration_ms": 120,
+      "pixels": [
+        [null, null, "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", null, null],
+        [null, "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", null],
+        ["#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840"],
+        [null, null, null, null, "#C0C0C0", null, null, null, null],
+        [null, null, null, "#F0C090", "#303050", "#F0C090", null, null, null],
+        [null, null, null, null, "#304070", null, null, null, null],
+        [null, null, null, "#304070", "#304070", "#304070", null, null, null],
+        [null, null, null, "#202030", null, "#202030", null, null, null],
+        [null, null, "#202030", null, null, null, "#202030", null, null]
+      ]
+    }
+  ],
+  "pixels": [
+    [null, null, "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", null, null],
+    [null, "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", "#D02050", null],
+    ["#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840", "#A01840"],
+    [null, null, null, null, "#C0C0C0", null, null, null, null],
+    [null, null, null, "#F0C090", "#303050", "#F0C090", null, null, null],
+    [null, null, null, null, "#304070", null, null, null, null],
+    [null, null, null, "#304070", "#304070", "#304070", null, null, null],
+    [null, null, "#202030", null, "#202030", null, null, null, null],
+    [null, null, null, "#202030", null, "#202030", null, null, null]
+  ]
+}
