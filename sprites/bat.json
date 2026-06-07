@@ -1,0 +1,53 @@
+{
+  "name": "bat",
+  "width": 9,
+  "height": 5,
+  "motion": "right",
+  "speed": 0.55,
+  "movement": {
+    "mode": "straight",
+    "direction": "right",
+    "random_start": true,
+    "random_facing": false
+  },
+  "frame_duration_ms": 90,
+  "frames": [
+    {
+      "duration_ms": 90,
+      "pixels": [
+        ["#090812", null, null, null, "#191827", null, null, null, "#090812"],
+        ["#171522", "#27233A", null, "#242033", "#34304A", "#242033", null, "#27233A", "#171522"],
+        [null, "#171522", "#2F2A43", "#444061", "#514B72", "#444061", "#2F2A43", "#171522", null],
+        [null, null, "#15131F", "#242033", "#36314D", "#242033", "#15131F", null, null],
+        [null, null, null, "#0C0B13", null, "#0C0B13", null, null, null]
+      ]
+    },
+    {
+      "duration_ms": 90,
+      "pixels": [
+        [null, null, "#090812", null, "#191827", null, "#090812", null, null],
+        [null, "#171522", "#27233A", "#242033", "#34304A", "#242033", "#27233A", "#171522", null],
+        ["#0C0B13", "#15131F", "#2F2A43", "#444061", "#514B72", "#444061", "#2F2A43", "#15131F", "#0C0B13"],
+        [null, null, null, "#242033", "#36314D", "#242033", null, null, null],
+        [null, null, null, "#0C0B13", null, "#0C0B13", null, null, null]
+      ]
+    },
+    {
+      "duration_ms": 90,
+      "pixels": [
+        [null, null, null, null, "#191827", null, null, null, null],
+        [null, null, null, "#242033", "#34304A", "#242033", null, null, null],
+        ["#090812", "#171522", "#2F2A43", "#444061", "#514B72", "#444061", "#2F2A43", "#171522", "#090812"],
+        [null, "#171522", "#27233A", "#242033", "#36314D", "#242033", "#27233A", "#171522", null],
+        ["#090812", null, null, "#0C0B13", null, "#0C0B13", null, null, "#090812"]
+      ]
+    }
+  ],
+  "pixels": [
+    ["#090812", null, null, null, "#191827", null, null, null, "#090812"],
+    ["#171522", "#27233A", null, "#242033", "#34304A", "#242033", null, "#27233A", "#171522"],
+    [null, "#171522", "#2F2A43", "#444061", "#514B72", "#444061", "#2F2A43", "#171522", null],
+    [null, null, "#15131F", "#242033", "#36314D", "#242033", "#15131F", null, null],
+    [null, null, null, "#0C0B13", null, "#0C0B13", null, null, null]
+  ]
+}
