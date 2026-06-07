@@ -24,15 +24,15 @@
     },
     {
       "name": "shooting_star",
-      "chance_per_minute": 4
+      "chance_per_minute": 8
     },
     {
       "name": "satellite",
-      "chance_per_minute": 1
+      "chance_per_minute": 3
     },
     {
       "name": "meteor",
-      "chance_per_minute": 1
+      "chance_per_minute": 2
     },
     {
       "name": "comet",
