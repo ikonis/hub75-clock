@@ -92,7 +92,7 @@ Animations are configured through the `cameos` array. One-shot cameos fire at a 
 
 | Field | Type | Description |
 |---|---|---|
-| `name` | string | Which animation to spawn. Must match the `name` attribute of an animation file in `/etc/hub75-clock/animations/`. |
+| `name` | string | Which animation to spawn. Python names come from `/etc/hub75-clock/animations/*.py`; C++ names come from compiled animations in `clock-cpp/src/animations/`. |
 | `chance_per_minute` | float | Expected spawns per minute on average for one-shot cameos. Omit for persistent animations. |
 
 Example:
@@ -242,7 +242,7 @@ sunrise:                    sunset:
 3. The clock detects the new file within a few seconds and adds it to the available themes list.
 4. Select it from the HA device page or via MQTT.
 
-No restart required.
+No restart or C++ recompile is required for normal theme JSON edits. New C++ animation code or changes to compiled animation behavior still require `make update` on the C++ clock.
 
 ---
 

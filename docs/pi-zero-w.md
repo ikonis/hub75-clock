@@ -43,6 +43,23 @@ sudo make install-python PYTHON="$(which python3)"
 
 Just run `bash install.sh` as normal. No manual source edits are needed.
 
+If a clock is migrated to the C++ runtime after an older Python-only install, make sure the C++ build dependencies are present:
+
+```bash
+sudo apt install -y cmake build-essential pkg-config libmosquitto-dev libyaml-cpp-dev libgpiod-dev
+```
+
+The C++ updater also expects the RGB matrix source tree and static library at `~/rpi-rgb-led-matrix`. If they are missing:
+
+```bash
+cd ~
+git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
+cd rpi-rgb-led-matrix
+make
+```
+
+Normal theme JSON edits do not require a C++ recompile. New C++ animation code or edits under `clock-cpp/src/animations/` do require `make update`.
+
 ### Verify after install
 
 ```bash

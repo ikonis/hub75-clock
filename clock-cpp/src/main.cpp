@@ -14,6 +14,7 @@
 #include <atomic>
 #include <cctype>
 #include <cstdlib>
+#include <cstdint>
 #include <cstring>
 #include <ctime>
 #include <csignal>
@@ -272,6 +273,34 @@ static json loadConfig(const std::string& path) {
     }
     cfg["animation"]["fps"] = std::max(1, cfg["animation"].value("fps", 90));
     return cfg;
+}
+
+static std::uint64_t themeDirSignature(const std::string& themesDir) {
+    std::uint64_t sig = 1469598103934665603ull;
+    std::error_code ec;
+    for (const auto& entry : fs::directory_iterator(themesDir, ec)) {
+        if (entry.path().extension() != ".json") continue;
+        auto stamp = fs::last_write_time(entry.path(), ec).time_since_epoch().count();
+        if (ec) {
+            ec.clear();
+            continue;
+        }
+        auto size = fs::file_size(entry.path(), ec);
+        if (ec) {
+            ec.clear();
+            size = 0;
+        }
+        std::string name = entry.path().filename().string();
+        for (unsigned char ch : name) {
+            sig ^= ch;
+            sig *= 1099511628211ull;
+        }
+        sig ^= static_cast<std::uint64_t>(stamp);
+        sig *= 1099511628211ull;
+        sig ^= static_cast<std::uint64_t>(size);
+        sig *= 1099511628211ull;
+    }
+    return sig;
 }
 
 // ── Signal handling ───────────────────────────────────────────────────────────
@@ -602,6 +631,9 @@ static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
         std::string body = payload.dump();
         mosquitto_publish(mosq, nullptr, topic.c_str(), int(body.size()), body.c_str(), 0, 1);
     };
+    auto clearDiscovery = [&](const std::string& topic) {
+        mosquitto_publish(mosq, nullptr, topic.c_str(), 0, nullptr, 0, 1);
+    };
 
     auto base = [&](const std::string& name, const std::string& uniqueId) {
         return json{
@@ -631,13 +663,18 @@ static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
     brightness["icon"] = "mdi:brightness-6";
     pub(prefix + "/number/" + cid + "_brightness/config", brightness);
 
-    json lux = base("Lux", cid + "_lux");
-    lux["state_topic"] = topics.value("lux", cid + "/lux");
-    lux["value_template"] = "{{ value_json.lux }}";
-    lux["unit_of_measurement"] = "lx";
-    lux["device_class"] = "illuminance";
-    lux["state_class"] = "measurement";
-    pub(prefix + "/sensor/" + cid + "_lux/config", lux);
+    const std::string luxDiscoveryTopic = prefix + "/sensor/" + cid + "_lux/config";
+    if (cfg["sensors"].value("veml7700_enabled", true)) {
+        json lux = base("Lux", cid + "_lux");
+        lux["state_topic"] = topics.value("lux", cid + "/lux");
+        lux["value_template"] = "{{ value_json.lux }}";
+        lux["unit_of_measurement"] = "lx";
+        lux["device_class"] = "illuminance";
+        lux["state_class"] = "measurement";
+        pub(luxDiscoveryTopic, lux);
+    } else {
+        clearDiscovery(luxDiscoveryTopic);
+    }
 
     json moveDistance = base("Move Distance", cid + "_move_distance");
     moveDistance["state_topic"] = topics.value("presence", cid + "/presence");
@@ -716,12 +753,12 @@ static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
              {"button", cid + "_update_check"},
              {"button", cid + "_update_install"},
          }) {
-        pub(prefix + "/" + entry.first + "/" + entry.second + "/config", "");
+        clearDiscovery(prefix + "/" + entry.first + "/" + entry.second + "/config");
     }
     for (int gate = 0; gate < 9; ++gate) {
         for (const auto& kind : {"move", "still"}) {
-            pub(prefix + "/sensor/" + cid + "_g" + std::to_string(gate) + "_" + kind + "_energy/config", "");
-            pub(prefix + "/number/" + cid + "_g" + std::to_string(gate) + "_" + kind + "_thresh/config", "");
+            clearDiscovery(prefix + "/sensor/" + cid + "_g" + std::to_string(gate) + "_" + kind + "_energy/config");
+            clearDiscovery(prefix + "/number/" + cid + "_g" + std::to_string(gate) + "_" + kind + "_thresh/config");
         }
     }
 
@@ -1155,10 +1192,40 @@ int main(int argc, char* argv[]) {
     // ── Render loop ───────────────────────────────────────────────────────
     auto* canvas = matrix->CreateFrameCanvas();
     g_fps.store(std::max(1, cfg["animation"].value("fps", 90)));
+    auto lastThemeCheck = std::chrono::steady_clock::now();
+    std::uint64_t lastThemeSig = themeDirSignature(themesDir);
 
     while (g_running) {
         auto t0      = std::chrono::steady_clock::now();
         auto frameUs = std::chrono::microseconds(1'000'000 / std::max(1, g_fps.load()));
+
+        if (t0 - lastThemeCheck >= std::chrono::seconds(1)) {
+            lastThemeCheck = t0;
+            std::uint64_t sig = themeDirSignature(themesDir);
+            if (sig != lastThemeSig) {
+                lastThemeSig = sig;
+                std::lock_guard<std::mutex> lk(animMtx);
+                std::string activeTheme = animator.currentTheme
+                    ? animator.currentTheme->name
+                    : cfg["themes"].value("default_theme", "Day");
+                themeLoader.loadAll();
+                animator.setTheme(activeTheme, themeLoader);
+
+                auto themeNames = themeLoader.availableThemes();
+                std::string themeList = json(themeNames).dump();
+                mosquitto_publish(mosq, nullptr,
+                                  topics.value("themes_available", clientId + "/themes/available").c_str(),
+                                  int(themeList.size()), themeList.c_str(), 0, 1);
+                if (animator.currentTheme) {
+                    std::string name = animator.currentTheme->name;
+                    mosquitto_publish(mosq, nullptr,
+                                      topics.value("theme_state", clientId + "/theme/state").c_str(),
+                                      int(name.size()), name.c_str(), 0, 1);
+                }
+                publishHomeAssistantDiscovery(mosq, cfg, themeNames);
+                std::cout << "[theme_loader] reloaded themes\n";
+            }
+        }
 
         canvas->Clear();
         {

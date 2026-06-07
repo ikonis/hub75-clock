@@ -88,7 +88,6 @@ ThemeLoader::ThemeLoader(std::string themesDir)
 {
     fs::create_directories(_themesDir);
     loadAll();
-    // TODO: add inotify-based file watcher that calls loadAll() + onThemesChanged.
 }
 
 ThemeLoader::~ThemeLoader() = default;

@@ -1,6 +1,8 @@
 # Animations
 
-The clock supports a drop-in animation system. Any `.py` file placed in `/etc/hub75-clock/animations/` is automatically loaded at runtime. The watchdog detects new and changed files within seconds — no restart required.
+The C++ runtime uses the same cameo names as the Python runtime, but animation code is compiled from `clock-cpp/src/animations/*.cpp`. Adding or changing C++ animation code requires `make update` on the clock so the binary is rebuilt and reinstalled. Plain theme JSON, sprite JSON, and sprite-animation JSON edits do not require a C++ rebuild.
+
+The Python runtime supports a drop-in animation system. Any `.py` file placed in `/etc/hub75-clock/animations/` is automatically loaded at runtime. The watchdog detects new and changed files within seconds — no restart required.
 
 Animations are triggered as **cameos** inside theme JSON files. See `docs/themes.md` for how to add them to a theme.
 
@@ -56,7 +58,7 @@ class Animation:
         return False
 ```
 
-Drop the file into `/etc/hub75-clock/animations/`. The clock picks it up within a few seconds. Add its `name` to a theme's `cameos` list:
+For Python, drop the file into `/etc/hub75-clock/animations/`. The clock picks it up within a few seconds. Add its `name` to a theme's `cameos` list:
 
 ```json
 "cameos": [
@@ -198,7 +200,7 @@ class Animation:
 
 ## Built-in animations reference
 
-All of these are installed to `/etc/hub75-clock/animations/` by `install.sh` and updated on `make update`.
+Python installs these to `/etc/hub75-clock/animations/`. C++ compiles the matching sources from `clock-cpp/src/animations/` during `make update`.
 
 ### Space / Night
 
@@ -293,4 +295,4 @@ Only one cameo runs at a time. While one is active, rolls for all cameos are ski
 - **Do not import heavy libraries.** `math` and `random` are always available. Avoid anything that requires install-time dependencies.
 - **Name collisions:** if your file's `Animation.name` matches an existing built-in, your file wins because `_scan()` processes files alphabetically and yours will likely run after the built-in. Prefix custom names to avoid accidental overrides (`"my_ufo"` instead of `"ufo"`).
 - **Errors are logged, not crashed.** If your file has a syntax error or the `Animation` class is missing required attributes, the loader prints a warning and skips the file. The rest of the animations continue working.
-- **Test interactively:** run the clock manually (`sudo python3 /opt/hub75-clock/hub75_clock.py`) and watch the logs with `make logs` while you drop files in. The watchdog reloads within 2 seconds of a file write.
+- **Test Python interactively:** run the clock manually (`sudo python3 /opt/hub75-clock/hub75_clock.py`) and watch the logs with `make logs` while you drop files in. The watchdog reloads within 2 seconds of a file write.`n- **Test C++ changes:** run `make update` on the C++ clock. The C++ updater syncs themes/sprites first, then rebuilds `clock-cpp` and swaps the installed binary.

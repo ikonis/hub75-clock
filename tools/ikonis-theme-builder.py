@@ -34,7 +34,7 @@ REMOTE_ANIMATIONS_DIR = "/etc/hub75-clock/sprite-animations"
 SOURCE_CLOCK = "hub75-clock.local"
 TARGET_CLOCKS = [
     {"host": "hub75-clock.local", "restart": False},
-    {"host": "bedroom-clock.local", "restart": True},
+    {"host": "bedroom-clock.local", "restart": False},
 ]
 
 

@@ -243,6 +243,23 @@ make update
 # or: ~/update-clock.sh
 ```
 
+For C++ clocks, `make update` rebuilds the C++ binary after syncing themes, sprites, and sprite-animation JSON. Normal theme/sprite JSON edits do not require a rebuild by themselves; the C++ clock reloads theme JSON changes while running. New C++ animation code or changes under `clock-cpp/src/animations/` require `make update`.
+
+The C++ updater checks for build dependencies before compiling. If a migrated clock is missing them, install:
+
+```bash
+sudo apt install -y cmake build-essential pkg-config libmosquitto-dev libyaml-cpp-dev libgpiod-dev
+```
+
+It also expects the RGB matrix source and C++ library at `~/rpi-rgb-led-matrix`:
+
+```bash
+cd ~
+git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
+cd rpi-rgb-led-matrix
+make
+```
+
 ### scripts/configure.sh
 
 Interactive configuration wizard. Prompts for your MQTT broker, device name, sensor hardware, GPIO pin, and `gpio_slowdown`, then writes `/etc/hub75-clock/config.yaml` automatically. Launched by `install.sh` on first install; can be re-run any time.
@@ -593,7 +610,7 @@ hub75-clock/
     └── 04_online_offline.yaml       Offline notification for both clocks
 ```
 
-Custom animations can be added at runtime by dropping a `.py` file into `/etc/hub75-clock/animations/`. The clock detects the new file within seconds and makes it available for use in theme `cameos` lists without a restart. See `docs/animations.md` for the full interface.
+Python custom animations can be added at runtime by dropping a `.py` file into `/etc/hub75-clock/animations/`. C++ animation code lives under `clock-cpp/src/animations/` and is compiled during `make update`. Theme JSON, sprite JSON, and sprite-animation JSON edits do not require a C++ recompile. See `docs/animations.md` for the full interface.
 
 ---
 

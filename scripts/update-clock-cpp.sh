@@ -26,6 +26,47 @@ BRANCH="${BRANCH:-$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null |
 
 echo "[update] mode=cpp branch=$BRANCH repo=$REPO_DIR"
 
+APT_DEPS="cmake build-essential pkg-config libmosquitto-dev libyaml-cpp-dev libgpiod-dev"
+
+missing=()
+for tool in cmake pkg-config; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        missing+=("$tool")
+    fi
+done
+
+if ! command -v c++ >/dev/null 2>&1 && ! command -v g++ >/dev/null 2>&1; then
+    missing+=("build-essential")
+fi
+
+for pkg in libmosquitto-dev libyaml-cpp-dev libgpiod-dev; do
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
+        missing+=("$pkg")
+    fi
+done
+
+if [ "${#missing[@]}" -gt 0 ]; then
+    echo "[update] missing C++ build dependencies: ${missing[*]}" >&2
+    echo "[update] install them with:" >&2
+    echo "  sudo apt install -y $APT_DEPS" >&2
+    exit 1
+fi
+
+RGB_MATRIX_DIR="${RGB_MATRIX_DIR:-$HOME/rpi-rgb-led-matrix}"
+RGB_MATRIX_LIB="$RGB_MATRIX_DIR/lib/librgbmatrix.a"
+if [ ! -d "$RGB_MATRIX_DIR/include" ] || [ ! -f "$RGB_MATRIX_LIB" ]; then
+    echo "[update] missing rpi-rgb-led-matrix C++ library at $RGB_MATRIX_DIR" >&2
+    echo "[update] expected:" >&2
+    echo "  $RGB_MATRIX_DIR/include" >&2
+    echo "  $RGB_MATRIX_LIB" >&2
+    echo "[update] build it with:" >&2
+    echo "  cd ~" >&2
+    echo "  git clone https://github.com/hzeller/rpi-rgb-led-matrix.git" >&2
+    echo "  cd rpi-rgb-led-matrix" >&2
+    echo "  make" >&2
+    exit 1
+fi
+
 fix_repo_ownership() {
     for path in \
         "$REPO_DIR/.git" \
