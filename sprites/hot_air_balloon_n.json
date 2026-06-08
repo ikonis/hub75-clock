@@ -1,20 +1,99 @@
 {
   "name": "hot_air_balloon_n",
-  "width": 8,
-  "height": 11,
-  "motion": "right",
-  "speed": 0.22,
+  "width": 7,
+  "height": 10,
+  "motion": "up",
+  "speed": 0.18,
   "pixels": [
-    [null, null, "#D04040", "#E07040", "#E07040", "#D04040", null, null],
-    [null, "#D04040", "#F0C050", "#F0C050", "#F0C050", "#F0C050", "#D04040", null],
-    ["#A03040", "#E07040", "#F0C050", "#F0C050", "#F0C050", "#F0C050", "#E07040", "#A03040"],
-    ["#A03040", "#D04040", "#E07040", "#F0C050", "#F0C050", "#E07040", "#D04040", "#A03040"],
-    [null, "#A03040", "#D04040", "#E07040", "#E07040", "#D04040", "#A03040", null],
-    [null, null, "#704020", null, null, "#704020", null, null],
-    [null, null, "#704020", null, null, "#704020", null, null],
-    [null, null, "#906030", "#906030", "#906030", "#906030", null, null],
-    [null, null, "#604020", "#604020", "#604020", "#604020", null, null],
-    [null, null, "#604020", "#C08040", "#C08040", "#604020", null, null],
-    [null, null, "#402010", "#402010", "#402010", "#402010", null, null]
+    [
+      null,
+      null,
+      null,
+      "#FF3C3C",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      "#FF3C3C",
+      "#FFA000",
+      "#FF3C3C",
+      null,
+      null
+    ],
+    [
+      null,
+      "#FFA000",
+      "#FFF000",
+      "#3CB43C",
+      "#FFF000",
+      "#FFA000",
+      null
+    ],
+    [
+      "#3CB43C",
+      "#2878DC",
+      "#3CB43C",
+      "#FF3C3C",
+      "#3CB43C",
+      "#2878DC",
+      "#3CB43C"
+    ],
+    [
+      null,
+      "#FFA000",
+      "#3CB43C",
+      "#2878DC",
+      "#3CB43C",
+      "#FFA000",
+      null
+    ],
+    [
+      null,
+      null,
+      "#FF3C3C",
+      "#FFA000",
+      "#FF3C3C",
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      "#FF3C3C",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      "#644628",
+      null,
+      "#644628",
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      "#785028",
+      "#8C6432",
+      "#785028",
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      "#6E4623",
+      "#825A2D",
+      "#6E4623",
+      null,
+      null
+    ]
   ]
 }

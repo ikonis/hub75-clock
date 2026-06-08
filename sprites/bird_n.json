@@ -1,0 +1,47 @@
+{
+  "name": "bird_n",
+  "width": 3,
+  "height": 2,
+  "motion": "right",
+  "speed": 0.4,
+  "frame_duration_ms": 120,
+  "frames": [
+    {
+      "duration_ms": 120,
+      "pixels": [
+        [
+          "#282828",
+          null,
+          "#282828"
+        ],
+        [
+          null,
+          "#1E1E1E",
+          null
+        ]
+      ]
+    },
+    {
+      "duration_ms": 120,
+      "pixels": [
+        [
+          "#282828",
+          "#1E1E1E",
+          "#282828"
+        ]
+      ]
+    }
+  ],
+  "pixels": [
+    [
+      "#282828",
+      null,
+      "#282828"
+    ],
+    [
+      null,
+      "#1E1E1E",
+      null
+    ]
+  ]
+}

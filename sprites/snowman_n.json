@@ -1,49 +1,119 @@
 {
   "name": "snowman_n",
-  "width": 7,
-  "height": 9,
+  "width": 9,
+  "height": 10,
   "motion": "left",
   "speed": 0.35,
-  "frame_duration_ms": 180,
-  "frames": [
-    {
-      "duration_ms": 180,
-      "pixels": [
-        [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, null],
-        [null, "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", null],
-        [null, "#FFFFFF", "#FFFFFF", "#FF8020", "#FFFFFF", "#FFFFFF", null],
-        [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, null],
-        [null, "#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#FFFFFF", null],
-        ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"],
-        ["#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", "#FFFFFF"],
-        [null, "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", null],
-        [null, "#A0A0A0", null, null, null, "#A0A0A0", null]
-      ]
-    },
-    {
-      "duration_ms": 180,
-      "pixels": [
-        [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, null],
-        [null, "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", null],
-        [null, "#FFFFFF", "#FFFFFF", "#FF8020", "#FFFFFF", "#FFFFFF", null],
-        [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, "#A06020"],
-        [null, "#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#A06020", null],
-        ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"],
-        ["#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", "#FFFFFF"],
-        [null, "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", null],
-        [null, "#A0A0A0", null, null, null, "#A0A0A0", null]
-      ]
-    }
-  ],
   "pixels": [
-    [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, null],
-    [null, "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", null],
-    [null, "#FFFFFF", "#FFFFFF", "#FF8020", "#FFFFFF", "#FFFFFF", null],
-    [null, null, "#FFFFFF", "#FFFFFF", "#FFFFFF", null, null],
-    [null, "#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#FFFFFF", null],
-    ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"],
-    ["#FFFFFF", "#FFFFFF", "#202020", "#FFFFFF", "#202020", "#FFFFFF", "#FFFFFF"],
-    [null, "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", null],
-    [null, "#A0A0A0", null, null, null, "#A0A0A0", null]
+    [
+      null,
+      null,
+      null,
+      "#282828",
+      "#282828",
+      "#282828",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      "#282828",
+      "#282828",
+      "#282828",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      "#323232",
+      "#323232",
+      "#323232",
+      "#323232",
+      "#323232",
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      "#C8DCF0",
+      "#DCF0FF",
+      "#C8DCF0",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      "#1E1E1E",
+      "#FF7800",
+      "#1E1E1E",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      "#C8DCF0",
+      "#DCF0FF",
+      "#C8DCF0",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      "#B4C8DC",
+      "#C8DCF0",
+      "#D2E6FF",
+      "#C8DCF0",
+      "#B4C8DC",
+      null,
+      null
+    ],
+    [
+      "#785028",
+      "#BED2E6",
+      "#D2E6FA",
+      "#DCF0FF",
+      "#1E1E1E",
+      "#DCF0FF",
+      "#D2E6FA",
+      "#BED2E6",
+      "#785028"
+    ],
+    [
+      null,
+      null,
+      "#C8DCF0",
+      "#D2E6FF",
+      "#DCF0FF",
+      "#D2E6FF",
+      "#C8DCF0",
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      "#BED2E6",
+      "#C8DCF0",
+      "#BED2E6",
+      null,
+      null,
+      null
+    ]
   ]
 }

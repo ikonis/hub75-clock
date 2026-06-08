@@ -1,0 +1,140 @@
+{
+  "name": "butterfly_n",
+  "width": 7,
+  "height": 5,
+  "motion": "right",
+  "speed": 0.35,
+  "frame_duration_ms": 120,
+  "frames": [
+    {
+      "duration_ms": 120,
+      "pixels": [
+        [
+          "#5588D8",
+          "#64A0FF",
+          "#5588D8",
+          null,
+          "#5588D8",
+          "#64A0FF",
+          "#5588D8"
+        ],
+        [
+          "#5A90E5",
+          "#64A0FF",
+          "#5F98F2",
+          "#2D160B",
+          "#5A90E5",
+          "#64A0FF",
+          "#5F98F2"
+        ],
+        [
+          null,
+          null,
+          null,
+          "#2D160B",
+          null,
+          null,
+          null
+        ],
+        [
+          "#4670B2",
+          "#5080CC",
+          null,
+          "#2D160B",
+          null,
+          "#4670B2",
+          "#5080CC"
+        ],
+        [
+          "#3C6099",
+          "#4670B2",
+          null,
+          null,
+          null,
+          "#3C6099",
+          "#4670B2"
+        ]
+      ]
+    },
+    {
+      "duration_ms": 120,
+      "pixels": [
+        [
+          "#5A90E5",
+          "#5588D8",
+          null,
+          "#5A90E5",
+          "#5588D8"
+        ],
+        [
+          "#5588D8",
+          "#5A90E5",
+          "#2D160B",
+          "#5588D8",
+          "#5A90E5"
+        ],
+        [
+          null,
+          null,
+          "#2D160B",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "#2D160B",
+          null,
+          null
+        ]
+      ]
+    }
+  ],
+  "pixels": [
+    [
+      "#5588D8",
+      "#64A0FF",
+      "#5588D8",
+      null,
+      "#5588D8",
+      "#64A0FF",
+      "#5588D8"
+    ],
+    [
+      "#5A90E5",
+      "#64A0FF",
+      "#5F98F2",
+      "#2D160B",
+      "#5A90E5",
+      "#64A0FF",
+      "#5F98F2"
+    ],
+    [
+      null,
+      null,
+      null,
+      "#2D160B",
+      null,
+      null,
+      null
+    ],
+    [
+      "#4670B2",
+      "#5080CC",
+      null,
+      "#2D160B",
+      null,
+      "#4670B2",
+      "#5080CC"
+    ],
+    [
+      "#3C6099",
+      "#4670B2",
+      null,
+      null,
+      null,
+      "#3C6099",
+      "#4670B2"
+    ]
+  ]
+}

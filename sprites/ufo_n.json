@@ -1,37 +1,247 @@
 {
   "name": "ufo_n",
-  "width": 11,
+  "width": 9,
   "height": 5,
   "motion": "left",
   "speed": 0.45,
-  "frame_duration_ms": 120,
+  "frame_duration_ms": 100,
   "frames": [
     {
-      "duration_ms": 120,
+      "duration_ms": 100,
       "pixels": [
-        [null, null, null, "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", null, null, null],
-        [null, null, "#C0C0C8", "#E0E0E8", "#E0E0E8", "#FFFFFF", "#E0E0E8", "#E0E0E8", "#C0C0C8", null, null],
-        [null, "#808088", "#A0A0A8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#A0A0A8", "#808088", null],
-        ["#606068", "#606068", "#808088", "#808088", "#FFFF60", "#808088", "#60FF90", "#808088", "#808088", "#606068", "#606068"],
-        [null, null, null, "#60A0FF44", null, "#60A0FF66", null, "#60A0FF44", null, null, null]
+        [
+          null,
+          null,
+          null,
+          "#78DC8C",
+          "#8CFFA0",
+          "#78DC8C",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "#3CA046",
+          "#5AC864",
+          "#6EE678",
+          "#78F082",
+          "#6EE678",
+          "#5AC864",
+          "#3CA046",
+          null
+        ],
+        [
+          "#286432",
+          "#46AA50",
+          "#64D26E",
+          "#6EDC78",
+          "#78E682",
+          "#6EDC78",
+          "#64D26E",
+          "#46AA50",
+          "#286432"
+        ],
+        [
+          null,
+          "#328C3C",
+          "#46AA50",
+          "#50B45A",
+          "#5ABE64",
+          "#50B45A",
+          "#46AA50",
+          "#328C3C",
+          null
+        ],
+        [
+          null,
+          null,
+          "#00FFB4",
+          null,
+          "#003C28",
+          null,
+          "#003C28",
+          null,
+          null
+        ]
       ]
     },
     {
-      "duration_ms": 120,
+      "duration_ms": 100,
       "pixels": [
-        [null, null, null, "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", null, null, null],
-        [null, null, "#C0C0C8", "#E0E0E8", "#E0E0E8", "#FFFFFF", "#E0E0E8", "#E0E0E8", "#C0C0C8", null, null],
-        [null, "#808088", "#A0A0A8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#A0A0A8", "#808088", null],
-        ["#606068", "#606068", "#808088", "#808088", "#60FF90", "#808088", "#FFFF60", "#808088", "#808088", "#606068", "#606068"],
-        [null, null, null, "#60A0FF66", null, "#60A0FF44", null, "#60A0FF66", null, null, null]
+        [
+          null,
+          null,
+          null,
+          "#78DC8C",
+          "#8CFFA0",
+          "#78DC8C",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "#3CA046",
+          "#5AC864",
+          "#6EE678",
+          "#78F082",
+          "#6EE678",
+          "#5AC864",
+          "#3CA046",
+          null
+        ],
+        [
+          "#286432",
+          "#46AA50",
+          "#64D26E",
+          "#6EDC78",
+          "#78E682",
+          "#6EDC78",
+          "#64D26E",
+          "#46AA50",
+          "#286432"
+        ],
+        [
+          null,
+          "#328C3C",
+          "#46AA50",
+          "#50B45A",
+          "#5ABE64",
+          "#50B45A",
+          "#46AA50",
+          "#328C3C",
+          null
+        ],
+        [
+          null,
+          null,
+          "#003C28",
+          null,
+          "#00FFB4",
+          null,
+          "#003C28",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "duration_ms": 100,
+      "pixels": [
+        [
+          null,
+          null,
+          null,
+          "#78DC8C",
+          "#8CFFA0",
+          "#78DC8C",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "#3CA046",
+          "#5AC864",
+          "#6EE678",
+          "#78F082",
+          "#6EE678",
+          "#5AC864",
+          "#3CA046",
+          null
+        ],
+        [
+          "#286432",
+          "#46AA50",
+          "#64D26E",
+          "#6EDC78",
+          "#78E682",
+          "#6EDC78",
+          "#64D26E",
+          "#46AA50",
+          "#286432"
+        ],
+        [
+          null,
+          "#328C3C",
+          "#46AA50",
+          "#50B45A",
+          "#5ABE64",
+          "#50B45A",
+          "#46AA50",
+          "#328C3C",
+          null
+        ],
+        [
+          null,
+          null,
+          "#003C28",
+          null,
+          "#003C28",
+          null,
+          "#00FFB4",
+          null,
+          null
+        ]
       ]
     }
   ],
   "pixels": [
-    [null, null, null, "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", "#90E0FF", null, null, null],
-    [null, null, "#C0C0C8", "#E0E0E8", "#E0E0E8", "#FFFFFF", "#E0E0E8", "#E0E0E8", "#C0C0C8", null, null],
-    [null, "#808088", "#A0A0A8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#C0C0C8", "#A0A0A8", "#808088", null],
-    ["#606068", "#606068", "#808088", "#808088", "#FFFF60", "#808088", "#60FF90", "#808088", "#808088", "#606068", "#606068"],
-    [null, null, null, "#60A0FF44", null, "#60A0FF66", null, "#60A0FF44", null, null, null]
+    [
+      null,
+      null,
+      null,
+      "#78DC8C",
+      "#8CFFA0",
+      "#78DC8C",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      "#3CA046",
+      "#5AC864",
+      "#6EE678",
+      "#78F082",
+      "#6EE678",
+      "#5AC864",
+      "#3CA046",
+      null
+    ],
+    [
+      "#286432",
+      "#46AA50",
+      "#64D26E",
+      "#6EDC78",
+      "#78E682",
+      "#6EDC78",
+      "#64D26E",
+      "#46AA50",
+      "#286432"
+    ],
+    [
+      null,
+      "#328C3C",
+      "#46AA50",
+      "#50B45A",
+      "#5ABE64",
+      "#50B45A",
+      "#46AA50",
+      "#328C3C",
+      null
+    ],
+    [
+      null,
+      null,
+      "#00FFB4",
+      null,
+      "#003C28",
+      null,
+      "#003C28",
+      null,
+      null
+    ]
   ]
 }

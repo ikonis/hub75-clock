@@ -1,14 +1,42 @@
 {
   "name": "satellite_n",
   "width": 9,
-  "height": 5,
-  "motion": "right",
+  "height": 3,
+  "motion": "left",
   "speed": 0.45,
   "pixels": [
-    ["#3A5C80", "#5C85B0", null, null, "#D8D8E8", null, null, "#5C85B0", "#3A5C80"],
-    ["#5C85B0", "#80A8D8", null, "#C0C0D0", "#FFFFFF", "#C0C0D0", null, "#80A8D8", "#5C85B0"],
-    [null, null, "#A0A0B0", "#D8D8E8", "#F0F0FF", "#D8D8E8", "#A0A0B0", null, null],
-    ["#5C85B0", "#80A8D8", null, "#C0C0D0", "#FFFFFF", "#C0C0D0", null, "#80A8D8", "#5C85B0"],
-    ["#3A5C80", "#5C85B0", null, null, "#D8D8E8", null, null, "#5C85B0", "#3A5C80"]
+    [
+      null,
+      null,
+      null,
+      "#B4B4C8",
+      "#C8C8DC",
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      "#285078",
+      "#3C78B4",
+      "#646478",
+      "#C8C8DC",
+      "#DCDCF0",
+      "#C8C8DC",
+      "#646478",
+      "#3C78B4",
+      "#285078"
+    ],
+    [
+      null,
+      null,
+      null,
+      "#B4B4C8",
+      "#C8C8DC",
+      null,
+      null,
+      null,
+      null
+    ]
   ]
 }

@@ -1340,13 +1340,55 @@ const ALL_ANIMATIONS = [
   'jack_o_lantern','meteor','rainbow','rocket','santa','satellite',
   'snowman','snake','sprite','submarine','testPlane','tractor','tumbleweed','ufo'
 ];
+let spriteAnimationOptions = [];
+
+async function loadSpriteAnimationOptions() {
+  try {
+    const r = await fetch('/api/animations', { cache: 'no-store' });
+    const d = await r.json();
+    if (!r.ok || !d.ok || !Array.isArray(d.animations)) return;
+    spriteAnimationOptions = d.animations.map(f => f.replace(/\.json$/, '')).sort();
+    rebuildCameoAddSelect();
+    buildCameoList();
+  } catch (err) {
+    spriteAnimationOptions = [];
+  }
+}
+
+function cameoKey(c) {
+  if (c.name === 'sprite') return c.animation ? `sprite:${c.animation}` : `sprite:${c.sprite || ''}`;
+  return c.name;
+}
+
+function formatCameoOption(value) {
+  return value.startsWith('sprite:') ? `sprite: ${value.slice(7)}` : value;
+}
+
+function allCameoOptions() {
+  return [
+    ...ALL_ANIMATIONS,
+    ...spriteAnimationOptions.map(name => `sprite:${name}`),
+  ];
+}
+
+function rebuildCameoAddSelect() {
+  const sel = document.getElementById('cameo-add-sel');
+  if (!sel) return;
+  const previous = sel.value;
+  sel.innerHTML = allCameoOptions().map(value =>
+    `<option value="${value}">${formatCameoOption(value)}</option>`
+  ).join('');
+  if ([...sel.options].some(o => o.value === previous)) sel.value = previous;
+  updateCameoAddOptions();
+}
 
 function buildCameoList() {
   const list = document.getElementById('cameo-list');
   list.innerHTML = '';
   theme.cameos.forEach((c, idx) => {
-    const opts = ALL_ANIMATIONS.map(n =>
-      `<option value="${n}"${c.name===n?' selected':''}${cameoExists(n, idx)?' disabled':''}>${n}</option>`
+    const selectedKey = cameoKey(c);
+    const opts = allCameoOptions().map(n =>
+      `<option value="${n}"${selectedKey===n?' selected':''}${cameoExists(n, idx)?' disabled':''}>${formatCameoOption(n)}</option>`
     ).join('');
     const li = document.createElement('div');
     li.className = 'li';
@@ -1378,14 +1420,15 @@ function buildCameoList() {
 }
 
 function cameoExists(name, exceptIdx = -1) {
-  return theme.cameos.some((c, idx) => idx !== exceptIdx && c.name === name);
+  return theme.cameos.some((c, idx) => idx !== exceptIdx && cameoKey(c) === name);
 }
 
 function uniqueCameos(cameos) {
   const seen = new Set();
   return cameos.filter(c => {
-    if (!c.name || seen.has(c.name)) return false;
-    seen.add(c.name);
+    const key = cameoKey(c);
+    if (!c.name || seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 }
@@ -1393,7 +1436,7 @@ function uniqueCameos(cameos) {
 function updateCameoAddOptions() {
   const sel = document.getElementById('cameo-add-sel');
   if (!sel) return;
-  const used = new Set(theme.cameos.map(c => c.name));
+  const used = new Set(theme.cameos.map(cameoKey));
   let firstAvailable = '';
   [...sel.options].forEach(opt => {
     opt.disabled = used.has(opt.value);
@@ -1410,10 +1453,19 @@ function cameoFieldChange(e) {
   else if (field === 'name') {
     if (cameoExists(e.target.value, idx)) {
       alert(`${e.target.value} is already in this theme.`);
-      e.target.value = theme.cameos[idx].name;
+      e.target.value = cameoKey(theme.cameos[idx]);
       return;
     }
-    theme.cameos[idx].name = e.target.value;
+    if (e.target.value.startsWith('sprite:')) {
+      theme.cameos[idx] = { name: 'sprite', animation: e.target.value.slice(7), chance_per_minute: theme.cameos[idx].chance_per_minute || 8 };
+    } else {
+      theme.cameos[idx] = { ...theme.cameos[idx], name: e.target.value };
+      if (e.target.value !== 'sprite') {
+        delete theme.cameos[idx].sprite;
+        delete theme.cameos[idx].animation;
+        delete theme.cameos[idx].loop;
+      }
+    }
     buildCameoList();
   }
   else if (field === 'cpm') { theme.cameos[idx].chance_per_minute = parseFloat(e.target.value) || 8; }
@@ -1507,7 +1559,11 @@ function wireControls() {
       updateCameoAddOptions();
       return;
     }
-    theme.cameos.push({ name, chance_per_minute: 8 });
+    if (name.startsWith('sprite:')) {
+      theme.cameos.push({ name: 'sprite', animation: name.slice(7), chance_per_minute: 8 });
+    } else {
+      theme.cameos.push({ name, chance_per_minute: 8 });
+    }
     buildCameoList(); render(); updateJSON();
   });
 
@@ -1617,7 +1673,9 @@ function init() {
   wireHelpTitles();
   showHideBgGroups();
   showHideCloudOptions();
+  rebuildCameoAddSelect();
   buildCameoList();
+  loadSpriteAnimationOptions();
   initStars();
   initClouds();
   render();

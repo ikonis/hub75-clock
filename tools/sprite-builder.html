@@ -156,6 +156,7 @@ let animation={name:'new_cameo',width:64,height:32,speed:1,loop:true,persistent:
 let currentAnimFile='', selectedAnimFile='', animDirty=false, frameIndex=0, playing=false, playTimer=null;
 let lastSavedAnimJSON='';
 let animDrag=null;
+let generateFromPreset=true;
 const requestedMode=new URLSearchParams(location.search).get('mode');
 let builderMode=(requestedMode==='animation'||requestedMode==='cameo')?'animation':(requestedMode==='sprite'?'sprite':(localStorage.getItem('hub75-builder-mode')||'sprite'));
 const spriteCache=new Map();
@@ -175,6 +176,8 @@ const isCustomMovement=()=>((animation.movement||{}).mode||'random_sweep')==='cu
 function currentEditorJSON(){return el('json-out')?.value||''}
 function markDirty(v=true){dirty=!!v&&currentEditorJSON()!==lastSavedSpriteJSON; el('status').textContent=dirty?'Unsaved':'Ready';}
 function markAnimDirty(v=true){animDirty=!!v&&currentEditorJSON()!==lastSavedAnimJSON}
+function spriteChanged(){updateJSON();dirty=lastSavedSpriteJSON?currentEditorJSON()!==lastSavedSpriteJSON:dirty;return dirty}
+function animationChanged(){updateJSON();animDirty=lastSavedAnimJSON?currentEditorJSON()!==lastSavedAnimJSON:animDirty;return animDirty}
 function setMode(mode){
   builderMode=mode==='animation'?'animation':'sprite';
   try{localStorage.setItem('hub75-builder-mode',builderMode)}catch(e){}
@@ -349,7 +352,7 @@ function dirSign(dir){
   return 1;
 }
 function ensurePresetFrames(){
-  if(isCustomMovement())return;
+  if(isCustomMovement()||!generateFromPreset)return;
   const mv=animation.movement||{}, mode=mv.mode||'random_sweep', dir=mv.direction||'left_to_right';
   const spriteName=el('f-sprite').value||((animation.frames?.[frameIndex]?.sprites?.[0]||{}).sprite)||'rocket';
   const frames=[], steps=24, dur=80, amp=Math.max(1,parseFloat(mv.stray)||3);
@@ -386,7 +389,8 @@ async function renderAnimationFrame(idx){
   for(const item of (f.sprites||[])){
     const data=await getSpriteData(item.sprite); if(!data)continue;
     const spriteFrames=Array.isArray(data.frames)&&data.frames.length?data.frames:null;
-    const pixels=spriteFrames?(spriteFrames[idx%spriteFrames.length].pixels||data.pixels||[]):(data.pixels||[]);
+    const frameNo=item.frame!==undefined?parseInt(item.frame)||0:idx;
+    const pixels=spriteFrames?(spriteFrames[frameNo%spriteFrames.length].pixels||data.pixels||[]):(data.pixels||[]);
     const rotation=(parseFloat(item.rotation)||0)+((animation.movement&&animation.movement.spin)?idx*(parseFloat(animation.movement.spin_speed)||0):0);
     ctx.save();
     ctx.translate((item.x+(data.width||pixels[0]?.length||0)/2)*scale,(item.y+(data.height||pixels.length||0)/2)*scale);
@@ -446,7 +450,15 @@ function normalizeMovement(){
   if(animation.movement.direction==='right')animation.movement.direction='left_to_right';
   if(animation.persistent===undefined)animation.persistent=false;
 }
-function applyAnimation(data,dirtyState=false){animation={...blankAnimation(),...data};normalizeMovement();if(!Array.isArray(animation.frames)||!animation.frames.length)animation.frames=blankAnimation(animation.name).frames;frameIndex=0;syncAnimationFields();renderAnimationPreview();markAnimDirty(dirtyState)}
+function applyAnimation(data,dirtyState=false){
+  const hasFrames=Array.isArray(data.frames)&&data.frames.length;
+  animation={...blankAnimation(),...data};
+  if (!data.movement) animation.movement = { mode: 'custom', direction: 'none', random_start: false, fixed_x: 0, fixed_y: 0, count: 1, stray: 0 };
+  normalizeMovement();
+  generateFromPreset=!hasFrames;
+  if(!hasFrames)animation.frames=blankAnimation(animation.name).frames;
+  frameIndex=0;syncAnimationFields();renderAnimationPreview();markAnimDirty(dirtyState)
+}
 async function refreshAnimations(select=currentAnimFile){
   const r=await fetch('/api/animations',{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation list failed');
   const selects=[el('anim-select'),el('anim-select-top')];
@@ -465,7 +477,7 @@ async function loadAnimation(file){
 }
 async function saveAnimation(file=''){fromAnimationFields();ensurePresetFrames();const f=file||currentAnimFile||animFileName();const r=await fetch('/api/animation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:f,animation})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation save failed');currentAnimFile=selectedAnimFile=d.file;await refreshAnimations(currentAnimFile);updateJSON();lastSavedAnimJSON=currentEditorJSON();markAnimDirty(false);el('status').textContent=`Saved ${d.file}`}
 function stepFrame(delta){fromAnimationFields();frameIndex=clamp(frameIndex+delta,0,animation.frames.length-1);syncAnimationFields();renderAnimationPreview()}
-function setPlaying(v){playing=v;el('btn-anim-play').textContent=v?'Stop':'Play';if(playTimer){clearTimeout(playTimer);playTimer=null}if(v){fromAnimationFields();playNextFrame()}}
+function setPlaying(v){playing=v;el('btn-anim-play').textContent=v?'Stop':'Play';if(playTimer){clearTimeout(playTimer);playTimer=null}if(v){fromAnimationFields();frameIndex=0;playNextFrame()}}
 function playNextFrame(){
   if(!playing)return;
   ensurePresetFrames();
@@ -492,7 +504,7 @@ function applySprite(data,dirtyState=false){
   }
   spriteFrameIndex=0;normalizePixels();syncFields();buildGrid();renderPreview();buildSwatches();updateJSON();if(!dirtyState)lastSavedSpriteJSON=currentEditorJSON();markDirty(dirtyState)
 }
-function stepSpriteFrame(delta){fromFields();spriteFrameIndex=clamp(spriteFrameIndex+delta,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();buildSwatches();updateJSON()}
+function stepSpriteFrame(delta){fromFields();spriteFrameIndex=clamp(spriteFrameIndex+delta,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();buildSwatches();updateJSON();markDirty(spriteChanged())}
 function addSpriteFrame(copy=false){fromFields();const base=JSON.parse(JSON.stringify(sprite.frames[spriteFrameIndex]));if(!copy)base.duration_ms=parseInt(el('i-frame-duration').value)||100;sprite.frames.splice(spriteFrameIndex+1,0,base);spriteFrameIndex++;normalizePixels();syncFields();buildGrid();renderPreview();buildSwatches();updateJSON();markDirty(true)}
 function deleteSpriteFrame(){if(!sprite.frames||sprite.frames.length<=1)return;sprite.frames.splice(spriteFrameIndex,1);spriteFrameIndex=clamp(spriteFrameIndex,0,sprite.frames.length-1);normalizePixels();syncFields();buildGrid();renderPreview();buildSwatches();updateJSON();markDirty(true)}
 function addCameoFrame(copy=false){
@@ -516,7 +528,7 @@ async function refresh(select=currentFile){
   selectedFile=s.value||'';el('status').textContent=d.sprites.length?`${d.sprites.length} sprites`:'No sprites';syncAnimationFields();
 }
 async function loadSprite(file){const f=file||el('sprite-select').value;if(!f)return;const r=await fetch('/api/sprite?file='+encodeURIComponent(f),{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'load failed');currentFile=selectedFile=d.file;el('sprite-select').value=d.file;applySprite(d.sprite,false);lastSavedSpriteJSON=currentEditorJSON();markDirty(false);el('status').textContent=`Loaded ${d.file}`}
-async function saveSprite(file=''){fromFields();const f=file||currentFile||fileName();const r=await fetch('/api/sprite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:f,sprite})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'save failed');currentFile=selectedFile=d.file;await refresh(currentFile);updateJSON();lastSavedSpriteJSON=currentEditorJSON();markDirty(false);el('status').textContent=`Saved ${d.file}`}
+async function saveSprite(file=''){fromFields();const f=file||currentFile||fileName();const r=await fetch('/api/sprite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:f,sprite})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'save failed');currentFile=selectedFile=d.file;spriteCache.delete(d.file);spriteCache.delete(d.file.replace(/\.json$/,''));await refresh(currentFile);updateJSON();lastSavedSpriteJSON=currentEditorJSON();markDirty(false);renderAnimationPreview();el('status').textContent=`Saved ${d.file}`}
 
 function wire(){
   setMode(builderMode);
@@ -540,27 +552,28 @@ function wire(){
   el('btn-sprite-frame-del').onclick=()=>deleteSpriteFrame();
   el('btn-new').onclick=()=>{
     if(builderMode==='animation'){el('btn-anim-new').click();return}
-    if(dirty&&!confirm('Discard unsaved changes?'))return;currentFile=selectedFile='';applySprite(blank(prompt('Sprite name:','new_sprite')||'new_sprite'),true)
+    if(spriteChanged()&&!confirm('Discard unsaved changes?'))return;currentFile=selectedFile='';applySprite(blank(prompt('Sprite name:','new_sprite')||'new_sprite'),true)
   };
   el('btn-save').onclick=()=>builderMode==='animation'?saveAnimation().catch(e=>alert(e.message)):saveSprite().catch(e=>alert(e.message));
   el('btn-save-as').onclick=()=>{
     if(builderMode==='animation'){el('btn-anim-save-as').click();return}
     const f=prompt('Save sprite as:',currentFile||fileName());if(f)saveSprite(f.toLowerCase().endsWith('.json')?f:f+'.json').catch(e=>alert(e.message))
   };
-  el('sprite-select').onchange=e=>{const f=e.target.value;if(dirty&&!confirm('Discard unsaved changes and load another sprite?')){if(selectedFile)e.target.value=selectedFile;else e.target.selectedIndex=-1;return}loadSprite(f).catch(err=>alert(err.message))};
+  el('sprite-select').onchange=e=>{const f=e.target.value;if(spriteChanged()&&!confirm('Discard unsaved changes and load another sprite?')){if(selectedFile)e.target.value=selectedFile;else e.target.selectedIndex=-1;return}loadSprite(f).catch(err=>alert(err.message))};
   el('json-out').oninput=()=>{if(syncing)return;try{JSON.parse(el('json-out').value);el('json-status').textContent='Valid edit';el('json-status').className='ok'}catch(e){el('json-status').textContent=e.message;el('json-status').className='err'}};
   el('btn-apply').onclick=()=>{try{builderMode==='animation'?applyAnimation(JSON.parse(el('json-out').value),true):applySprite(JSON.parse(el('json-out').value),true)}catch(e){alert(e.message)}};
   el('btn-copy').onclick=()=>navigator.clipboard&&navigator.clipboard.writeText(el('json-out').value);
   el('tab-sprite').onclick=()=>setMode('sprite');el('tab-animation').onclick=()=>setMode('animation');
-  ['a-name','a-speed','a-loop','a-move-mode','a-direction','a-random-start','a-random-facing','a-persistent','a-fixed-x','a-fixed-y','a-count','a-stray','a-spin','a-spin-speed','f-duration','f-sprite','f-x','f-y','f-rotation'].forEach(id=>el(id).addEventListener('input',()=>{fromAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)}));
+  ['a-name','a-speed','a-loop','a-persistent','f-duration','f-x','f-y','f-rotation'].forEach(id=>el(id).addEventListener('input',()=>{fromAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)}));
+  ['a-move-mode','a-direction','a-random-start','a-random-facing','a-fixed-x','a-fixed-y','a-count','a-stray','a-spin','a-spin-speed','f-sprite'].forEach(id=>el(id).addEventListener('input',()=>{generateFromPreset=true;fromAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)}));
   el('anim-preview').addEventListener('pointerdown',e=>startAnimationDrag(e));
   el('anim-preview').addEventListener('pointermove',moveAnimationDrag);
   el('anim-preview').addEventListener('pointerup',endAnimationDrag);
   el('anim-preview').addEventListener('pointercancel',endAnimationDrag);
-  const onAnimSelect=e=>{const f=e.target.value;if(animDirty&&!confirm('Discard unsaved cameo changes?')){if(selectedAnimFile){el('anim-select').value=selectedAnimFile;el('anim-select-top').value=selectedAnimFile}return}loadAnimation(f).catch(err=>alert(err.message))};
+  const onAnimSelect=e=>{const f=e.target.value;if(animationChanged()&&!confirm('Discard unsaved cameo changes?')){if(selectedAnimFile){el('anim-select').value=selectedAnimFile;el('anim-select-top').value=selectedAnimFile}return}loadAnimation(f).catch(err=>alert(err.message))};
   el('anim-select').onchange=onAnimSelect;
   el('anim-select-top').onchange=onAnimSelect;
-  el('btn-anim-new').onclick=()=>{if(animDirty&&!confirm('Discard unsaved cameo changes?'))return;currentAnimFile=selectedAnimFile='';applyAnimation(blankAnimation(prompt('Cameo name:','new_cameo')||'new_cameo'),true)};
+  el('btn-anim-new').onclick=()=>{if(animationChanged()&&!confirm('Discard unsaved cameo changes?'))return;currentAnimFile=selectedAnimFile='';applyAnimation(blankAnimation(prompt('Cameo name:','new_cameo')||'new_cameo'),true)};
   el('btn-anim-save').onclick=()=>saveAnimation().catch(e=>alert(e.message));
   el('btn-anim-save-as').onclick=()=>{const f=prompt('Save cameo as:',currentAnimFile||animFileName());if(f)saveAnimation(f.toLowerCase().endsWith('.json')?f:f+'.json').catch(e=>alert(e.message))};
   el('btn-frame-prev').onclick=()=>stepFrame(-1);el('btn-frame-next').onclick=()=>stepFrame(1);
