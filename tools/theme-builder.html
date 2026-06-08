@@ -1341,34 +1341,51 @@ const ALL_ANIMATIONS = [
   'snowman','snake','sprite','submarine','testPlane','tractor','tumbleweed','ufo'
 ];
 let spriteAnimationOptions = [];
+let spriteOptions = [];
 
-async function loadSpriteAnimationOptions() {
+async function loadBuilderAssetOptions() {
   try {
-    const r = await fetch('/api/animations', { cache: 'no-store' });
-    const d = await r.json();
-    if (!r.ok || !d.ok || !Array.isArray(d.animations)) return;
-    spriteAnimationOptions = d.animations.map(f => f.replace(/\.json$/, '')).sort();
+    const [ar, sr] = await Promise.all([
+      fetch('/api/animations', { cache: 'no-store' }),
+      fetch('/api/sprites', { cache: 'no-store' }),
+    ]);
+    const ad = await ar.json();
+    const sd = await sr.json();
+    if (ar.ok && ad.ok && Array.isArray(ad.animations)) {
+      spriteAnimationOptions = ad.animations.map(f => f.replace(/\.json$/, '')).sort();
+    }
+    if (sr.ok && sd.ok && Array.isArray(sd.sprites)) {
+      spriteOptions = sd.sprites.map(f => f.replace(/\.json$/, '')).sort();
+    }
     rebuildCameoAddSelect();
     buildCameoList();
   } catch (err) {
     spriteAnimationOptions = [];
+    spriteOptions = [];
   }
 }
 
 function cameoKey(c) {
-  if (c.name === 'sprite') return c.animation ? `sprite:${c.animation}` : `sprite:${c.sprite || ''}`;
+  if (c.name === 'sprite') return c.animation ? `spriteanim:${c.animation}` : 'sprite';
   return c.name;
 }
 
 function formatCameoOption(value) {
-  return value.startsWith('sprite:') ? `sprite: ${value.slice(7)}` : value;
+  return value.startsWith('spriteanim:') ? `sprite animation: ${value.slice(11)}` : value;
 }
 
 function allCameoOptions() {
   return [
     ...ALL_ANIMATIONS,
-    ...spriteAnimationOptions.map(name => `sprite:${name}`),
+    ...spriteAnimationOptions.map(name => `spriteanim:${name}`),
   ];
+}
+
+function assetSelectOptions(options, selected, fallback = '') {
+  const values = [...options];
+  if (selected && !values.includes(selected)) values.unshift(selected);
+  if (!values.length && fallback) values.push(fallback);
+  return values.map(v => `<option value="${v}"${v === selected ? ' selected' : ''}>${v}</option>`).join('');
 }
 
 function rebuildCameoAddSelect() {
@@ -1399,11 +1416,9 @@ function buildCameoList() {
       <label>Rate/min</label>
       <input type="number" data-ci="${idx}" data-f="cpm" value="${c.chance_per_minute||8}" min="0.1" max="60" step="0.1" style="width:58px">
       <button class="btn btn-d" data-ci="${idx}" data-f="del">x</button>
-    </div>${c.name === 'sprite' ? `<div class="li-row">
+    </div>${c.name === 'sprite' && !c.animation ? `<div class="li-row">
       <label>Sprite</label>
-      <input type="text" data-ci="${idx}" data-f="sprite" value="${c.sprite||''}" placeholder="rocket" title="Single sprite JSON name, without .json">
-      <label>Animation</label>
-      <input type="text" data-ci="${idx}" data-f="animation" value="${c.animation||''}" placeholder="bat_swarm" title="Sprite-animation JSON name, without .json">
+      <select data-ci="${idx}" data-f="sprite" title="Single sprite JSON name, without .json">${assetSelectOptions(spriteOptions, c.sprite || '', 'rocket')}</select>
       <label class="hint"><input type="checkbox" data-ci="${idx}" data-f="loop"${c.loop?' checked':''}> Loop</label>
     </div>` : ''}`;
     list.appendChild(li);
@@ -1456,14 +1471,17 @@ function cameoFieldChange(e) {
       e.target.value = cameoKey(theme.cameos[idx]);
       return;
     }
-    if (e.target.value.startsWith('sprite:')) {
-      theme.cameos[idx] = { name: 'sprite', animation: e.target.value.slice(7), chance_per_minute: theme.cameos[idx].chance_per_minute || 8 };
+    if (e.target.value.startsWith('spriteanim:')) {
+      theme.cameos[idx] = { name: 'sprite', animation: e.target.value.slice(11), chance_per_minute: theme.cameos[idx].chance_per_minute || 8 };
     } else {
       theme.cameos[idx] = { ...theme.cameos[idx], name: e.target.value };
       if (e.target.value !== 'sprite') {
         delete theme.cameos[idx].sprite;
         delete theme.cameos[idx].animation;
         delete theme.cameos[idx].loop;
+      } else {
+        delete theme.cameos[idx].animation;
+        theme.cameos[idx].sprite = theme.cameos[idx].sprite || spriteOptions[0] || 'rocket';
       }
     }
     buildCameoList();
@@ -1559,10 +1577,12 @@ function wireControls() {
       updateCameoAddOptions();
       return;
     }
-    if (name.startsWith('sprite:')) {
-      theme.cameos.push({ name: 'sprite', animation: name.slice(7), chance_per_minute: 8 });
+    if (name.startsWith('spriteanim:')) {
+      theme.cameos.push({ name: 'sprite', animation: name.slice(11), chance_per_minute: 8 });
     } else {
-      theme.cameos.push({ name, chance_per_minute: 8 });
+      theme.cameos.push(name === 'sprite'
+        ? { name, sprite: spriteOptions[0] || 'rocket', chance_per_minute: 8 }
+        : { name, chance_per_minute: 8 });
     }
     buildCameoList(); render(); updateJSON();
   });
@@ -1675,7 +1695,7 @@ function init() {
   showHideCloudOptions();
   rebuildCameoAddSelect();
   buildCameoList();
-  loadSpriteAnimationOptions();
+  loadBuilderAssetOptions();
   initStars();
   initClouds();
   render();
