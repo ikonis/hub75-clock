@@ -53,7 +53,8 @@ body:not(.cameo-custom) .custom-only{display:none!important}
   <span class="title">HUB75 Sprite Builder</span>
   <div class="hdr-btns">
     <div class="tabs"><a class="btn tab" href="/theme-builder.html">Themes</a><button class="btn tab active" id="tab-sprite">Sprite</button><button class="btn tab" id="tab-animation">Cameo</button></div>
-    <select id="sprite-select"></select>
+    <select id="sprite-select" class="sprite-only"></select>
+    <select id="anim-select-top" class="anim-only"></select>
     <button class="btn" id="btn-new">New</button>
     <button class="btn btn-p" id="btn-save">Save</button>
     <button class="btn" id="btn-save-as">Save As</button>
@@ -446,8 +447,22 @@ function normalizeMovement(){
   if(animation.persistent===undefined)animation.persistent=false;
 }
 function applyAnimation(data,dirtyState=false){animation={...blankAnimation(),...data};normalizeMovement();if(!Array.isArray(animation.frames)||!animation.frames.length)animation.frames=blankAnimation(animation.name).frames;frameIndex=0;syncAnimationFields();renderAnimationPreview();markAnimDirty(dirtyState)}
-async function refreshAnimations(select=currentAnimFile){const r=await fetch('/api/animations',{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation list failed');const s=el('anim-select');s.innerHTML='';for(const f of d.animations){const o=document.createElement('option');o.value=f;o.textContent=f;s.appendChild(o)}if(select&&d.animations.includes(select))s.value=select;else if(d.animations.length)s.value=d.animations[0];selectedAnimFile=s.value||''}
-async function loadAnimation(file){const f=file||el('anim-select').value;if(!f)return;const r=await fetch('/api/animation?file='+encodeURIComponent(f),{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation load failed');currentAnimFile=selectedAnimFile=d.file;el('anim-select').value=d.file;applyAnimation(d.animation,false);lastSavedAnimJSON=currentEditorJSON();markAnimDirty(false)}
+async function refreshAnimations(select=currentAnimFile){
+  const r=await fetch('/api/animations',{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation list failed');
+  const selects=[el('anim-select'),el('anim-select-top')];
+  for(const s of selects){
+    s.innerHTML='';
+    for(const f of d.animations){const o=document.createElement('option');o.value=f;o.textContent=f;s.appendChild(o)}
+    if(select&&d.animations.includes(select))s.value=select;else if(d.animations.length)s.value=d.animations[0];
+  }
+  selectedAnimFile=selects[0].value||''
+}
+async function loadAnimation(file){
+  const f=file||el('anim-select').value||el('anim-select-top').value;if(!f)return;
+  const r=await fetch('/api/animation?file='+encodeURIComponent(f),{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation load failed');
+  currentAnimFile=selectedAnimFile=d.file;el('anim-select').value=d.file;el('anim-select-top').value=d.file;
+  applyAnimation(d.animation,false);lastSavedAnimJSON=currentEditorJSON();markAnimDirty(false);el('status').textContent=`Loaded ${d.file}`
+}
 async function saveAnimation(file=''){fromAnimationFields();ensurePresetFrames();const f=file||currentAnimFile||animFileName();const r=await fetch('/api/animation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:f,animation})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'animation save failed');currentAnimFile=selectedAnimFile=d.file;await refreshAnimations(currentAnimFile);updateJSON();lastSavedAnimJSON=currentEditorJSON();markAnimDirty(false);el('status').textContent=`Saved ${d.file}`}
 function stepFrame(delta){fromAnimationFields();frameIndex=clamp(frameIndex+delta,0,animation.frames.length-1);syncAnimationFields();renderAnimationPreview()}
 function setPlaying(v){playing=v;el('btn-anim-play').textContent=v?'Stop':'Play';if(playTimer){clearTimeout(playTimer);playTimer=null}if(v){fromAnimationFields();playNextFrame()}}
@@ -523,9 +538,15 @@ function wire(){
   el('btn-sprite-frame-add').onclick=()=>addSpriteFrame(false);
   el('btn-sprite-frame-dupe').onclick=()=>addSpriteFrame(true);
   el('btn-sprite-frame-del').onclick=()=>deleteSpriteFrame();
-  el('btn-new').onclick=()=>{if(dirty&&!confirm('Discard unsaved changes?'))return;currentFile=selectedFile='';applySprite(blank(prompt('Sprite name:','new_sprite')||'new_sprite'),true)};
-  el('btn-save').onclick=()=>saveSprite().catch(e=>alert(e.message));
-  el('btn-save-as').onclick=()=>{const f=prompt('Save sprite as:',currentFile||fileName());if(f)saveSprite(f.toLowerCase().endsWith('.json')?f:f+'.json').catch(e=>alert(e.message))};
+  el('btn-new').onclick=()=>{
+    if(builderMode==='animation'){el('btn-anim-new').click();return}
+    if(dirty&&!confirm('Discard unsaved changes?'))return;currentFile=selectedFile='';applySprite(blank(prompt('Sprite name:','new_sprite')||'new_sprite'),true)
+  };
+  el('btn-save').onclick=()=>builderMode==='animation'?saveAnimation().catch(e=>alert(e.message)):saveSprite().catch(e=>alert(e.message));
+  el('btn-save-as').onclick=()=>{
+    if(builderMode==='animation'){el('btn-anim-save-as').click();return}
+    const f=prompt('Save sprite as:',currentFile||fileName());if(f)saveSprite(f.toLowerCase().endsWith('.json')?f:f+'.json').catch(e=>alert(e.message))
+  };
   el('sprite-select').onchange=e=>{const f=e.target.value;if(dirty&&!confirm('Discard unsaved changes and load another sprite?')){if(selectedFile)e.target.value=selectedFile;else e.target.selectedIndex=-1;return}loadSprite(f).catch(err=>alert(err.message))};
   el('json-out').oninput=()=>{if(syncing)return;try{JSON.parse(el('json-out').value);el('json-status').textContent='Valid edit';el('json-status').className='ok'}catch(e){el('json-status').textContent=e.message;el('json-status').className='err'}};
   el('btn-apply').onclick=()=>{try{builderMode==='animation'?applyAnimation(JSON.parse(el('json-out').value),true):applySprite(JSON.parse(el('json-out').value),true)}catch(e){alert(e.message)}};
@@ -536,7 +557,9 @@ function wire(){
   el('anim-preview').addEventListener('pointermove',moveAnimationDrag);
   el('anim-preview').addEventListener('pointerup',endAnimationDrag);
   el('anim-preview').addEventListener('pointercancel',endAnimationDrag);
-  el('anim-select').onchange=e=>{const f=e.target.value;if(animDirty&&!confirm('Discard unsaved cameo changes?')){if(selectedAnimFile)e.target.value=selectedAnimFile;return}loadAnimation(f).catch(err=>alert(err.message))};
+  const onAnimSelect=e=>{const f=e.target.value;if(animDirty&&!confirm('Discard unsaved cameo changes?')){if(selectedAnimFile){el('anim-select').value=selectedAnimFile;el('anim-select-top').value=selectedAnimFile}return}loadAnimation(f).catch(err=>alert(err.message))};
+  el('anim-select').onchange=onAnimSelect;
+  el('anim-select-top').onchange=onAnimSelect;
   el('btn-anim-new').onclick=()=>{if(animDirty&&!confirm('Discard unsaved cameo changes?'))return;currentAnimFile=selectedAnimFile='';applyAnimation(blankAnimation(prompt('Cameo name:','new_cameo')||'new_cameo'),true)};
   el('btn-anim-save').onclick=()=>saveAnimation().catch(e=>alert(e.message));
   el('btn-anim-save-as').onclick=()=>{const f=prompt('Save cameo as:',currentAnimFile||animFileName());if(f)saveAnimation(f.toLowerCase().endsWith('.json')?f:f+'.json').catch(e=>alert(e.message))};
