@@ -919,7 +919,7 @@ function buildThemeObject() {
   if (theme.stars_enabled) cameoOut.push({ name: 'stars' });
   for (const c of theme.cameos) {
     if (c.name === 'stars' || c.name === 'clouds') continue;
-    if (c.name === 'snake') cameoOut.push({ name: c.name });
+    if (isPersistentCameo(c.name)) cameoOut.push({ name: c.name });
     else if (c.name === 'sprite') {
       const out = { name: c.name, chance_per_minute: c.chance_per_minute };
       if (c.sprite) out.sprite = c.sprite;
@@ -1340,8 +1340,13 @@ const ALL_ANIMATIONS = [
   'jack_o_lantern','meteor','rainbow','rocket','santa','satellite',
   'snowman','snake','sprite','submarine','testPlane','tractor','tumbleweed','ufo'
 ];
+const PERSISTENT_CAMEOS = new Set(['firefly', 'flutterflies', 'snake']);
 let spriteAnimationOptions = [];
 let spriteOptions = [];
+
+function isPersistentCameo(name) {
+  return PERSISTENT_CAMEOS.has(name);
+}
 
 async function loadBuilderAssetOptions() {
   try {
@@ -1371,6 +1376,7 @@ function cameoKey(c) {
 }
 
 function formatCameoOption(value) {
+  if (isPersistentCameo(value)) return `${value} (persistent)`;
   return value.startsWith('spriteanim:') ? `sprite animation: ${value.slice(11)}` : value;
 }
 
@@ -1409,12 +1415,14 @@ function buildCameoList() {
     ).join('');
     const li = document.createElement('div');
     li.className = 'li';
+    const persistent = isPersistentCameo(c.name);
     li.innerHTML = `<div class="li-row">
       <label>Name</label>
       <select data-ci="${idx}" data-f="name">${opts}</select>
       <span class="spacer"></span>
+      ${persistent ? `<span class="hint" title="Persistent cameos run continuously while this theme is active.">Persistent</span>` : `
       <label>Rate/min</label>
-      <input type="number" data-ci="${idx}" data-f="cpm" value="${c.chance_per_minute||8}" min="0.1" max="60" step="0.1" style="width:58px">
+      <input type="number" data-ci="${idx}" data-f="cpm" value="${c.chance_per_minute||8}" min="0.1" max="60" step="0.1" style="width:58px">`}
       <button class="btn btn-d" data-ci="${idx}" data-f="del">x</button>
     </div>${c.name === 'sprite' && !c.animation ? `<div class="li-row">
       <label>Sprite</label>
@@ -1475,13 +1483,20 @@ function cameoFieldChange(e) {
       theme.cameos[idx] = { name: 'sprite', animation: e.target.value.slice(11), chance_per_minute: theme.cameos[idx].chance_per_minute || 8 };
     } else {
       theme.cameos[idx] = { ...theme.cameos[idx], name: e.target.value };
-      if (e.target.value !== 'sprite') {
+      if (isPersistentCameo(e.target.value)) {
+        delete theme.cameos[idx].chance_per_minute;
         delete theme.cameos[idx].sprite;
         delete theme.cameos[idx].animation;
         delete theme.cameos[idx].loop;
+      } else if (e.target.value !== 'sprite') {
+        delete theme.cameos[idx].sprite;
+        delete theme.cameos[idx].animation;
+        delete theme.cameos[idx].loop;
+        theme.cameos[idx].chance_per_minute = theme.cameos[idx].chance_per_minute || 8;
       } else {
         delete theme.cameos[idx].animation;
         theme.cameos[idx].sprite = theme.cameos[idx].sprite || spriteOptions[0] || 'rocket';
+        theme.cameos[idx].chance_per_minute = theme.cameos[idx].chance_per_minute || 8;
       }
     }
     buildCameoList();
@@ -1582,7 +1597,7 @@ function wireControls() {
     } else {
       theme.cameos.push(name === 'sprite'
         ? { name, sprite: spriteOptions[0] || 'rocket', chance_per_minute: 8 }
-        : { name, chance_per_minute: 8 });
+        : (isPersistentCameo(name) ? { name } : { name, chance_per_minute: 8 }));
     }
     buildCameoList(); render(); updateJSON();
   });

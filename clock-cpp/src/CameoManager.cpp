@@ -67,7 +67,7 @@ void CameoManager::loadPlugins() {
         { "clouds",          "foreground", true,  create_clouds          },
         { "comet",           "celestial",  false, create_comet           },
         { "easter_egg",      "foreground", false, create_easter_egg      },
-        { "firefly",         "foreground", false, create_firefly         },
+        { "firefly",         "foreground", true,  create_firefly         },
         { "fireworks",       "foreground", false, create_fireworks       },
         { "flutterflies",    "foreground", true,  create_flutterflies    },
         { "ghost",           "foreground", false, create_ghost           },
