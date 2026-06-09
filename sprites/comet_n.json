@@ -1,0 +1,113 @@
+{
+  "name": "comet_n",
+  "width": 6,
+  "height": 6,
+  "motion": "right",
+  "speed": 0.9,
+  "frame_duration_ms": 90,
+  "frames": [
+    {
+      "duration_ms": 90,
+      "pixels": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          "#DFFFFF"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          "#89DFFF",
+          "#89DFFF"
+        ],
+        [
+          null,
+          null,
+          null,
+          "#4070D0",
+          "#4070D0",
+          null
+        ],
+        [
+          null,
+          null,
+          "#4070D0",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "#4070D0",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "#4070D0",
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ]
+    }
+  ],
+  "pixels": [
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      "#DFFFFF"
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      "#89DFFF",
+      "#89DFFF"
+    ],
+    [
+      null,
+      null,
+      null,
+      "#4070D0",
+      "#4070D0",
+      null
+    ],
+    [
+      null,
+      null,
+      "#4070D0",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      "#4070D0",
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      "#4070D0",
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  ]
+}

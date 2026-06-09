@@ -81,5 +81,11 @@
         }
       ]
     }
-  ]
+  ],
+  "behavior": {
+    "type": "one_shot",
+    "spawn_chance_per_minute": 8,
+    "cooldown_ms": 0
+  },
+  "source_cameo": "butterfly"
 }

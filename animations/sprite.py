@@ -26,7 +26,7 @@ class Animation:
 
         if self._animation:
             self._frames = self._animation.get("frames", []) or []
-            self._loop = bool(self._cameo.get("loop", False))
+            self._loop = bool(self._cameo.get("loop", self._animation.get("loop", False)))
             self._speed = float(self._animation.get("speed", self.speed)) * self.speed
             return
 

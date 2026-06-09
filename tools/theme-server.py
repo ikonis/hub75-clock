@@ -204,9 +204,21 @@ class ThemeBuilderHandler(BaseHTTPRequestHandler):
     def _list_animations(self):
         try:
             files = sorted(p.name for p in self.animations_dir.glob("*.json") if p.is_file())
+            meta = {}
+            for file in files:
+                try:
+                    data = json.loads((self.animations_dir / file).read_text(encoding="utf-8"))
+                    behavior = data.get("behavior") if isinstance(data, dict) else None
+                    if isinstance(behavior, dict):
+                        meta[file] = {
+                            "behavior": behavior.get("type", "one_shot"),
+                            "persistent": bool(data.get("persistent")),
+                        }
+                except Exception:
+                    continue
         except OSError as exc:
             return _json_response(self, 500, {"ok": False, "error": str(exc)})
-        return _json_response(self, 200, {"ok": True, "animations": files})
+        return _json_response(self, 200, {"ok": True, "animations": files, "animation_meta": meta})
 
     def _read_animation(self, name):
         try:

@@ -1,0 +1,47 @@
+{
+  "name": "cherry_n",
+  "width": 3,
+  "height": 3,
+  "motion": "right",
+  "speed": 0.1,
+  "frame_duration_ms": 100,
+  "frames": [
+    {
+      "duration_ms": 100,
+      "pixels": [
+        [
+          null,
+          "#E33A3A",
+          null
+        ],
+        [
+          "#E33A3A",
+          "#E33A3A",
+          "#E33A3A"
+        ],
+        [
+          null,
+          "#E33A3A",
+          null
+        ]
+      ]
+    }
+  ],
+  "pixels": [
+    [
+      null,
+      "#E33A3A",
+      null
+    ],
+    [
+      "#E33A3A",
+      "#E33A3A",
+      "#E33A3A"
+    ],
+    [
+      null,
+      "#E33A3A",
+      null
+    ]
+  ]
+}

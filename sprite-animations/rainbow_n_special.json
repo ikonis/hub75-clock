@@ -1,0 +1,36 @@
+{
+  "name": "rainbow_n_special",
+  "width": 64,
+  "height": 32,
+  "speed": 1,
+  "loop": false,
+  "persistent": false,
+  "behavior": {
+    "type": "scripted",
+    "runtime": "code",
+    "warning": "Runtime logic controls this cameo; editable art is a reference."
+  },
+  "movement": {
+    "mode": "custom",
+    "direction": "none",
+    "random_start": false,
+    "fixed_x": 28,
+    "fixed_y": 12,
+    "count": 1,
+    "stray": 0
+  },
+  "frames": [
+    {
+      "duration_ms": 220,
+      "sprites": [
+        {
+          "sprite": "rainbow_n",
+          "x": 28,
+          "y": 12,
+          "frame": 0
+        }
+      ]
+    }
+  ],
+  "notes": "Editable rainbow art reference. Old rainbow arc remains code-driven."
+}

@@ -172,8 +172,9 @@ public:
             _timeline = loadJson(jsonPath(cfg, "sprite_animations_dir", "/etc/hub75-clock/sprite-animations",
                                           requestedAnimation), "sprite animation");
             _speed = _timeline.value("speed", 1.0f) * speedMult;
+            _loop = _timeline.value("loop", false);
             if (cfg.contains("_cameo") && cfg["_cameo"].is_object())
-                _loop = cfg["_cameo"].value("loop", false);
+                _loop = cfg["_cameo"].value("loop", _loop);
             parseTimeline();
             return;
         }

@@ -1,0 +1,97 @@
+{
+  "name": "shooting_star_n",
+  "width": 6,
+  "height": 5,
+  "motion": "right",
+  "speed": 1.0,
+  "frame_duration_ms": 70,
+  "frames": [
+    {
+      "duration_ms": 70,
+      "pixels": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          "#FFFFFF"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          "#DCDCE6",
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "#787880",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "#787880",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "#787880",
+          null,
+          null,
+          null,
+          null
+        ]
+      ]
+    }
+  ],
+  "pixels": [
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      "#FFFFFF"
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      "#DCDCE6",
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      "#787880",
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      "#787880",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      "#787880",
+      null,
+      null,
+      null,
+      null
+    ]
+  ]
+}

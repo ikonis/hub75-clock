@@ -46,6 +46,9 @@ body.mode-sprite .anim-only{display:none!important}
 body.mode-animation #grid{display:none}
 body.mode-animation #anim-stage{display:flex}
 body:not(.cameo-custom) .custom-only{display:none!important}
+body:not(.cameo-behavior-one-shot) .behavior-one-shot{display:none!important}
+body:not(.cameo-behavior-ambient) .behavior-ambient{display:none!important}
+body:not(.cameo-behavior-scripted) .behavior-scripted{display:none!important}
 </style>
 </head>
 <body>
@@ -104,17 +107,25 @@ body:not(.cameo-custom) .custom-only{display:none!important}
         <div class="f"><label>Load</label><select id="anim-select"></select></div>
         <div class="row"><button class="btn" id="btn-anim-new">New</button><button class="btn btn-p" id="btn-anim-save">Save</button><button class="btn" id="btn-anim-save-as">Save As</button></div>
         <div class="f"><label>Name</label><input id="a-name" type="text" value="new_cameo"></div>
+        <div class="f"><label>Behavior</label><select id="a-behavior"><option value="one_shot">One-shot movement</option><option value="ambient">Ambient persistent</option><option value="scripted">Scripted/special</option></select></div>
+        <p class="hint behavior-scripted">Runtime code controls scripted/special cameos. The editable sprite frames here are reference art unless runtime support is added.</p>
         <div class="f"><label>Speed</label><input id="a-speed" type="number" min="0.05" max="5" step="0.05" value="1"></div>
-        <div class="f"><label>Move</label><select id="a-move-mode"><option value="random_sweep">Random sweep</option><option value="fly_random_height">Fly random height</option><option value="fly_fixed">Fly fixed</option><option value="fly_diagonal">Fly diagonal</option><option value="launch">Launch</option><option value="drift">Drift swarm</option><option value="custom">Custom frames</option></select></div>
-        <div class="f"><label>Direction</label><select id="a-direction"><option value="left_to_right">left to right</option><option value="right_to_left">right to left</option><option value="down_right">down right</option><option value="down_left">down left</option><option value="up_right">up right</option><option value="up_left">up left</option><option value="up">up</option><option value="down">down</option><option value="random">random</option></select></div>
-        <div class="row"><label class="hint"><input type="checkbox" id="a-random-start" checked> Random start</label><label class="hint"><input type="checkbox" id="a-random-facing"> Random facing</label></div>
+        <div class="f behavior-one-shot behavior-ambient"><label>Move</label><select id="a-move-mode"><option value="random_sweep">Random sweep</option><option value="fly_random_height">Fly random height</option><option value="fly_fixed">Fly fixed</option><option value="fly_diagonal">Fly diagonal</option><option value="launch">Launch</option><option value="drift">Drift swarm</option><option value="custom">Custom frames</option></select></div>
+        <div class="f behavior-one-shot behavior-ambient"><label>Direction</label><select id="a-direction"><option value="left_to_right">left to right</option><option value="right_to_left">right to left</option><option value="down_right">down right</option><option value="down_left">down left</option><option value="up_right">up right</option><option value="up_left">up left</option><option value="up">up</option><option value="down">down</option><option value="random">random</option></select></div>
+        <div class="row behavior-one-shot behavior-ambient"><label class="hint"><input type="checkbox" id="a-random-start" checked> Random start</label><label class="hint"><input type="checkbox" id="a-random-facing"> Random facing</label></div>
         <div class="row"><label class="hint"><input type="checkbox" id="a-persistent"> Persistent</label></div>
-        <div class="f"><label>Fixed X</label><input id="a-fixed-x" type="number" min="-64" max="128" value="28"></div>
-        <div class="f"><label>Fixed Y</label><input id="a-fixed-y" type="number" min="-32" max="64" value="12"></div>
-        <div class="f"><label>Sprites</label><input id="a-count" type="number" min="1" max="12" value="1"></div>
-        <div class="f"><label>Stray</label><input id="a-stray" type="number" min="0" max="12" step="0.5" value="3"></div>
-        <div class="f"><label>Spin</label><select id="a-spin"><option value="false">off</option><option value="true">on</option></select></div>
-        <div class="f"><label>Spin Speed</label><input id="a-spin-speed" type="number" min="-5" max="5" step="0.1" value="0"></div>
+        <div class="f behavior-one-shot behavior-ambient"><label>Fixed X</label><input id="a-fixed-x" type="number" min="-64" max="128" value="28"></div>
+        <div class="f behavior-one-shot behavior-ambient"><label>Fixed Y</label><input id="a-fixed-y" type="number" min="-32" max="64" value="12"></div>
+        <div class="f behavior-one-shot"><label>Spawn/min</label><input id="a-spawn" type="number" min="0.1" max="60" step="0.1" value="8"></div>
+        <div class="f behavior-one-shot"><label>Cooldown</label><input id="a-cooldown" type="number" min="0" max="600000" step="100" value="0"><span class="pct-val">ms</span></div>
+        <div class="f behavior-ambient"><label>Min Count</label><input id="a-count-min" type="number" min="1" max="24" value="3"></div>
+        <div class="f behavior-ambient"><label>Max Count</label><input id="a-count-max" type="number" min="1" max="24" value="8"></div>
+        <div class="f behavior-one-shot behavior-ambient"><label>Sprites</label><input id="a-count" type="number" min="1" max="12" value="1"></div>
+        <div class="f behavior-one-shot behavior-ambient"><label>Stray</label><input id="a-stray" type="number" min="0" max="12" step="0.5" value="3"></div>
+        <div class="f behavior-ambient"><label>Lifetime</label><input id="a-lifetime" type="number" min="0" max="600000" step="100" value="0"><span class="pct-val">ms</span></div>
+        <div class="row behavior-ambient"><label class="hint"><input type="checkbox" id="a-flicker"> Flicker</label><label class="hint"><input type="checkbox" id="a-respawn" checked> Respawn</label></div>
+        <div class="f behavior-one-shot behavior-ambient"><label>Spin</label><select id="a-spin"><option value="false">off</option><option value="true">on</option></select></div>
+        <div class="f behavior-one-shot behavior-ambient"><label>Spin Speed</label><input id="a-spin-speed" type="number" min="-5" max="5" step="0.1" value="0"></div>
         <div class="f"><label>Loop</label><select id="a-loop"><option value="true">yes</option><option value="false">no</option></select></div>
         <div class="row custom-only"><button class="btn" id="btn-frame-prev">Prev</button><span class="hint" id="frame-label">Frame 1/1</span><button class="btn" id="btn-frame-next">Next</button></div>
         <div class="row"><button class="btn custom-only" id="btn-frame-add">Add</button><button class="btn custom-only" id="btn-frame-dupe">Duplicate</button><button class="btn custom-only" id="btn-frame-del">Delete</button><button class="btn" id="btn-anim-play">Play</button></div>
@@ -152,7 +163,7 @@ let currentFile='', selectedFile='', color='#dcdce6', alpha=255, tool='paint', d
 let lastSavedSpriteJSON='';
 let zoom=parseInt(localStorage.getItem('hub75-sprite-zoom')||'25',10)||25;
 let spriteFrameIndex=0;
-let animation={name:'new_cameo',width:64,height:32,speed:1,loop:true,persistent:false,movement:{mode:'random_sweep',direction:'left_to_right',random_start:true,random_facing:false,fixed_x:28,fixed_y:12,count:1,stray:3,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]};
+let animation={name:'new_cameo',width:64,height:32,speed:1,loop:true,persistent:false,behavior:{type:'one_shot',spawn_chance_per_minute:8,cooldown_ms:0},movement:{mode:'random_sweep',direction:'left_to_right',random_start:true,random_facing:false,fixed_x:28,fixed_y:12,count:1,stray:3,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]};
 let currentAnimFile='', selectedAnimFile='', animDirty=false, frameIndex=0, playing=false, playTimer=null;
 let lastSavedAnimJSON='';
 let animDrag=null;
@@ -169,9 +180,11 @@ const fileName=()=>cleanName(sprite.name)+'.json';
 const animFileName=()=>cleanName(animation.name)+'.json';
 const blankPixels=(w,h)=>Array.from({length:h},()=>Array.from({length:w},()=>null));
 const blank=(name='new_sprite',w=8,h=8)=>({name,width:w,height:h,motion:'left',speed:0.5,movement:{mode:'straight',direction:'left',random_start:true,random_facing:false},frame_duration_ms:100,frames:[{duration_ms:100,pixels:blankPixels(w,h)}],pixels:blankPixels(w,h)});
-const blankAnimation=(name='new_cameo')=>({name,width:64,height:32,speed:1,loop:true,persistent:false,movement:{mode:'random_sweep',direction:'left_to_right',random_start:true,random_facing:false,fixed_x:28,fixed_y:12,count:1,stray:3,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]});
+const blankBehavior=(type='one_shot')=>type==='ambient'?{type:'ambient',count_min:3,count_max:8,drift:3,flicker:false,lifetime_ms:0,respawn:true}:type==='scripted'?{type:'scripted',runtime:'code',warning:'Runtime logic controls this cameo; editable art is a reference.'}:{type:'one_shot',spawn_chance_per_minute:8,cooldown_ms:0};
+const blankAnimation=(name='new_cameo')=>({name,width:64,height:32,speed:1,loop:true,persistent:false,behavior:blankBehavior('one_shot'),movement:{mode:'random_sweep',direction:'left_to_right',random_start:true,random_facing:false,fixed_x:28,fixed_y:12,count:1,stray:3,spin:false,spin_speed:0},frames:[{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]}]});
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const isCustomMovement=()=>((animation.movement||{}).mode||'random_sweep')==='custom';
+const behaviorType=()=>((animation.behavior||{}).type||'one_shot');
 
 function currentEditorJSON(){return el('json-out')?.value||''}
 function markDirty(v=true){dirty=!!v&&currentEditorJSON()!==lastSavedSpriteJSON; el('status').textContent=dirty?'Unsaved':'Ready';}
@@ -190,6 +203,10 @@ function setMode(mode){
 }
 function updateCameoModeUI(){
   document.body.classList.toggle('cameo-custom',builderMode==='animation'&&isCustomMovement());
+  const type=behaviorType();
+  document.body.classList.toggle('cameo-behavior-one-shot',builderMode==='animation'&&type==='one_shot');
+  document.body.classList.toggle('cameo-behavior-ambient',builderMode==='animation'&&type==='ambient');
+  document.body.classList.toggle('cameo-behavior-scripted',builderMode==='animation'&&type==='scripted');
 }
 function cellSize(){return Math.max(8,Math.round(24*(zoom/25)))}
 function setZoom(v){
@@ -325,9 +342,12 @@ async function getSpriteData(name){
 }
 function syncAnimationFields(){
   const mv=animation.movement||{};
+  const bh=animation.behavior||blankBehavior();
   el('a-name').value=animation.name||'new_cameo';el('a-speed').value=animation.speed??1;el('a-loop').value=animation.loop===false?'false':'true';
+  el('a-behavior').value=bh.type||'one_shot';
   el('a-persistent').checked=!!animation.persistent;
   el('a-move-mode').value=mv.mode||'random_sweep';el('a-direction').value=mv.direction||'left_to_right';el('a-random-start').checked=mv.random_start!==false;el('a-random-facing').checked=!!mv.random_facing;el('a-fixed-x').value=mv.fixed_x??28;el('a-fixed-y').value=mv.fixed_y??12;el('a-count').value=mv.count??1;el('a-stray').value=mv.stray??3;el('a-spin').value=mv.spin?'true':'false';el('a-spin-speed').value=mv.spin_speed??0;
+  el('a-spawn').value=bh.spawn_chance_per_minute??8;el('a-cooldown').value=bh.cooldown_ms??0;el('a-count-min').value=bh.count_min??3;el('a-count-max').value=bh.count_max??8;el('a-lifetime').value=bh.lifetime_ms??0;el('a-flicker').checked=!!bh.flicker;el('a-respawn').checked=bh.respawn!==false;
   updateCameoModeUI();
   const total=(animation.frames||[]).length||1;frameIndex=clamp(frameIndex,0,total-1);el('frame-label').textContent=`Frame ${frameIndex+1}/${total}`;
   const f=animation.frames[frameIndex]||{duration_ms:100,sprites:[{sprite:'rocket',x:0,y:0,rotation:0}]};
@@ -336,7 +356,11 @@ function syncAnimationFields(){
 }
 function fromAnimationFields(){
   animation.name=el('a-name').value||'new_cameo';animation.speed=parseFloat(el('a-speed').value)||1;animation.loop=el('a-loop').value!=='false';
-  animation.persistent=el('a-persistent').checked;
+  const type=el('a-behavior').value||'one_shot';
+  animation.persistent=el('a-persistent').checked||type==='ambient';
+  if(type==='one_shot')animation.behavior={type,spawn_chance_per_minute:Math.max(0.1,parseFloat(el('a-spawn').value)||8),cooldown_ms:Math.max(0,parseInt(el('a-cooldown').value)||0)};
+  else if(type==='ambient')animation.behavior={type,count_min:clamp(parseInt(el('a-count-min').value)||3,1,24),count_max:clamp(parseInt(el('a-count-max').value)||8,1,24),drift:Math.max(0,parseFloat(el('a-stray').value)||0),flicker:el('a-flicker').checked,lifetime_ms:Math.max(0,parseInt(el('a-lifetime').value)||0),respawn:el('a-respawn').checked};
+  else animation.behavior={type,runtime:'code',warning:'Runtime logic controls this cameo; editable art is a reference.'};
   delete animation.fps;
   animation.movement={mode:el('a-move-mode').value,direction:el('a-direction').value,random_start:el('a-random-start').checked,random_facing:el('a-random-facing').checked,fixed_x:parseInt(el('a-fixed-x').value)||0,fixed_y:parseInt(el('a-fixed-y').value)||0,count:clamp(parseInt(el('a-count').value)||1,1,12),stray:Math.max(0,parseFloat(el('a-stray').value)||0),spin:el('a-spin').value==='true',spin_speed:parseFloat(el('a-spin-speed').value)||0};
   if(!animation.frames||!animation.frames.length)animation.frames=blankAnimation(animation.name).frames;
@@ -448,7 +472,10 @@ function normalizeMovement(){
   if(animation.movement.mode==='random_walk'||animation.movement.mode==='point_shoot')animation.movement.mode='custom';
   if(animation.movement.direction==='left')animation.movement.direction='right_to_left';
   if(animation.movement.direction==='right')animation.movement.direction='left_to_right';
+  const type=((animation.behavior||{}).type)||'one_shot';
+  animation.behavior={...blankBehavior(type),...(animation.behavior||{}),type};
   if(animation.persistent===undefined)animation.persistent=false;
+  if(type==='ambient')animation.persistent=true;
 }
 function applyAnimation(data,dirtyState=false){
   const hasFrames=Array.isArray(data.frames)&&data.frames.length;
@@ -564,7 +591,7 @@ function wire(){
   el('btn-apply').onclick=()=>{try{builderMode==='animation'?applyAnimation(JSON.parse(el('json-out').value),true):applySprite(JSON.parse(el('json-out').value),true)}catch(e){alert(e.message)}};
   el('btn-copy').onclick=()=>navigator.clipboard&&navigator.clipboard.writeText(el('json-out').value);
   el('tab-sprite').onclick=()=>setMode('sprite');el('tab-animation').onclick=()=>setMode('animation');
-  ['a-name','a-speed','a-loop','a-persistent','f-duration','f-x','f-y','f-rotation'].forEach(id=>el(id).addEventListener('input',()=>{fromAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)}));
+  ['a-name','a-speed','a-loop','a-persistent','a-behavior','a-spawn','a-cooldown','a-count-min','a-count-max','a-lifetime','a-flicker','a-respawn','f-duration','f-x','f-y','f-rotation'].forEach(id=>el(id).addEventListener('input',()=>{fromAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)}));
   ['a-move-mode','a-direction','a-random-start','a-random-facing','a-fixed-x','a-fixed-y','a-count','a-stray','a-spin','a-spin-speed','f-sprite'].forEach(id=>el(id).addEventListener('input',()=>{generateFromPreset=true;fromAnimationFields();renderAnimationPreview();updateJSON();markAnimDirty(true)}));
   el('anim-preview').addEventListener('pointerdown',e=>startAnimationDrag(e));
   el('anim-preview').addEventListener('pointermove',moveAnimationDrag);

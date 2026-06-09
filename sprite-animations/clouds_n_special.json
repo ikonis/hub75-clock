@@ -1,0 +1,55 @@
+{
+  "name": "clouds_n_special",
+  "width": 64,
+  "height": 32,
+  "speed": 1,
+  "loop": false,
+  "persistent": false,
+  "behavior": {
+    "type": "scripted",
+    "runtime": "code",
+    "warning": "Runtime logic controls this cameo; editable art is a reference."
+  },
+  "movement": {
+    "mode": "custom",
+    "direction": "left_to_right",
+    "random_start": true,
+    "fixed_x": 0,
+    "fixed_y": 8,
+    "count": 1,
+    "stray": 2
+  },
+  "frames": [
+    {
+      "duration_ms": 250,
+      "sprites": [
+        {
+          "sprite": "cloud_n",
+          "x": -10,
+          "y": 8
+        }
+      ]
+    },
+    {
+      "duration_ms": 250,
+      "sprites": [
+        {
+          "sprite": "cloud_n",
+          "x": 18,
+          "y": 7
+        }
+      ]
+    },
+    {
+      "duration_ms": 250,
+      "sprites": [
+        {
+          "sprite": "cloud_n",
+          "x": 46,
+          "y": 8
+        }
+      ]
+    }
+  ],
+  "notes": "Editable cloud art reference. Weather cloud density/speed/particles remain code-driven."
+}

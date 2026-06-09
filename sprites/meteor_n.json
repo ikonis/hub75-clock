@@ -1,0 +1,87 @@
+{
+  "name": "meteor_n",
+  "width": 5,
+  "height": 5,
+  "motion": "right",
+  "speed": 1.0,
+  "frame_duration_ms": 80,
+  "frames": [
+    {
+      "duration_ms": 80,
+      "pixels": [
+        [
+          null,
+          null,
+          null,
+          null,
+          "#FFFFFF"
+        ],
+        [
+          null,
+          null,
+          null,
+          "#FFD250",
+          null
+        ],
+        [
+          null,
+          null,
+          "#D25A18",
+          null,
+          null
+        ],
+        [
+          null,
+          "#D25A18",
+          null,
+          null,
+          null
+        ],
+        [
+          "#D25A18",
+          null,
+          null,
+          null,
+          null
+        ]
+      ]
+    }
+  ],
+  "pixels": [
+    [
+      null,
+      null,
+      null,
+      null,
+      "#FFFFFF"
+    ],
+    [
+      null,
+      null,
+      null,
+      "#FFD250",
+      null
+    ],
+    [
+      null,
+      null,
+      "#D25A18",
+      null,
+      null
+    ],
+    [
+      null,
+      "#D25A18",
+      null,
+      null,
+      null
+    ],
+    [
+      "#D25A18",
+      null,
+      null,
+      null,
+      null
+    ]
+  ]
+}

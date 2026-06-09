@@ -1,0 +1,201 @@
+{
+  "name": "airplane_n_pass",
+  "width": 64,
+  "height": 32,
+  "speed": 1,
+  "loop": false,
+  "persistent": false,
+  "behavior": {
+    "type": "one_shot",
+    "spawn_chance_per_minute": 8,
+    "cooldown_ms": 0
+  },
+  "movement": {
+    "mode": "custom",
+    "direction": "right_to_left",
+    "random_start": false,
+    "fixed_x": 28,
+    "fixed_y": 12,
+    "count": 1,
+    "stray": 0
+  },
+  "frames": [
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": 76,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": 68,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": 60,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": 52,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": 44,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": 36,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": 28,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": 20,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": 12,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": 4,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": -4,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": -12,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": -20,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": -28,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": -36,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 80,
+      "sprites": [
+        {
+          "sprite": "airplane_n",
+          "x": -44,
+          "y": 12,
+          "rotation": 0
+        }
+      ]
+    }
+  ],
+  "notes": "Editable comparison version of the hardcoded airplane. Contrail is baked into the sprite frames if edited that way."
+}

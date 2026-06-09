@@ -1342,6 +1342,7 @@ const ALL_ANIMATIONS = [
 ];
 const PERSISTENT_CAMEOS = new Set(['firefly', 'flutterflies', 'snake']);
 let spriteAnimationOptions = [];
+let spriteAnimationMeta = {};
 let spriteOptions = [];
 
 function isPersistentCameo(name) {
@@ -1358,6 +1359,11 @@ async function loadBuilderAssetOptions() {
     const sd = await sr.json();
     if (ar.ok && ad.ok && Array.isArray(ad.animations)) {
       spriteAnimationOptions = ad.animations.map(f => f.replace(/\.json$/, '')).sort();
+      spriteAnimationMeta = {};
+      const meta = ad.animation_meta || {};
+      for (const [file, info] of Object.entries(meta)) {
+        spriteAnimationMeta[file.replace(/\.json$/, '')] = info || {};
+      }
     }
     if (sr.ok && sd.ok && Array.isArray(sd.sprites)) {
       spriteOptions = sd.sprites.map(f => f.replace(/\.json$/, '')).sort();
@@ -1366,6 +1372,7 @@ async function loadBuilderAssetOptions() {
     buildCameoList();
   } catch (err) {
     spriteAnimationOptions = [];
+    spriteAnimationMeta = {};
     spriteOptions = [];
   }
 }
@@ -1377,7 +1384,13 @@ function cameoKey(c) {
 
 function formatCameoOption(value) {
   if (isPersistentCameo(value)) return `${value} (persistent)`;
-  return value.startsWith('spriteanim:') ? `sprite animation: ${value.slice(11)}` : value;
+  if (value.startsWith('spriteanim:')) {
+    const name = value.slice(11);
+    const behavior = (spriteAnimationMeta[name] || {}).behavior;
+    const suffix = behavior && behavior !== 'one_shot' ? ` (${behavior.replace('_', ' ')})` : '';
+    return `sprite animation: ${name}${suffix}`;
+  }
+  return value;
 }
 
 function allCameoOptions() {
@@ -1480,7 +1493,9 @@ function cameoFieldChange(e) {
       return;
     }
     if (e.target.value.startsWith('spriteanim:')) {
-      theme.cameos[idx] = { name: 'sprite', animation: e.target.value.slice(11), chance_per_minute: theme.cameos[idx].chance_per_minute || 8 };
+      const animName = e.target.value.slice(11);
+      theme.cameos[idx] = { name: 'sprite', animation: animName, chance_per_minute: theme.cameos[idx].chance_per_minute || 8 };
+      if ((spriteAnimationMeta[animName] || {}).persistent) theme.cameos[idx].loop = true;
     } else {
       theme.cameos[idx] = { ...theme.cameos[idx], name: e.target.value };
       if (isPersistentCameo(e.target.value)) {
@@ -1593,7 +1608,10 @@ function wireControls() {
       return;
     }
     if (name.startsWith('spriteanim:')) {
-      theme.cameos.push({ name: 'sprite', animation: name.slice(11), chance_per_minute: 8 });
+      const animName = name.slice(11);
+      const entry = { name: 'sprite', animation: animName, chance_per_minute: 8 };
+      if ((spriteAnimationMeta[animName] || {}).persistent) entry.loop = true;
+      theme.cameos.push(entry);
     } else {
       theme.cameos.push(name === 'sprite'
         ? { name, sprite: spriteOptions[0] || 'rocket', chance_per_minute: 8 }

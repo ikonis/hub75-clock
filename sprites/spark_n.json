@@ -1,0 +1,87 @@
+{
+  "name": "spark_n",
+  "width": 3,
+  "height": 3,
+  "motion": "right",
+  "speed": 0.1,
+  "frame_duration_ms": 70,
+  "frames": [
+    {
+      "duration_ms": 70,
+      "pixels": [
+        [
+          null,
+          "#FFFFFF",
+          null
+        ],
+        [
+          "#FFFFFF",
+          "#FFFFFF",
+          "#FFFFFF"
+        ],
+        [
+          null,
+          "#FFFFFF",
+          null
+        ]
+      ]
+    },
+    {
+      "duration_ms": 70,
+      "pixels": [
+        [
+          null,
+          "#FF7800",
+          null
+        ],
+        [
+          "#FF7800",
+          "#FFD050",
+          "#FF7800"
+        ],
+        [
+          null,
+          "#FF7800",
+          null
+        ]
+      ]
+    },
+    {
+      "duration_ms": 70,
+      "pixels": [
+        [
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "#8C2208",
+          null
+        ],
+        [
+          null,
+          null,
+          null
+        ]
+      ]
+    }
+  ],
+  "pixels": [
+    [
+      null,
+      "#FFD050",
+      null
+    ],
+    [
+      "#FFD050",
+      "#FFD050",
+      "#FFD050"
+    ],
+    [
+      null,
+      "#FFD050",
+      null
+    ]
+  ]
+}

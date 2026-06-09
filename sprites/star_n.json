@@ -1,0 +1,67 @@
+{
+  "name": "star_n",
+  "width": 3,
+  "height": 3,
+  "motion": "right",
+  "speed": 0.1,
+  "frame_duration_ms": 180,
+  "frames": [
+    {
+      "duration_ms": 180,
+      "pixels": [
+        [
+          null,
+          "#505070",
+          null
+        ],
+        [
+          "#505070",
+          "#505070",
+          "#505070"
+        ],
+        [
+          null,
+          "#505070",
+          null
+        ]
+      ]
+    },
+    {
+      "duration_ms": 180,
+      "pixels": [
+        [
+          null,
+          "#F0F0FF",
+          null
+        ],
+        [
+          "#F0F0FF",
+          "#F0F0FF",
+          "#F0F0FF"
+        ],
+        [
+          null,
+          "#F0F0FF",
+          null
+        ]
+      ]
+    }
+  ],
+  "pixels": [
+    [
+      null,
+      "#BEBEFF",
+      null
+    ],
+    [
+      "#BEBEFF",
+      "#BEBEFF",
+      "#BEBEFF"
+    ],
+    [
+      null,
+      "#BEBEFF",
+      null
+    ]
+  ]
+}

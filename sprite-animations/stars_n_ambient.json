@@ -1,0 +1,75 @@
+{
+  "name": "stars_n_ambient",
+  "width": 64,
+  "height": 32,
+  "speed": 1,
+  "loop": true,
+  "persistent": true,
+  "behavior": {
+    "type": "ambient",
+    "count_min": 3,
+    "count_max": 8,
+    "drift": 3,
+    "flicker": true,
+    "lifetime_ms": 0,
+    "respawn": true
+  },
+  "movement": {
+    "mode": "drift",
+    "direction": "none",
+    "random_start": true,
+    "fixed_x": 0,
+    "fixed_y": 0,
+    "count": 12,
+    "stray": 0
+  },
+  "frames": [
+    {
+      "duration_ms": 180,
+      "sprites": [
+        {
+          "sprite": "star_n",
+          "x": 5,
+          "y": 2,
+          "frame": 0
+        },
+        {
+          "sprite": "star_n",
+          "x": 26,
+          "y": 5,
+          "frame": 1
+        },
+        {
+          "sprite": "star_n",
+          "x": 52,
+          "y": 3,
+          "frame": 0
+        }
+      ]
+    },
+    {
+      "duration_ms": 180,
+      "sprites": [
+        {
+          "sprite": "star_n",
+          "x": 5,
+          "y": 2,
+          "frame": 1
+        },
+        {
+          "sprite": "star_n",
+          "x": 26,
+          "y": 5,
+          "frame": 0
+        },
+        {
+          "sprite": "star_n",
+          "x": 52,
+          "y": 3,
+          "frame": 1
+        }
+      ]
+    }
+  ],
+  "notes": "Editable star art reference. Old stars remains code-driven for randomized twinkle."
+}
