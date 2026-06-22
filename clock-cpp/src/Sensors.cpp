@@ -573,8 +573,10 @@ void LD2410Sensor::_parseBasic(const uint8_t* data, size_t len) {
 void LD2410Sensor::_parseEngineering(const uint8_t* data, size_t len) {
     // data[0]=0x01, data[1]=0xAA, data[2]=target, data[3:5]=move_dist,
     // data[5]=move_e, data[6:8]=still_dist, data[8]=still_e,
-    // data[9:18]=9 move gate energies, data[18:27]=9 still gate energies
-    if (len < 27 || data[1] != 0xAA) return;
+    // data[9:11]=detect_distance, data[11]=max_move_gate,
+    // data[12]=max_still_gate, data[13:22]=9 move gate energies,
+    // data[22:31]=9 still gate energies.
+    if (len < 31 || data[1] != 0xAA) return;
 
     auto now = std::chrono::steady_clock::now();
     if (std::chrono::duration<double>(now - _lastPub).count() < 0.5) return;
@@ -585,8 +587,8 @@ void LD2410Sensor::_parseEngineering(const uint8_t* data, size_t len) {
     uint8_t  moveE     = data[5];
     uint16_t stillDist = static_cast<uint16_t>(data[6]) | (static_cast<uint16_t>(data[7]) << 8);
     uint8_t  stillE    = data[8];
-    const uint8_t* moveGates  = data + 9;  // 9 bytes, gates 0-8
-    const uint8_t* stillGates = data + 18; // 9 bytes, gates 0-8
+    const uint8_t* moveGates  = data + 13; // 9 bytes, gates 0-8
+    const uint8_t* stillGates = data + 22; // 9 bytes, gates 0-8
 
     char presenceBuf[128];
     std::snprintf(presenceBuf, sizeof(presenceBuf),
