@@ -148,7 +148,11 @@ function gateRow(kind,i){
   input.addEventListener('pointercancel',end);
   input.addEventListener('blur',end);
   input.oninput=()=>{begin();setLocalThreshold(kind,i,input.value)};
-  input.onchange=async()=>{begin();await setGate(i,kind,parseInt(input.value)||0);releaseSlider(kind,i,3000)};
+  input.onchange=async()=>{
+    begin();
+    try{await setGate(i,kind,parseInt(input.value)||0)}
+    finally{releaseSlider(kind,i,3000)}
+  };
   return row;
 }
 function buildGateReadout(){
@@ -192,8 +196,18 @@ function mergeThresholds(kind, values){
   }
 }
 async function api(path,body){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),4000);
   const opts=body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'};
-  const r=await fetch(path,opts);const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'request failed');return d;
+  try{
+    opts.signal=ctrl.signal;
+    const r=await fetch(path,opts);const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'request failed');return d;
+  }catch(e){
+    if(e.name==='AbortError')throw new Error('request timed out');
+    throw e;
+  }finally{
+    clearTimeout(timer);
+  }
 }
 async function setGate(gate,kind,value){
   try{await api('/api/gate',{gate,kind,value});el('status').textContent=`Set G${gate} ${kind} ${value}`;}
@@ -262,8 +276,8 @@ async function graphPointerUp(evt){
   const drag=graphDrag;
   graphPointerMove(evt);
   graphDrag=null;
-  await setGate(drag.gate,drag.kind,state[drag.kind+'_thresholds'][drag.gate]);
-  releaseSlider(drag.kind,drag.gate,3000);
+  try{await setGate(drag.gate,drag.kind,state[drag.kind+'_thresholds'][drag.gate])}
+  finally{releaseSlider(drag.kind,drag.gate,3000)}
 }
 el('btn-engineering').onclick=()=>setEngineering(!state.engineering);
 el('btn-read').onclick=()=>readSensor();
