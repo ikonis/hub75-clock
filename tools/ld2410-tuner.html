@@ -16,9 +16,11 @@ h1{font-size:18px;color:#c7d2fe}.state{font-size:12px;color:var(--dim)}
 .card-b{padding:12px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.btn{border:1px solid var(--border);border-radius:6px;background:#2b2d38;color:var(--text);padding:10px 12px;font:inherit}.btn.primary{border-color:var(--accent);background:#30364a}.btn.danger{border-color:var(--danger)}
 .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{background:#14151c;border:1px solid #2b2d38;border-radius:6px;padding:8px}.metric span{display:block;color:var(--dim);font-size:11px}.metric strong{font-size:20px}
 canvas{width:100%;height:auto;display:block;background:#08090d;border-radius:6px;border:1px solid #2b2d38;touch-action:none;cursor:crosshair}
+.gate-readout{margin-top:10px;display:grid;grid-template-columns:repeat(9,minmax(72px,1fr));gap:6px}.gate-cell{background:#14151c;border:1px solid #2b2d38;border-radius:6px;padding:7px;font-variant-numeric:tabular-nums}.gate-cell strong{display:block;color:#cbd5e1;font-size:13px}.gate-cell span{display:block;color:var(--dim);font-size:11px}.gate-cell b{font-weight:700}.gate-cell .mv{color:var(--move)}.gate-cell .st{color:var(--still)}.gate-cell .th{color:var(--dim)}
 .gate{display:grid;grid-template-columns:64px 1fr 46px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #2b2d38}.gate:last-child{border-bottom:0}.gate label{font-weight:700;color:#cbd5e1;line-height:1.1}.gate label span{display:block;margin-top:2px;color:var(--dim);font-size:11px;font-weight:500}.gate .value{text-align:right;color:var(--dim);font-variant-numeric:tabular-nums}
 input[type=range]{width:100%;accent-color:var(--move-thresh)}.hint{color:var(--dim);font-size:12px}.legend{display:flex;gap:12px;flex-wrap:wrap}.key{display:inline-flex;gap:6px;align-items:center}.dot{width:12px;height:12px;border-radius:3px}.move{background:var(--move)}.still{background:var(--still)}.move-thresh{background:var(--move-thresh)}.still-thresh{background:var(--still-thresh)}
-@media (max-width:640px){.app{padding:8px}.top{align-items:flex-start}.metrics{grid-template-columns:1fr}.card-b{padding:10px}.btn{flex:1}.gate{grid-template-columns:58px 1fr 42px}}
+@media (max-width:840px){.gate-readout{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){.app{padding:8px}.top{align-items:flex-start}.metrics{grid-template-columns:1fr}.card-b{padding:10px}.btn{flex:1}.gate{grid-template-columns:58px 1fr 42px}.gate-readout{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -38,6 +40,7 @@ input[type=range]{width:100%;accent-color:var(--move-thresh)}.hint{color:var(--d
         <span class="key"><span class="dot move-thresh"></span>Move threshold</span>
         <span class="key"><span class="dot still-thresh"></span>Still threshold</span>
       </div>
+      <div class="gate-readout" id="gate-readout"></div>
     </div>
   </section>
 
@@ -148,9 +151,25 @@ function gateRow(kind,i){
   input.onchange=async()=>{begin();await setGate(i,kind,parseInt(input.value)||0);releaseSlider(kind,i,3000)};
   return row;
 }
+function buildGateReadout(){
+  const wrap=el('gate-readout');wrap.innerHTML='';
+  for(let i=0;i<9;i++){
+    const cell=document.createElement('div');cell.className='gate-cell';
+    cell.innerHTML=`<strong>G${i} <span>${gateFt(i)}</span></strong><span>Move <b class="mv" data-field="move">0</b> / <b class="th" data-field="move-thresh">0</b></span><span>Still <b class="st" data-field="still">0</b> / <b class="th" data-field="still-thresh">0</b></span>`;
+    wrap.appendChild(cell);
+  }
+}
 function buildSliders(){
   const m=el('move-sliders'),s=el('still-sliders');m.innerHTML='';s.innerHTML='';
   for(let i=0;i<9;i++){m.appendChild(gateRow('move',i));s.appendChild(gateRow('still',i))}
+}
+function updateGateReadout(){
+  [...el('gate-readout').querySelectorAll('.gate-cell')].forEach((cell,i)=>{
+    cell.querySelector('[data-field="move"]').textContent=state.move_gates[i]??0;
+    cell.querySelector('[data-field="still"]').textContent=state.still_gates[i]??0;
+    cell.querySelector('[data-field="move-thresh"]').textContent=state.move_thresholds[i]??0;
+    cell.querySelector('[data-field="still-thresh"]').textContent=state.still_thresholds[i]??0;
+  });
 }
 function updateSliderValues(){
   for(const kind of ['move','still']){
@@ -219,6 +238,7 @@ function applyState(d){
   el('max-move-gate').textContent=state.max_move_gate==null?'-':'G'+state.max_move_gate+' / '+gateFt(state.max_move_gate);
   el('max-still-gate').textContent=state.max_still_gate==null?'-':'G'+state.max_still_gate+' / '+gateFt(state.max_still_gate);
   updateSliderValues();
+  updateGateReadout();
   updateEngineeringButton();draw();
 }
 async function poll(){
@@ -251,7 +271,7 @@ el('graph').addEventListener('pointerdown',graphPointerDown);
 el('graph').addEventListener('pointermove',graphPointerMove);
 el('graph').addEventListener('pointerup',graphPointerUp);
 el('graph').addEventListener('pointercancel',graphPointerUp);
-buildSliders();draw();poll();setInterval(poll,500);
+buildGateReadout();buildSliders();draw();poll();setInterval(poll,500);
 </script>
 </body>
 </html>
