@@ -741,28 +741,11 @@ static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
         pub(prefix + "/sensor/" + cid + "_theme_builder_url/config", sensor);
     }
 
-    if (cfg["ld2410_tuner"].value("mode", "off") == "ha") {
-        json sw = base("LD2410 Tuner", cid + "_ld2410_tuner");
-        sw["command_topic"] = topics.value("config", cid + "/config");
-        sw["payload_on"] = "{\"ld2410_tuner\": true}";
-        sw["payload_off"] = "{\"ld2410_tuner\": false}";
-        sw["state_topic"] = ld2410TunerStateTopic(cfg);
-        sw["state_on"] = "on";
-        sw["state_off"] = "off";
-        sw["entity_category"] = "config";
-        sw["icon"] = "mdi:radar";
-        pub(prefix + "/switch/" + cid + "_ld2410_tuner/config", sw);
-
-        json sensor = base("LD2410 Tuner URL", cid + "_ld2410_tuner_url");
-        sensor["state_topic"] = ld2410TunerUrlTopic(cfg);
-        sensor["entity_category"] = "diagnostic";
-        sensor["icon"] = "mdi:web";
-        pub(prefix + "/sensor/" + cid + "_ld2410_tuner_url/config", sensor);
-    }
-
     for (const auto& entry : std::vector<std::pair<std::string, std::string>>{
              {"sensor", cid + "_move_energy"},
              {"sensor", cid + "_still_energy"},
+             {"switch", cid + "_ld2410_tuner"},
+             {"sensor", cid + "_ld2410_tuner_url"},
              {"binary_sensor", cid + "_update_available"},
              {"sensor", cid + "_update_info"},
              {"button", cid + "_update_check"},
