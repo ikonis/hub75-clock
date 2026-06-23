@@ -48,7 +48,7 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font:14px/1.4 syste
 h1{font-size:18px;color:#c7d2fe}.state{font-size:12px;color:var(--dim)}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .card-h{padding:10px 12px;background:var(--panel2);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);font-weight:700}
-.card-b{padding:12px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.btn{border:1px solid var(--border);border-radius:6px;background:#2b2d38;color:var(--text);padding:10px 12px;font:inherit}.btn.primary{border-color:var(--accent);background:#30364a}.btn.danger{border-color:var(--danger)}
+.card-b{padding:12px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.btn{border:1px solid var(--border);border-radius:6px;background:#2b2d38;color:var(--text);padding:10px 12px;font:inherit;box-shadow:0 2px 0 #171923;transition:transform .05s ease,box-shadow .05s ease,background .12s ease}.btn:hover{background:#343744}.btn:active{transform:translateY(2px);box-shadow:0 0 0 #171923;background:#242631}.btn.primary{border-color:var(--accent);background:#30364a}.btn.primary:hover{background:#39415a}.btn.primary:active{background:#283047}.btn.danger{border-color:var(--danger)}.btn.danger:hover{background:#3a2d36}.btn.danger:active{background:#2f252d}
 .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{background:#14151c;border:1px solid #2b2d38;border-radius:6px;padding:8px}.metric span{display:block;color:var(--dim);font-size:11px}.metric strong{font-size:20px}
 canvas{width:100%;height:auto;display:block;background:#08090d;border-radius:6px;border:1px solid #2b2d38;touch-action:none;cursor:crosshair}
 .gate-readout{margin-top:10px;display:grid;grid-template-columns:repeat(9,minmax(72px,1fr));gap:6px}.gate-cell{background:#14151c;border:1px solid #2b2d38;border-radius:6px;padding:7px;font-variant-numeric:tabular-nums}.gate-cell strong{display:block;color:#cbd5e1;font-size:13px}.gate-cell span{display:block;color:var(--dim);font-size:11px}.gate-cell b{font-weight:700}.gate-cell .mv{color:var(--move)}.gate-cell .st{color:var(--still)}.gate-cell .th{color:var(--dim)}
@@ -62,7 +62,7 @@ input[type=range]{width:100%;accent-color:var(--move-thresh)}.hint{color:var(--d
 <main class="app">
   <div class="top">
     <div><h1>LD2410 Direct Tuner</h1><div class="state" id="status">Connecting...</div></div>
-    <div class="row"><button class="btn" id="btn-read">Read Sensor</button><button class="btn danger" id="btn-engineering">Engineering</button><button class="btn danger" id="btn-stop">Stop Tuner</button></div>
+    <div class="row"><button class="btn" id="btn-read">Read Thresholds</button><button class="btn primary" id="btn-save">Save Thresholds</button><button class="btn danger" id="btn-engineering">Engineering</button><button class="btn danger" id="btn-stop">Stop Tuner</button></div>
   </div>
 
   <section class="card">
@@ -104,7 +104,7 @@ input[type=range]{width:100%;accent-color:var(--move-thresh)}.hint{color:var(--d
   <section class="card">
     <div class="card-h">Notes</div>
     <div class="card-b">
-      <p class="hint">This standalone tuner talks directly to the LD2410 UART. Stop hub75-clock before using it. Threshold changes are written directly to the sensor.</p>
+      <p class="hint">This standalone tuner talks directly to the LD2410 UART. Stop hub75-clock before using it. Read and save thresholds with the buttons at the top.</p>
     </div>
   </section>
 </main>
@@ -128,16 +128,16 @@ function graphPoint(evt){const c=el('graph'),r=c.getBoundingClientRect();return 
 function graphGateFromX(x){const g=graphLayout();return clamp(Math.floor((x-g.pad)/g.group),0,8)}
 function setLocalThreshold(kind,i,value){value=clamp(parseInt(value)||0,0,100);state[kind+'_thresholds'][i]=value;holdSlider(kind,i,2500);const row=el(kind+'-sliders').querySelectorAll('.gate')[i];if(row){row.querySelector('input').value=value;row.querySelector('.value').textContent=value}updateGateReadout();draw()}
 function nearestThreshold(pt){const gate=graphGateFromX(pt.x);let best=null;for(const kind of ['move','still']){const value=state[kind+'_thresholds'][gate]??0;const dist=Math.abs(pt.y-yForThreshold(value));if(!best||dist<best.dist)best={kind,gate,dist}}return best&&best.dist<=28?best:{kind:'move',gate,dist:999}}
-function gateRow(kind,i){const row=document.createElement('div');row.className='gate';row.innerHTML=`<label>G${i}<span>${gateFt(i)}</span></label><input type="range" min="0" max="100" step="1" value="${state[kind+'_thresholds'][i]}"><span class="value">${state[kind+'_thresholds'][i]}</span>`;const input=row.querySelector('input');const begin=()=>{activeSlider=sliderKey(kind,i);holdSlider(kind,i,2500)};const end=()=>releaseSlider(kind,i,1600);input.addEventListener('pointerdown',begin);input.addEventListener('touchstart',begin,{passive:true});input.addEventListener('focus',begin);input.addEventListener('pointerup',end);input.addEventListener('pointercancel',end);input.addEventListener('blur',end);input.oninput=()=>{begin();setLocalThreshold(kind,i,input.value)};input.onchange=async()=>{begin();try{await setGate(i,kind,parseInt(input.value)||0)}finally{releaseSlider(kind,i,3000)}};return row}
+function gateRow(kind,i){const row=document.createElement('div');row.className='gate';row.innerHTML=`<label>G${i}<span>${gateFt(i)}</span></label><input type="range" min="0" max="100" step="1" value="${state[kind+'_thresholds'][i]}"><span class="value">${state[kind+'_thresholds'][i]}</span>`;const input=row.querySelector('input');const begin=()=>{activeSlider=sliderKey(kind,i);holdSlider(kind,i,2500)};const end=()=>releaseSlider(kind,i,1600);input.addEventListener('pointerdown',begin);input.addEventListener('touchstart',begin,{passive:true});input.addEventListener('focus',begin);input.addEventListener('pointerup',end);input.addEventListener('pointercancel',end);input.addEventListener('blur',end);input.oninput=()=>{begin();setLocalThreshold(kind,i,input.value)};input.onchange=()=>{releaseSlider(kind,i,3000)};return row}
 function buildGateReadout(){const wrap=el('gate-readout');wrap.innerHTML='';for(let i=0;i<9;i++){const cell=document.createElement('div');cell.className='gate-cell';cell.innerHTML=`<strong>G${i} <span>${gateFt(i)}</span></strong><span>Move <b class="mv" data-field="move">0</b> / <b class="th" data-field="move-thresh">0</b></span><span>Still <b class="st" data-field="still">0</b> / <b class="th" data-field="still-thresh">0</b></span>`;wrap.appendChild(cell)}}
 function buildSliders(){const m=el('move-sliders'),s=el('still-sliders');m.innerHTML='';s.innerHTML='';for(let i=0;i<9;i++){m.appendChild(gateRow('move',i));s.appendChild(gateRow('still',i))}}
 function updateGateReadout(){[...el('gate-readout').querySelectorAll('.gate-cell')].forEach((cell,i)=>{cell.querySelector('[data-field="move"]').textContent=state.move_gates[i]??0;cell.querySelector('[data-field="still"]').textContent=state.still_gates[i]??0;cell.querySelector('[data-field="move-thresh"]').textContent=state.move_thresholds[i]??0;cell.querySelector('[data-field="still-thresh"]').textContent=state.still_thresholds[i]??0})}
 function updateSliderValues(){for(const kind of ['move','still']){const wrap=el(kind+'-sliders');[...wrap.querySelectorAll('.gate')].forEach((row,i)=>{const input=row.querySelector('input'), value=row.querySelector('.value');const v=state[kind+'_thresholds'][i]??0;if(sliderHeld(kind,i)){value.textContent=input.value;return}input.value=v;value.textContent=v})}}
 function mergeThresholds(kind,values){if(!Array.isArray(values))return;const key=kind+'_thresholds';state[key]=state[key]||Array(9).fill(0);for(let i=0;i<9;i++){if(sliderHeld(kind,i))continue;if(values[i]!==undefined)state[key][i]=values[i]}}
-async function api(path,body){const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),4000);const opts=body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'};try{opts.signal=ctrl.signal;const r=await fetch(path,opts);const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'request failed');return d}catch(e){if(e.name==='AbortError')throw new Error('request timed out');throw e}finally{clearTimeout(timer)}}
-async function setGate(gate,kind,value){try{await api('/api/gate',{gate,kind,value});el('status').textContent=`Set G${gate} ${kind} ${value}`}catch(e){el('status').textContent=e.message}}
+async function api(path,body){const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),20000);const opts=body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'};try{opts.signal=ctrl.signal;const r=await fetch(path,opts);const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'request failed');return d}catch(e){if(e.name==='AbortError')throw new Error('request timed out');throw e}finally{clearTimeout(timer)}}
+async function saveThresholds(){try{const d=await api('/api/thresholds',{move:state.move_thresholds,still:state.still_thresholds});applyState(d.state);el('status').textContent='Saved thresholds'}catch(e){el('status').textContent=e.message}}
 async function setEngineering(enable){try{await api('/api/engineering',{enable});state.engineering=enable;updateEngineeringButton()}catch(e){el('status').textContent=e.message}}
-async function readSensor(){try{await api('/api/read',{read:true});el('status').textContent='Reading sensor settings...'}catch(e){el('status').textContent=e.message}}
+async function readSensor(){try{const d=await api('/api/read',{read:true});applyState(d.state);el('status').textContent=d.read?'Read thresholds':'No threshold response'}catch(e){el('status').textContent=e.message}}
 async function stopTuner(){try{await api('/api/stop',{stop:true});el('status').textContent='Tuner stopping...'}catch(e){el('status').textContent=e.message}}
 function updateEngineeringButton(){const b=el('btn-engineering');b.textContent=state.engineering?'Engineering On':'Engineering Off';b.classList.toggle('primary',state.engineering)}
 function draw(){const layout=graphLayout(),c=layout.c,ctx=c.getContext('2d'),w=c.width,h=c.height,pad=layout.pad,plotH=layout.plotH;ctx.clearRect(0,0,w,h);ctx.fillStyle='#08090d';ctx.fillRect(0,0,w,h);ctx.strokeStyle='#242630';ctx.lineWidth=1;ctx.font='18px system-ui';ctx.fillStyle='#8d91a6';for(let v=0;v<=100;v+=25){const y=pad+plotH-(v/100)*plotH;ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(w-pad,y);ctx.stroke();ctx.fillText(v,6,y+6)}const group=layout.group,barW=Math.max(10,group*.24);for(let i=0;i<9;i++){const x=pad+i*group+group*.18;ctx.fillStyle='#8d91a6';ctx.fillText('G'+i,x+group*.2,h-8);bar(x,state.move_gates[i],barW,'#68d391');bar(x+barW+4,state.still_gates[i],barW,'#63b3ed');line(x,state.move_thresholds[i],group*.75,'#f6ad55');line(x,state.still_thresholds[i],group*.75,'#f687b3')}function yFor(v){return pad+plotH-(clamp(v,0,100)/100)*plotH}function bar(x,v,bw,color){ctx.fillStyle=color;const y=yFor(v);ctx.fillRect(x,y,bw,pad+plotH-y)}function line(x,v,len,color){ctx.strokeStyle=color;ctx.lineWidth=4;const y=yFor(v);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+len,y);ctx.stroke()}}
@@ -145,8 +145,8 @@ function applyState(d){const next=Object.assign({},d);delete next.move_threshold
 async function poll(){try{const d=await api('/api/state');applyState(d.state);el('status').textContent='Live'}catch(e){el('status').textContent=e.message}}
 function graphPointerDown(evt){const hit=nearestThreshold(graphPoint(evt));graphDrag={kind:hit.kind,gate:hit.gate};activeSlider=sliderKey(hit.kind,hit.gate);el('graph').setPointerCapture?.(evt.pointerId);graphPointerMove(evt)}
 function graphPointerMove(evt){if(!graphDrag)return;evt.preventDefault();setLocalThreshold(graphDrag.kind,graphDrag.gate,thresholdFromY(graphPoint(evt).y))}
-async function graphPointerUp(evt){if(!graphDrag)return;const drag=graphDrag;graphPointerMove(evt);graphDrag=null;try{await setGate(drag.gate,drag.kind,state[drag.kind+'_thresholds'][drag.gate])}finally{releaseSlider(drag.kind,drag.gate,3000)}}
-el('btn-engineering').onclick=()=>setEngineering(!state.engineering);el('btn-read').onclick=()=>readSensor();el('btn-stop').onclick=()=>stopTuner();el('graph').addEventListener('pointerdown',graphPointerDown);el('graph').addEventListener('pointermove',graphPointerMove);el('graph').addEventListener('pointerup',graphPointerUp);el('graph').addEventListener('pointercancel',graphPointerUp);buildGateReadout();buildSliders();draw();poll();setInterval(poll,500);
+async function graphPointerUp(evt){if(!graphDrag)return;const drag=graphDrag;graphPointerMove(evt);graphDrag=null;releaseSlider(drag.kind,drag.gate,3000)}
+el('btn-engineering').onclick=()=>setEngineering(!state.engineering);el('btn-read').onclick=()=>readSensor();el('btn-save').onclick=()=>saveThresholds();el('btn-stop').onclick=()=>stopTuner();el('graph').addEventListener('pointerdown',graphPointerDown);el('graph').addEventListener('pointermove',graphPointerMove);el('graph').addEventListener('pointerup',graphPointerUp);el('graph').addEventListener('pointercancel',graphPointerUp);buildGateReadout();buildSliders();draw();poll();setInterval(poll,500);
 </script>
 </body>
 </html>"""
@@ -194,7 +194,6 @@ class DirectTuner:
         self.thread = threading.Thread(target=self.read_loop, daemon=True)
         self.thread.start()
         self.set_engineering(True)
-        self.read_parameters()
 
     def close(self):
         self.running = False
@@ -229,6 +228,11 @@ class DirectTuner:
                         return response
             time.sleep(0.02)
         return None
+
+    def drain_responses(self):
+        with self.lock:
+            self.responses.clear()
+        self.serial.reset_input_buffer()
 
     def enter_config(self):
         self.send_cmd(b"\xFF\x00")
@@ -265,9 +269,29 @@ class DirectTuner:
             self.data["move_thresholds"][gate] = move
             self.data["still_thresholds"][gate] = still
 
+    def set_thresholds(self, move, still):
+        if not isinstance(move, list) or not isinstance(still, list):
+            raise ValueError("move and still thresholds must be arrays")
+        if len(move) < 9 or len(still) < 9:
+            raise ValueError("threshold arrays must have 9 values")
+        for gate in range(9):
+            m = clamp(move[gate])
+            s = clamp(still[gate])
+            payload = struct.pack("<HIHIHI", 0, gate, 1, m, 2, s)
+            self.enter_config()
+            ack = self.send_cmd_wait(b"\x64\x00", payload, timeout=1.5)
+            self.end_config()
+            if not ack or len(ack) < 4 or ack[2:4] != b"\x00\x00":
+                raise RuntimeError(f"LD2410 rejected G{gate} threshold write")
+            with self.lock:
+                self.data["move_thresholds"][gate] = m
+                self.data["still_thresholds"][gate] = s
+
     def read_parameters(self):
+        self.drain_responses()
         self.enter_config()
-        response = self.send_cmd_wait(b"\x61\x00", timeout=1.0)
+        time.sleep(0.3)
+        response = self.send_cmd_wait(b"\x61\x00", timeout=3.0)
         self.end_config()
         if not response or len(response) < 26 or response[2] != 0xAA:
             return False
@@ -395,10 +419,13 @@ class Handler(BaseHTTPRequestHandler):
                 return json_response(self, 200, {"ok": True})
             if path == "/api/read":
                 ok = self.server.tuner.read_parameters()
-                return json_response(self, 200, {"ok": True, "read": ok})
+                return json_response(self, 200, {"ok": True, "read": ok, "state": self.server.tuner.snapshot()})
             if path == "/api/gate":
                 self.server.tuner.set_gate(payload.get("gate"), payload.get("kind"), payload.get("value"))
                 return json_response(self, 200, {"ok": True})
+            if path == "/api/thresholds":
+                self.server.tuner.set_thresholds(payload.get("move"), payload.get("still"))
+                return json_response(self, 200, {"ok": True, "state": self.server.tuner.snapshot()})
             if path == "/api/stop":
                 json_response(self, 200, {"ok": True})
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
