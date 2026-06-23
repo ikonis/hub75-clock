@@ -88,6 +88,7 @@ input[type=range]{width:100%;accent-color:var(--move-thresh)}.hint{color:var(--d
       <div class="metric"><span>Still Distance</span><strong id="still-distance">-</strong></div>
       <div class="metric"><span>Max Move Gate</span><strong id="max-move-gate">-</strong></div>
       <div class="metric"><span>Max Still Gate</span><strong id="max-still-gate">-</strong></div>
+      <div class="metric"><span>Parameter Read</span><strong id="params-status">-</strong></div>
     </div>
   </section>
 
@@ -141,7 +142,7 @@ async function readSensor(){try{await api('/api/read',{read:true});el('status').
 async function stopTuner(){try{await api('/api/stop',{stop:true});el('status').textContent='Tuner stopping...'}catch(e){el('status').textContent=e.message}}
 function updateEngineeringButton(){const b=el('btn-engineering');b.textContent=state.engineering?'Engineering On':'Engineering Off';b.classList.toggle('primary',state.engineering)}
 function draw(){const layout=graphLayout(),c=layout.c,ctx=c.getContext('2d'),w=c.width,h=c.height,pad=layout.pad,plotH=layout.plotH;ctx.clearRect(0,0,w,h);ctx.fillStyle='#08090d';ctx.fillRect(0,0,w,h);ctx.strokeStyle='#242630';ctx.lineWidth=1;ctx.font='18px system-ui';ctx.fillStyle='#8d91a6';for(let v=0;v<=100;v+=25){const y=pad+plotH-(v/100)*plotH;ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(w-pad,y);ctx.stroke();ctx.fillText(v,6,y+6)}const group=layout.group,barW=Math.max(10,group*.24);for(let i=0;i<9;i++){const x=pad+i*group+group*.18;ctx.fillStyle='#8d91a6';ctx.fillText('G'+i,x+group*.2,h-8);bar(x,state.move_gates[i],barW,'#68d391');bar(x+barW+4,state.still_gates[i],barW,'#63b3ed');line(x,state.move_thresholds[i],group*.75,'#f6ad55');line(x,state.still_thresholds[i],group*.75,'#f687b3')}function yFor(v){return pad+plotH-(clamp(v,0,100)/100)*plotH}function bar(x,v,bw,color){ctx.fillStyle=color;const y=yFor(v);ctx.fillRect(x,y,bw,pad+plotH-y)}function line(x,v,len,color){ctx.strokeStyle=color;ctx.lineWidth=4;const y=yFor(v);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+len,y);ctx.stroke()}}
-function applyState(d){const next=Object.assign({},d);delete next.move_thresholds;delete next.still_thresholds;Object.assign(state,next);mergeThresholds('move',d.move_thresholds);mergeThresholds('still',d.still_thresholds);el('presence').textContent=state.presence===null?'-':(state.presence?'Yes':'No');el('target').textContent=state.target_state??'-';el('move-distance').textContent=state.move_distance==null?'-':ft(state.move_distance);el('still-distance').textContent=state.still_distance==null?'-':ft(state.still_distance);el('max-move-gate').textContent=state.max_move_gate==null?'-':'G'+state.max_move_gate+' / '+gateFt(state.max_move_gate);el('max-still-gate').textContent=state.max_still_gate==null?'-':'G'+state.max_still_gate+' / '+gateFt(state.max_still_gate);updateSliderValues();updateGateReadout();updateEngineeringButton();draw()}
+function applyState(d){const next=Object.assign({},d);delete next.move_thresholds;delete next.still_thresholds;Object.assign(state,next);mergeThresholds('move',d.move_thresholds);mergeThresholds('still',d.still_thresholds);el('presence').textContent=state.presence===null?'-':(state.presence?'Yes':'No');el('target').textContent=state.target_state??'-';el('move-distance').textContent=state.move_distance==null?'-':ft(state.move_distance);el('still-distance').textContent=state.still_distance==null?'-':ft(state.still_distance);el('max-move-gate').textContent=state.max_move_gate==null?'-':'G'+state.max_move_gate+' / '+gateFt(state.max_move_gate);el('max-still-gate').textContent=state.max_still_gate==null?'-':'G'+state.max_still_gate+' / '+gateFt(state.max_still_gate);el('params-status').textContent=state.params_status??'-';updateSliderValues();updateGateReadout();updateEngineeringButton();draw()}
 async function poll(){try{const d=await api('/api/state');applyState(d.state);el('status').textContent='Live'}catch(e){el('status').textContent=e.message}}
 function graphPointerDown(evt){const hit=nearestThreshold(graphPoint(evt));graphDrag={kind:hit.kind,gate:hit.gate};activeSlider=sliderKey(hit.kind,hit.gate);el('graph').setPointerCapture?.(evt.pointerId);graphPointerMove(evt)}
 function graphPointerMove(evt){if(!graphDrag)return;evt.preventDefault();setLocalThreshold(graphDrag.kind,graphDrag.gate,thresholdFromY(graphPoint(evt).y))}
@@ -190,6 +191,7 @@ class DirectTuner:
             "max_still_gate": 8,
             "timeout_seconds": None,
             "updated_at": None,
+            "params_status": "not read",
         }
         self.thread = threading.Thread(target=self.read_loop, daemon=True)
         self.thread.start()
@@ -218,10 +220,14 @@ class DirectTuner:
         time.sleep(0.08)
 
     def send_cmd_wait(self, cmd, data=b"", timeout=1.0):
-        with self.lock:
-            self.responses.clear()
-        self.send_cmd(cmd, data)
+        payload = cmd + data
+        frame = CMD_HEAD + struct.pack("<H", len(payload)) + payload + CMD_TAIL
         deadline = time.time() + timeout
+        with self.write_lock:
+            with self.lock:
+                self.responses.clear()
+            self.serial.write(frame)
+            self.serial.flush()
         while time.time() < deadline:
             with self.lock:
                 for response in list(self.responses):
@@ -264,10 +270,17 @@ class DirectTuner:
             self.data["still_thresholds"][gate] = still
 
     def read_parameters(self):
+        with self.lock:
+            self.data["params_status"] = "reading"
         self.enter_config()
         response = self.send_cmd_wait(b"\x61\x00", timeout=1.0)
         self.end_config()
         if not response or len(response) < 28 or response[2:5] != b"\x00\x00\xAA":
+            with self.lock:
+                if not response:
+                    self.data["params_status"] = "read failed: no response"
+                else:
+                    self.data["params_status"] = f"read failed: {len(response)} bytes"
             return False
         max_gate = int(response[5])
         max_move_gate = int(response[6])
@@ -291,6 +304,7 @@ class DirectTuner:
             self.data["move_thresholds"] = move[:9]
             self.data["still_thresholds"] = still[:9]
             self.data["timeout_seconds"] = timeout_seconds
+            self.data["params_status"] = "read ok"
         return True
 
     def read_loop(self):
