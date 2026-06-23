@@ -111,14 +111,11 @@ static json defaults() {
                 {"pir",              "hub75_clock/pir"},
                 {"availability",     "hub75_clock/status"},
                 {"fonts_available",  "hub75_clock/fonts_available"},
-                {"gates",            "hub75_clock/gates"},
                 {"engineering_mode", "hub75_clock/engineering_mode"},
                 {"bucket",           "hub75_clock/bucket"},
                 {"theme",            "hub75_clock/theme/set"},
                 {"theme_state",      "hub75_clock/theme/state"},
                 {"themes_available", "hub75_clock/themes/available"},
-                {"ld2410_params",    "hub75_clock/ld2410/params"},
-                {"ld2410_read",      "hub75_clock/ld2410/read"},
             }},
         }},
         {"ha_discovery", {
@@ -793,14 +790,8 @@ static void mqttOnConnect(mosquitto* mosq, void* obj, int rc) {
     sub("config");
     sub("alert");
     sub("theme");
-    sub("gates",            cid + "/gates");
     sub("engineering_mode", cid + "/engineering_mode");
     sub("bucket",           cid + "/bucket");
-    sub("ld2410_read",      cid + "/ld2410/read");
-
-    // Gate threshold wildcard topics: {client_id}/gate/+/move_thresh etc.
-    mosquitto_subscribe(mosq, nullptr, (cid + "/gate/+/move_thresh").c_str(),  0);
-    mosquitto_subscribe(mosq, nullptr, (cid + "/gate/+/still_thresh").c_str(), 0);
 
     // Publish available themes.
     std::vector<std::string> themeNames;
@@ -846,39 +837,6 @@ static void mqttOnMessage(mosquitto* mosq, void* obj,
     std::string topic(msg->topic);
     std::string raw(static_cast<char*>(msg->payload),
                     static_cast<std::size_t>(msg->payloadlen));
-
-    // ── Gate threshold wildcard: {cid}/gate/{n}/move_thresh or still_thresh ──
-    // Payload is a plain numeric value, not JSON.
-    {
-        // Split topic on '/'
-        std::vector<std::string> parts;
-        {
-            std::string seg;
-            for (char c : topic) {
-                if (c == '/') { parts.push_back(seg); seg.clear(); }
-                else seg += c;
-            }
-            parts.push_back(seg);
-        }
-        if (parts.size() == 4 && parts[0] == cid && parts[1] == "gate" &&
-            (parts[3] == "move_thresh" || parts[3] == "still_thresh"))
-        {
-            if (ctx->ld2410) {
-                try {
-                    int gate  = std::stoi(parts[2]);
-                    int value = static_cast<int>(std::stod(raw));
-                    auto& gt = ctx->ld2410->gateThresholds[gate];
-                    if (parts[3] == "move_thresh") gt.move  = value;
-                    else                            gt.still = value;
-                    ctx->ld2410->writeGateConfig(gate, gt.move, gt.still);
-                    // Echo back (mirrors Python publish(msg.topic, str(value), retain=True))
-                    mosquitto_publish(mosq, nullptr, topic.c_str(),
-                                      int(raw.size()), raw.c_str(), 0, 1);
-                } catch (...) {}
-            }
-            return;
-        }
-    }
 
     // ── Parse JSON payload (all remaining topics use JSON) ────────────────
     json payload;
@@ -982,34 +940,6 @@ static void mqttOnMessage(mosquitto* mosq, void* obj,
             ctx->clockState->alertMessage = payload.value("message", "");
         }
 
-    // ── gates (bulk gate configuration) ───────────────────────────────────
-    } else if (topic == topics.value("gates", cid + "/gates")) {
-        if (!payload.is_object() || !ctx->ld2410) return;
-        if (payload.contains("gates")) {
-            for (const auto& g : payload["gates"]) {
-                int gate = g["gate"].get<int>();
-                int mv   = g.value("move",  50);
-                int st   = g.value("still", 30);
-                ctx->ld2410->gateThresholds[gate] = {mv, st};
-                ctx->ld2410->writeGateConfig(gate, mv, st);
-            }
-        } else if (payload.contains("gate")) {
-            int gate = payload["gate"].get<int>();
-            int mv   = payload.value("move",  50);
-            int st   = payload.value("still", 30);
-            ctx->ld2410->gateThresholds[gate] = {mv, st};
-            ctx->ld2410->writeGateConfig(gate, mv, st);
-        }
-        if (payload.contains("engineering_mode") && ctx->ld2410) {
-            bool em = payload["engineering_mode"].get<bool>();
-            ctx->ld2410->enableEngineeringMode(em);
-            std::string emStateT =
-                topics.value("engineering_mode", cid + "/engineering_mode") + "/state";
-            const char* s = em ? "on" : "off";
-            mosquitto_publish(mosq, nullptr, emStateT.c_str(),
-                              static_cast<int>(std::strlen(s)), s, 0, 1);
-        }
-
     // ── engineering_mode ──────────────────────────────────────────────────
     } else if (topic == topics.value("engineering_mode", cid + "/engineering_mode")) {
         if (!payload.is_object() || !ctx->ld2410) return;
@@ -1028,12 +958,6 @@ static void mqttOnMessage(mosquitto* mosq, void* obj,
             ctx->clockState->bucket = payload["bucket"].get<std::string>();
         else if (payload.is_string())
             ctx->clockState->bucket = payload.get<std::string>();
-
-    } else if (topic == topics.value("ld2410_read", cid + "/ld2410/read")) {
-        if (ctx->ld2410 && !msg->retain) {
-            ctx->ld2410->readParametersAndPublish(
-                topics.value("ld2410_params", cid + "/ld2410/params"));
-        }
     }
 }
 

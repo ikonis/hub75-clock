@@ -263,7 +263,6 @@ LD2410Sensor::LD2410Sensor(SensorPublish pub,
     , _port(port)
     , _baud(baud)
 {
-    for (int i = 0; i < 9; ++i) gateThresholds[i] = {50, 30};
     if (!_init())
         std::cerr << "[ld2410] sensor not available on " << _port << " — skipping\n";
 }
@@ -368,97 +367,6 @@ void LD2410Sensor::enableEngineeringMode(bool enable) {
         } catch (...) {
         }
         _engineeringCommandRunning = false;
-    });
-}
-
-void LD2410Sensor::_writeGateConfigImpl(int gate, int moveT, int stillT) {
-    static const uint8_t ENTER_CFG[] = {0xFF, 0x00};
-    static const uint8_t END_CFG[]   = {0xFE, 0x00};
-    static const uint8_t GATE_CMD[]  = {0x64, 0x00};
-
-    _sendCmd(ENTER_CFG, 2);
-    usleep(100'000);
-
-    uint8_t payload[12];
-    auto w4le = [](uint8_t* dst, int v) {
-        dst[0] =  v        & 0xFF;
-        dst[1] = (v >>  8) & 0xFF;
-        dst[2] = (v >> 16) & 0xFF;
-        dst[3] = (v >> 24) & 0xFF;
-    };
-    w4le(payload + 0, gate);
-    w4le(payload + 4, moveT);
-    w4le(payload + 8, stillT);
-
-    _sendCmd(GATE_CMD, 2, payload, 12);
-    usleep(100'000);
-    _sendCmd(END_CFG, 2);
-    std::cout << "[ld2410] gate " << gate
-              << " move=" << moveT << " still=" << stillT << "\n";
-}
-
-void LD2410Sensor::writeGateConfig(int gate, int moveThresh, int stillThresh) {
-    std::lock_guard<std::mutex> lk(_commandThreadsMtx);
-    _commandThreads.emplace_back([this, gate, moveThresh, stillThresh] {
-        _writeGateConfigImpl(gate, moveThresh, stillThresh);
-    });
-}
-
-void LD2410Sensor::_readParametersAndPublishImpl(const std::string& paramsTopic) {
-    static const uint8_t ENTER_CFG[] = {0xFF, 0x00};
-    static const uint8_t END_CFG[]   = {0xFE, 0x00};
-    static const uint8_t READ_CMD[]  = {0x61, 0x00};
-
-    _sendCmd(ENTER_CFG, 2);
-    usleep(100'000);
-    std::vector<uint8_t> response = _sendCmdWait(READ_CMD, 2);
-    usleep(100'000);
-    _sendCmd(END_CFG, 2);
-
-    if (response.size() < 28 || response[2] != 0x00 || response[3] != 0x00 || response[4] != 0xAA) {
-        std::cerr << "[ld2410] read parameters failed\n";
-        return;
-    }
-
-    int maxGate = response[5];
-    int maxMoveGate = response[6];
-    int maxStillGate = response[7];
-    int gateCount = std::max(0, std::min(9, maxGate + 1));
-    std::vector<int> move(9, 0), still(9, 0);
-    for (int i = 0; i < gateCount && 8 + i < static_cast<int>(response.size()); ++i)
-        move[i] = response[8 + i];
-    int stillStart = 8 + gateCount;
-    for (int i = 0; i < gateCount && stillStart + i < static_cast<int>(response.size()); ++i)
-        still[i] = response[stillStart + i];
-    int timeoutIdx = stillStart + gateCount;
-    int timeout = 0;
-    if (timeoutIdx + 1 < static_cast<int>(response.size()))
-        timeout = response[timeoutIdx] | (response[timeoutIdx + 1] << 8);
-
-    for (int i = 0; i < 9; ++i)
-        gateThresholds[i] = {move[i], still[i]};
-
-    std::string body = "{\"max_gate\":" + std::to_string(maxGate) +
-        ",\"max_move_gate\":" + std::to_string(maxMoveGate) +
-        ",\"max_still_gate\":" + std::to_string(maxStillGate) +
-        ",\"move_thresholds\":[";
-    for (int i = 0; i < 9; ++i) {
-        if (i) body += ",";
-        body += std::to_string(move[i]);
-    }
-    body += "],\"still_thresholds\":[";
-    for (int i = 0; i < 9; ++i) {
-        if (i) body += ",";
-        body += std::to_string(still[i]);
-    }
-    body += "],\"timeout_seconds\":" + std::to_string(timeout) + "}";
-    _pub(paramsTopic, body, true);
-}
-
-void LD2410Sensor::readParametersAndPublish(const std::string& paramsTopic) {
-    std::lock_guard<std::mutex> lk(_commandThreadsMtx);
-    _commandThreads.emplace_back([this, paramsTopic] {
-        _readParametersAndPublishImpl(paramsTopic);
     });
 }
 

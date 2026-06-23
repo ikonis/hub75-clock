@@ -11,7 +11,6 @@
 #include <mutex>
 #include <string>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
 // Publish callback: topic, payload, retain. mosquitto_publish is thread-safe
@@ -75,12 +74,11 @@ private:
 // ── LD2410C mmWave radar ──────────────────────────────────────────────────────
 // UART on /dev/serial0 at 256000 baud.  Parses data frames (basic type 0x02
 // and engineering type 0x01), throttles publishes to ≥ 500 ms apart.
-// Engineering mode and gate thresholds can be toggled via MQTT.
+// Engineering mode can be toggled via MQTT. Threshold tuning lives in the
+// standalone direct-UART web tuner.
 
 class LD2410Sensor {
 public:
-    struct GateThreshold { int move = 50, still = 30; };
-
     LD2410Sensor(SensorPublish pub,
                  const std::string& presenceTopic,
                  const std::string& motionTopic,
@@ -92,13 +90,8 @@ public:
 
     // Thread-safe: runs command writes off the MQTT callback thread.
     void enableEngineeringMode(bool enable);
-    void writeGateConfig(int gate, int moveThresh, int stillThresh);
-    void readParametersAndPublish(const std::string& paramsTopic);
 
     bool engineeringMode() const { return _engineeringMode.load(); }
-
-    // Gate 0-8 thresholds; updated by MQTT handler, read by writeGateConfig.
-    std::unordered_map<int, GateThreshold> gateThresholds;
 
 private:
     SensorPublish     _pub;
@@ -128,10 +121,8 @@ private:
     void _sendCmd(const uint8_t* cmdWord, size_t cwLen,
                   const uint8_t* data = nullptr, size_t dataLen = 0);
     void _enableEngineeringModeImpl(bool enable);
-    void _writeGateConfigImpl(int gate, int moveT, int stillT);
     std::vector<uint8_t> _sendCmdWait(const uint8_t* cmdWord, size_t cwLen,
                                       const uint8_t* data = nullptr, size_t dataLen = 0);
-    void _readParametersAndPublishImpl(const std::string& paramsTopic);
     void _run();
     void _process(std::vector<uint8_t>& buf);
     void _parseBasic(const uint8_t* data, size_t len);

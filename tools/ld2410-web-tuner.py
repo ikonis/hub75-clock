@@ -255,10 +255,12 @@ class DirectTuner:
             move = value
         else:
             still = value
-        payload = struct.pack("<III", gate, move, still)
+        payload = struct.pack("<HIHIHI", 0, gate, 1, move, 2, still)
         self.enter_config()
-        self.send_cmd(b"\x64\x00", payload)
+        ack = self.send_cmd_wait(b"\x64\x00", payload, timeout=1.0)
         self.end_config()
+        if not ack or len(ack) < 4 or ack[2:4] != b"\x00\x00":
+            raise RuntimeError("LD2410 rejected gate threshold write")
         with self.lock:
             self.data["move_thresholds"][gate] = move
             self.data["still_thresholds"][gate] = still
@@ -267,14 +269,14 @@ class DirectTuner:
         self.enter_config()
         response = self.send_cmd_wait(b"\x61\x00", timeout=1.0)
         self.end_config()
-        if not response or len(response) < 28 or response[2:5] != b"\x00\x00\xAA":
+        if not response or len(response) < 26 or response[2] != 0xAA:
             return False
-        max_gate = int(response[5])
-        max_move_gate = int(response[6])
-        max_still_gate = int(response[7])
+        max_gate = int(response[3])
+        max_move_gate = int(response[4])
+        max_still_gate = int(response[5])
         gate_count = max(0, min(9, max_gate + 1))
-        move = [int(v) for v in response[8 : 8 + gate_count]]
-        still_start = 8 + gate_count
+        move = [int(v) for v in response[6 : 6 + gate_count]]
+        still_start = 6 + gate_count
         still = [int(v) for v in response[still_start : still_start + gate_count]]
         while len(move) < 9:
             move.append(0)

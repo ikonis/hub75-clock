@@ -47,4 +47,4 @@ sprite-builder:
 	python3 tools/theme-server.py --themes-dir themes --sprites-dir sprites --animations-dir sprite-animations
 
 ld2410-tuner:
-	python3 tools/ld2410-tuner.py --config config.yaml --host 0.0.0.0 --port 8766
+	python3 tools/ld2410-web-tuner.py --host 0.0.0.0 --web-port 8766
