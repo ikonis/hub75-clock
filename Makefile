@@ -17,7 +17,13 @@ status:
 	sudo systemctl status hub75-clock
 
 stop:
-	sudo systemctl stop hub75-clock
+	@echo "Stopping hub75-clock..."
+	@if ! timeout 10 sudo systemctl stop hub75-clock; then \
+		echo "hub75-clock did not stop within 10s; forcing SIGKILL..."; \
+		sudo systemctl kill -s SIGKILL hub75-clock || true; \
+	fi
+	@echo "Stopping hub75-ld2410-tuner..."
+	@timeout 5 sudo systemctl stop hub75-ld2410-tuner || sudo systemctl kill -s SIGKILL hub75-ld2410-tuner || true
 
 start:
 	sudo systemctl start hub75-clock
