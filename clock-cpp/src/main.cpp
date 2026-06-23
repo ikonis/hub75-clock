@@ -707,6 +707,21 @@ static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
     presence["device_class"] = "occupancy";
     pub(prefix + "/binary_sensor/" + cid + "_presence/config", presence);
 
+    if (cfg["sensors"].value("ld2410_enabled", true)) {
+        json em = base("LD2410 Engineering Mode", cid + "_engineering_mode");
+        em["command_topic"] = topics.value("engineering_mode", cid + "/engineering_mode");
+        em["payload_on"] = "{\"engineering_mode\": true}";
+        em["payload_off"] = "{\"engineering_mode\": false}";
+        em["state_topic"] = topics.value("engineering_mode", cid + "/engineering_mode") + "/state";
+        em["state_on"] = "on";
+        em["state_off"] = "off";
+        em["entity_category"] = "config";
+        em["icon"] = "mdi:radar";
+        pub(prefix + "/switch/" + cid + "_engineering_mode/config", em);
+    } else {
+        clearDiscovery(prefix + "/switch/" + cid + "_engineering_mode/config");
+    }
+
     if (cfg["theme_builder"].value("mode", "off") == "ha") {
         json sw = base("Theme Builder", cid + "_theme_builder");
         sw["command_topic"] = topics.value("config", cid + "/config");
@@ -748,7 +763,6 @@ static void publishHomeAssistantDiscovery(mosquitto* mosq, const json& cfg,
     for (const auto& entry : std::vector<std::pair<std::string, std::string>>{
              {"sensor", cid + "_move_energy"},
              {"sensor", cid + "_still_energy"},
-             {"switch", cid + "_engineering_mode"},
              {"binary_sensor", cid + "_update_available"},
              {"sensor", cid + "_update_info"},
              {"button", cid + "_update_check"},
