@@ -236,7 +236,7 @@ class DirectTuner:
         }
         self.thread = threading.Thread(target=self.read_loop, daemon=True)
         self.thread.start()
-        self.set_engineering(True)
+        self.ensure_engineering(True)
 
     def close(self):
         try:
@@ -249,6 +249,7 @@ class DirectTuner:
 
     def snapshot(self):
         with self.lock:
+            existing_warning = self.data.get("engineering_warning", "")
             if (
                 self.data["engineering"]
                 and not self.data["engineering_verified"]
@@ -258,7 +259,7 @@ class DirectTuner:
                 self.data["engineering_warning"] = "Engineering mode is on, but no engineering frames have arrived yet."
             elif self.data["engineering"] and self.data.get("last_report_type") == 0x02:
                 self.data["engineering_warning"] = "Engineering mode is on, but the latest frame is still a basic report."
-            else:
+            elif not existing_warning:
                 self.data["engineering_warning"] = ""
             return json.loads(json.dumps(self.data))
 
@@ -294,16 +295,33 @@ class DirectTuner:
             self.responses.clear()
 
     def enter_config(self):
-        ack = self.send_cmd_wait(b"\xFF\x00", timeout=1.5, require_ok=True)
-        if not ack:
-            raise RuntimeError("LD2410 did not enter config mode")
-        return ack
+        for _ in range(3):
+            ack = self.send_cmd_wait(b"\xFF\x00", timeout=2.5, require_ok=True)
+            if ack:
+                return ack
+            time.sleep(0.15)
+        raise RuntimeError("LD2410 did not enter config mode")
 
     def end_config(self):
-        ack = self.send_cmd_wait(b"\xFE\x00", timeout=1.5, require_ok=True)
-        if not ack:
-            raise RuntimeError("LD2410 did not exit config mode")
-        return ack
+        for _ in range(3):
+            ack = self.send_cmd_wait(b"\xFE\x00", timeout=2.5, require_ok=True)
+            if ack:
+                return ack
+            time.sleep(0.15)
+        raise RuntimeError("LD2410 did not exit config mode")
+
+    def ensure_engineering(self, enable):
+        try:
+            self.set_engineering(enable)
+            return True
+        except Exception as exc:
+            with self.lock:
+                self.data["engineering"] = False
+                self.data["engineering_verified"] = False
+                self.data["last_command_name"] = "engineering_on" if enable else "engineering_off"
+                self.data["engineering_warning"] = str(exc)
+                self.engineering_enabled_at = None
+            return False
 
     def set_engineering(self, enable):
         with self.command_lock:
